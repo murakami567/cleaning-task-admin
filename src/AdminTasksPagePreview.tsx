@@ -512,17 +512,27 @@ export default function AdminTasksPagePreview() {
   const [viewMode, setViewMode] = useState<ViewMode>("TODAY");
 
   // 清掃
-  const [cleaningTasks, setCleaningTasks] = useState<CleaningTask[]>(() => []);
-  const [selectedCleaningId, setSelectedCleaningId] = useState<string>("");
-  const [cleaningDrawerOpen, setCleaningDrawerOpen] = useState(false);
-  const [tableEditMode, setTableEditMode] = useState(false);
-  const [loadingCleaning, setLoadingCleaning] = useState(false);
-  const [cleaningError, setCleaningError] = useState("");
+const [cleaningTasks, setCleaningTasks] = useState<CleaningTask[]>(() => []);
+const [selectedCleaningId, setSelectedCleaningId] = useState<string>("");
+const [cleaningDrawerOpen, setCleaningDrawerOpen] = useState(false);
+const [tableEditMode, setTableEditMode] = useState(false);
+const [loadingCleaning, setLoadingCleaning] = useState(false);
+const [cleaningError, setCleaningError] = useState("");
 
-  // 清掃外
-  const [nonCleaningTasks, setNonCleaningTasks] = useState<NonCleaningTask[]>(() => []);
-  const [nonCleaningDrawerOpen, setNonCleaningDrawerOpen] = useState(false);
-  const [draftNonCleaning, setDraftNonCleaning] = useState<NonCleaningTask | null>(null);
+// ← ここに追加
+const [addCleaningDrawerOpen, setAddCleaningDrawerOpen] = useState(false);
+const [draftCleaningTask, setDraftCleaningTask] = useState({
+  property: "",
+  room: "",
+  date: viewMode === "TODAY" ? baseDate : addDaysIso(baseDate, 1),
+  status: "未着手",
+  note: "",
+});
+
+// 清掃外
+const [nonCleaningTasks, setNonCleaningTasks] = useState<NonCleaningTask[]>(() => []);
+const [nonCleaningDrawerOpen, setNonCleaningDrawerOpen] = useState(false);
+const [draftNonCleaning, setDraftNonCleaning] = useState<NonCleaningTask | null>(null);
 
   const refresh = async () => {
     try {
