@@ -346,6 +346,26 @@ type ApiCleaningTask = {
   assigned_staff_code: string | null;
   assigned_staff_name: string | null;
 };
+type PropertyMaster = {
+  id: string;
+  property_code: string;
+  property_name: string;
+  normalized_name: string | null;
+  sort_order: number | null;
+  is_active: boolean;
+};
+
+type RoomMaster = {
+  id: string;
+  property_id: string;
+  room_name: string;
+  room_code: string | null;
+  room_key: string;
+  normalized_room_key: string | null;
+  capacity: number | null;
+  room_sort_order: number | null;
+  is_active: boolean;
+};
 
 const API_BASE = (import.meta as any).env?.VITE_API_BASE_URL || "https://cleaning-task-api.onrender.com";
 
@@ -511,7 +531,7 @@ export default function AdminTasksPagePreview() {
 
   const [viewMode, setViewMode] = useState<ViewMode>("TODAY");
 
-  // 清掃
+// 清掃
 const [cleaningTasks, setCleaningTasks] = useState<CleaningTask[]>(() => []);
 const [selectedCleaningId, setSelectedCleaningId] = useState<string>("");
 const [cleaningDrawerOpen, setCleaningDrawerOpen] = useState(false);
@@ -519,7 +539,6 @@ const [tableEditMode, setTableEditMode] = useState(false);
 const [loadingCleaning, setLoadingCleaning] = useState(false);
 const [cleaningError, setCleaningError] = useState("");
 
-// ← ここに追加
 const [addCleaningDrawerOpen, setAddCleaningDrawerOpen] = useState(false);
 const [draftCleaningTask, setDraftCleaningTask] = useState({
   property: "",
@@ -529,11 +548,34 @@ const [draftCleaningTask, setDraftCleaningTask] = useState({
   note: "",
 });
 
+const [properties, setProperties] = useState<PropertyMaster[]>([]);
+const [rooms, setRooms] = useState<RoomMaster[]>([]);
+const [selectedPropertyId, setSelectedPropertyId] = useState("");
+const [selectedRoomId, setSelectedRoomId] = useState("");
+
 // 清掃外
 const [nonCleaningTasks, setNonCleaningTasks] = useState<NonCleaningTask[]>(() => []);
 const [nonCleaningDrawerOpen, setNonCleaningDrawerOpen] = useState(false);
 const [draftNonCleaning, setDraftNonCleaning] = useState<NonCleaningTask | null>(null);
 
+const loadProperties = async () => {
+  const res = await fetch(`${API_BASE}/properties`);
+  if (!res.ok) throw new Error(`properties fetch failed: ${res.status}`);
+  const data: PropertyMaster[] = await res.json();
+  setProperties(data.filter((p) => p.is_active));
+};
+
+const loadRooms = async (propertyId: string) => {
+  if (!propertyId) {
+    setRooms([]);
+    return;
+  }
+  const res = await fetch(`${API_BASE}/rooms?property_id=${propertyId}`);
+  if (!res.ok) throw new Error(`rooms fetch failed: ${res.status}`);
+  const data: RoomMaster[] = await res.json();
+  setRooms(data.filter((r) => r.is_active));
+};
+  
   const refresh = async () => {
     try {
       setLoadingCleaning(true);
@@ -553,6 +595,10 @@ const [draftNonCleaning, setDraftNonCleaning] = useState<NonCleaningTask | null>
   useEffect(() => {
     void refresh();
   }, [viewMode]);
+
+  useEffect(() => {
+  void loadProperties();
+}, []);
 
   useEffect(() => {
     if (!autoRefresh) return;
@@ -604,21 +650,32 @@ const [draftNonCleaning, setDraftNonCleaning] = useState<NonCleaningTask | null>
     status: "未着手",
     note: "",
   });
+  setSelectedPropertyId("");
+  setSelectedRoomId("");
+  setRooms([]);
   setAddCleaningDrawerOpen(true);
 };
 
   const commitCleaningTask = async () => {
   try {
-    if (!draftCleaningTask.property.trim()) {
-      window.alert("物件を入力してください。");
+    if (!selectedPropertyId) {
+      window.alert("物件を選択してください。");
       return;
     }
-    if (!draftCleaningTask.room.trim()) {
-      window.alert("部屋を入力してください。");
+    if (!selectedRoomId) {
+      window.alert("部屋を選択してください。");
       return;
     }
     if (!draftCleaningTask.date.trim()) {
       window.alert("日付を入力してください。");
+      return;
+    }
+
+    const property = properties.find((p) => p.id === selectedPropertyId);
+    const room = rooms.find((r) => r.id === selectedRoomId);
+
+    if (!property || !room) {
+      window.alert("物件または部屋の選択が不正です。");
       return;
     }
 
@@ -628,9 +685,9 @@ const [draftNonCleaning, setDraftNonCleaning] = useState<NonCleaningTask | null>
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        property_name: draftCleaningTask.property,
-        room_name: draftCleaningTask.room,
-        room_key: `${draftCleaningTask.property}${draftCleaningTask.room}`,
+        property_name: property.property_name,
+        room_name: room.room_name,
+        room_key: room.room_key,
         task_date: draftCleaningTask.date,
         status: draftCleaningTask.status,
         note: draftCleaningTask.note,
@@ -1301,20 +1358,47 @@ const [draftNonCleaning, setDraftNonCleaning] = useState<NonCleaningTask | null>
     <div>
       <div className="mb-1 text-xs text-black/60">物件</div>
       <Select
-        value={draftCleaningTask.property}
-        onChange={(v) => setDraftCleaningTask((p) => ({ ...p, property: v }))}
-        options={PROPERTY_OPTIONS}
-        placeholder="物件を選択"
-      />
+  value={selectedPropertyId}
+  onChange={(v) => {
+    setSelectedPropertyId(v);
+    setSelectedRoomId("");
+    void loadRooms(v);
+
+    const selected = properties.find((p) => p.id === v);
+    setDraftCleaningTask((prev) => ({
+      ...prev,
+      property: selected?.property_name ?? "",
+      room: "",
+    }));
+  }}
+  options={properties.map((p) => ({
+    value: p.id,
+    label: p.property_name,
+  }))}
+  placeholder="物件を選択"
+/>
     </div>
 
     <div>
       <div className="mb-1 text-xs text-black/60">部屋</div>
-      <TextInput
-        value={draftCleaningTask.room}
-        onChange={(v) => setDraftCleaningTask((p) => ({ ...p, room: v }))}
-        placeholder="例）1005"
-      />
+      <Select
+  value={selectedRoomId}
+  onChange={(v) => {
+    setSelectedRoomId(v);
+
+    const selected = rooms.find((r) => r.id === v);
+    setDraftCleaningTask((prev) => ({
+      ...prev,
+      room: selected?.room_name ?? "",
+    }));
+  }}
+  options={rooms.map((r) => ({
+    value: r.id,
+    label: `${r.room_name}（${r.room_key}）`,
+  }))}
+  placeholder={selectedPropertyId ? "部屋を選択" : "先に物件を選択"}
+  disabled={!selectedPropertyId}
+/>
     </div>
 
     <div>
