@@ -1274,9 +1274,83 @@ const [draftNonCleaning, setDraftNonCleaning] = useState<NonCleaningTask | null>
           <div className="p-6 text-sm text-black/60">フォームを初期化できませんでした。</div>
         )}
       </Drawer>
+
+      <Drawer
+  open={addCleaningDrawerOpen}
+  title="清掃タスク追加"
+  onClose={() => setAddCleaningDrawerOpen(false)}
+  footer={
+    <div className="flex items-center justify-between gap-2">
+      <div className="text-xs text-black/50">必要項目を入力して追加してください。</div>
+      <div className="flex items-center gap-2">
+        <Button variant="outline" onClick={() => setAddCleaningDrawerOpen(false)}>
+          キャンセル
+        </Button>
+        <Button
+          variant="outline"
+          className="border-orange-200 bg-orange-50 hover:bg-orange-100"
+          onClick={commitCleaningTask}
+        >
+          追加
+        </Button>
+      </div>
+    </div>
+  }
+>
+  <div className="grid gap-3">
+    <div>
+      <div className="mb-1 text-xs text-black/60">物件</div>
+      <Select
+        value={draftCleaningTask.property}
+        onChange={(v) => setDraftCleaningTask((p) => ({ ...p, property: v }))}
+        options={PROPERTY_OPTIONS}
+        placeholder="物件を選択"
+      />
+    </div>
+
+    <div>
+      <div className="mb-1 text-xs text-black/60">部屋</div>
+      <TextInput
+        value={draftCleaningTask.room}
+        onChange={(v) => setDraftCleaningTask((p) => ({ ...p, room: v }))}
+        placeholder="例）1005"
+      />
+    </div>
+
+    <div>
+      <div className="mb-1 text-xs text-black/60">日付</div>
+      <input
+        type="date"
+        className="h-9 w-full rounded-lg border px-2 text-sm"
+        value={draftCleaningTask.date}
+        onChange={(e) => setDraftCleaningTask((p) => ({ ...p, date: e.target.value }))}
+      />
+    </div>
+
+    <div>
+      <div className="mb-1 text-xs text-black/60">ステータス</div>
+      <Select
+        value={draftCleaningTask.status}
+        onChange={(v) => setDraftCleaningTask((p) => ({ ...p, status: v }))}
+        options={STATUS_OPTIONS}
+      />
+    </div>
+
+    <div>
+      <div className="mb-1 text-xs text-black/60">備考</div>
+      <textarea
+        className="h-28 w-full rounded-xl border bg-white p-3 text-sm outline-none focus:ring-2 focus:ring-black/20"
+        value={draftCleaningTask.note}
+        onChange={(e) => setDraftCleaningTask((p) => ({ ...p, note: e.target.value }))}
+        placeholder="備考…"
+      />
+    </div>
+  </div>
+</Drawer>
     </div>
   );
 }
+
 
 /** ------------------------
  * Lightweight self-tests (dev only)
