@@ -596,20 +596,44 @@ const [draftNonCleaning, setDraftNonCleaning] = useState<NonCleaningTask | null>
     [selectedCleaningAttendees]
   );
 
-  const addCleaningTask = async () => {
+  const addCleaningTask = () => {
+  setDraftCleaningTask({
+    property: "",
+    room: "",
+    date: viewMode === "TODAY" ? baseDate : addDaysIso(baseDate, 1),
+    status: "未着手",
+    note: "",
+  });
+  setAddCleaningDrawerOpen(true);
+};
+
+  const commitCleaningTask = async () => {
   try {
-    const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/tasks/create`, {
+    if (!draftCleaningTask.property.trim()) {
+      window.alert("物件を入力してください。");
+      return;
+    }
+    if (!draftCleaningTask.room.trim()) {
+      window.alert("部屋を入力してください。");
+      return;
+    }
+    if (!draftCleaningTask.date.trim()) {
+      window.alert("日付を入力してください。");
+      return;
+    }
+
+    const res = await fetch(`${API_BASE}/tasks/create`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        property_name: "FFFホテル",
-        room_name: "1003",
-        room_key: "FFFホテル1003",
-        task_date: new Date().toISOString().slice(0, 10),
-        status: "未着手",
-        note: "UI追加テスト",
+        property_name: draftCleaningTask.property,
+        room_name: draftCleaningTask.room,
+        room_key: `${draftCleaningTask.property}${draftCleaningTask.room}`,
+        task_date: draftCleaningTask.date,
+        status: draftCleaningTask.status,
+        note: draftCleaningTask.note,
       }),
     });
 
@@ -617,9 +641,8 @@ const [draftNonCleaning, setDraftNonCleaning] = useState<NonCleaningTask | null>
       throw new Error(`create failed: ${res.status}`);
     }
 
-    const data = await res.json();
-    console.log("作成結果:", data);
-
+    await res.json();
+    setAddCleaningDrawerOpen(false);
     await refresh();
   } catch (error) {
     console.error(error);
