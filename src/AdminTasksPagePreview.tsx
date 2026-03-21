@@ -586,9 +586,36 @@ export default function AdminTasksPagePreview() {
     [selectedCleaningAttendees]
   );
 
-  const addCleaningTask = () => {
-    window.alert("清掃タスク追加APIは次段階で接続します。現状は既存タスクの閲覧・更新のみ本番接続です。");
-  };
+  const addCleaningTask = async () => {
+  try {
+    const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/tasks/create`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        property_name: "FFFホテル",
+        room_name: "1003",
+        room_key: "FFFホテル1003",
+        task_date: new Date().toISOString().slice(0, 10),
+        status: "未着手",
+        note: "UI追加テスト",
+      }),
+    });
+
+    if (!res.ok) {
+      throw new Error(`create failed: ${res.status}`);
+    }
+
+    const data = await res.json();
+    console.log("作成結果:", data);
+
+    await refresh();
+  } catch (error) {
+    console.error(error);
+    window.alert("清掃タスクの追加に失敗しました。");
+  }
+};
 
   const updateCleaningTask = async (id: string, patch: Partial<CleaningTask>) => {
     setCleaningTasks((prev) => prev.map((t) => (t.id === id ? { ...t, ...patch } : t)));
@@ -1261,25 +1288,3 @@ try {
 } catch (error) {
   void error;
 }
-const createTask = async () => {
-  const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/tasks/create`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
-      property_name: "FFFホテル",
-      room_name: "1003",
-      room_key: "FFFホテル1003",
-      task_date: new Date().toISOString().slice(0, 10),
-      status: "未着手",
-      note: "UI追加テスト"
-    })
-  });
-
-  const data = await res.json();
-  console.log("作成結果:", data);
-
-  // 再取得
-  fetchTasks();
-};
