@@ -1,6 +1,8 @@
 import { useState } from "react";
 import AdminTasksPagePreview from "./AdminTasksPagePreview";
 import PropertyManagementPage from "./PropertyManagementPage";
+import OpeningManagementPage from "./OpeningManagementPage";
+import FacilityManagementPage from "./FacilityManagementPage";
 
 function Button({
   children,
@@ -24,33 +26,29 @@ function Button({
 }
 
 export default function App() {
-  const [page, setPage] = useState<"tasks" | "properties">("tasks");
+  const [page, setPage] = useState<"tasks" | "properties" | "openings" | "facilities">("tasks");
 
   return (
     <div className="min-h-screen bg-neutral-50">
-      {/* ナビ */}
-      <div className="border-b bg-white px-6 py-3 flex gap-2">
-        <Button
-          active={page === "tasks"}
-          onClick={() => setPage("tasks")}
-        >
+      <div className="border-b bg-white px-6 py-3 flex gap-2 flex-wrap">
+        <Button active={page === "tasks"} onClick={() => setPage("tasks")}>
           タスク管理
         </Button>
-
-        <Button
-          active={page === "properties"}
-          onClick={() => setPage("properties")}
-        >
+        <Button active={page === "properties"} onClick={() => setPage("properties")}>
           物件管理
+        </Button>
+        <Button active={page === "openings"} onClick={() => setPage("openings")}>
+          新規オープン進捗
+        </Button>
+        <Button active={page === "facilities"} onClick={() => setPage("facilities")}>
+          設備管理
         </Button>
       </div>
 
-      {/* ページ */}
-      {page === "tasks" ? (
-        <AdminTasksPagePreview />
-      ) : (
-        <PropertyManagementPage />
-      )}
+      {page === "tasks" && <AdminTasksPagePreview />}
+      {page === "properties" && <PropertyManagementPage />}
+      {page === "openings" && <OpeningManagementPage />}
+      {page === "facilities" && <FacilityManagementPage />}
     </div>
   );
 }
