@@ -24,6 +24,31 @@ type RoomMaster = {
   is_active: boolean;
 };
 
+function ChipButton({
+  children,
+  active = false,
+  onClick,
+}: {
+  children: React.ReactNode;
+  active?: boolean;
+  onClick?: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={[
+        "rounded-full px-4 py-2 text-sm font-bold border transition",
+        active
+          ? "bg-slate-900 text-white border-slate-900"
+          : "bg-white text-slate-700 border-slate-200 hover:bg-slate-50",
+      ].join(" ")}
+      type="button"
+    >
+      {children}
+    </button>
+  );
+}
+
 function Button({
   children,
   className = "",
@@ -35,7 +60,7 @@ function Button({
 }) {
   return (
     <button
-      className={`inline-flex items-center justify-center rounded-xl border px-4 py-2 text-sm transition hover:bg-black/5 disabled:cursor-not-allowed disabled:opacity-50 ${className}`}
+      className={`inline-flex items-center justify-center rounded-full border px-4 py-2 text-sm font-bold transition hover:bg-slate-50 ${className}`}
       {...props}
     >
       {children}
@@ -43,8 +68,24 @@ function Button({
   );
 }
 
+function Badge({ on }: { on: boolean }) {
+  return (
+    <span
+      className={[
+        "inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-bold border",
+        on
+          ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+          : "bg-rose-50 text-rose-700 border-rose-200",
+      ].join(" ")}
+    >
+      <span className={["h-2 w-2 rounded-full", on ? "bg-emerald-500" : "bg-rose-500"].join(" ")} />
+      {on ? "ON" : "OFF"}
+    </span>
+  );
+}
+
 function Card({ children }: { children: React.ReactNode }) {
-  return <div className="rounded-2xl border bg-white shadow-sm">{children}</div>;
+  return <div className="rounded-[24px] border border-slate-200 bg-white shadow-sm">{children}</div>;
 }
 
 function CardBody({ children }: { children: React.ReactNode }) {
@@ -54,34 +95,53 @@ function CardBody({ children }: { children: React.ReactNode }) {
 function Drawer({
   open,
   title,
+  subtitle,
   children,
   onClose,
   footer,
 }: {
   open: boolean;
   title: string;
+  subtitle?: string;
   children: React.ReactNode;
   onClose: () => void;
   footer?: React.ReactNode;
 }) {
+  if (!open) return null;
+
   return (
-    <div className={`fixed inset-0 z-40 ${open ? "" : "pointer-events-none"}`} aria-hidden={!open}>
-      <div
-        className={`absolute inset-0 bg-black/30 transition ${open ? "opacity-100" : "opacity-0"}`}
-        onClick={onClose}
-      />
-      <div
-        className={`absolute right-0 top-0 h-full w-full max-w-xl bg-white shadow-2xl transition-transform ${
-          open ? "translate-x-0" : "translate-x-full"
-        }`}
-      >
-        <div className="flex items-center justify-between border-b p-4">
-          <div className="font-semibold">{title}</div>
-          <Button onClick={onClose}>閉じる</Button>
+    <div
+      className="fixed inset-0 z-[999] flex justify-end bg-black/40"
+      onMouseDown={(e) => e.target === e.currentTarget && onClose()}
+    >
+      <div className="h-full w-[520px] max-w-[92vw] bg-white shadow-2xl border-l border-slate-200 flex flex-col">
+        <div className="p-4 border-b border-slate-200 flex items-start justify-between gap-3">
+          <div>
+            <div className="text-base font-extrabold">{title}</div>
+            {subtitle ? <div className="text-xs text-slate-500 mt-1">{subtitle}</div> : null}
+          </div>
+          <button
+            className="rounded-full border border-slate-200 px-3 py-2 text-sm font-bold hover:bg-slate-50"
+            onClick={onClose}
+            type="button"
+          >
+            ×
+          </button>
         </div>
-        <div className="h-[calc(100%-120px)] overflow-auto p-4">{children}</div>
-        <div className="border-t p-4">{footer}</div>
+
+        <div className="p-4 overflow-auto flex-1">{children}</div>
+
+        <div className="p-4 border-t border-slate-200">{footer}</div>
       </div>
+    </div>
+  );
+}
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="space-y-1">
+      <div className="text-xs text-slate-500 font-semibold">{label}</div>
+      {children}
     </div>
   );
 }
@@ -100,7 +160,7 @@ function TextInput({
   return (
     <input
       type={type}
-      className="h-10 w-full rounded-xl border bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-black/20"
+      className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-slate-300"
       value={value ?? ""}
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
@@ -121,7 +181,7 @@ function Select({
 }) {
   return (
     <select
-      className="h-10 w-full rounded-xl border bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-black/20"
+      className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-slate-300"
       value={value}
       onChange={(e) => onChange(e.target.value)}
     >
@@ -135,23 +195,6 @@ function Select({
   );
 }
 
-function StatCard({
-  label,
-  value,
-}: {
-  label: string;
-  value: number;
-}) {
-  return (
-    <Card>
-      <CardBody>
-        <div className="text-xs text-black/50">{label}</div>
-        <div className="mt-2 text-2xl font-semibold">{value}</div>
-      </CardBody>
-    </Card>
-  );
-}
-
 export default function PropertyManagementPage() {
   const [properties, setProperties] = useState<PropertyMaster[]>([]);
   const [rooms, setRooms] = useState<RoomMaster[]>([]);
@@ -162,8 +205,10 @@ export default function PropertyManagementPage() {
   const [roomDrawerOpen, setRoomDrawerOpen] = useState(false);
 
   const [propertySearch, setPropertySearch] = useState("");
+  const [activeFilter, setActiveFilter] = useState<"active" | "all">("active");
+  const [selectedPropertyId, setSelectedPropertyId] = useState("");
+
   const [roomSearch, setRoomSearch] = useState("");
-  const [showInactive, setShowInactive] = useState(false);
 
   const [propertyForm, setPropertyForm] = useState({
     property_code: "",
@@ -195,8 +240,14 @@ export default function PropertyManagementPage() {
       const pData: PropertyMaster[] = await pRes.json();
       const rData: RoomMaster[] = await rRes.json();
 
-      setProperties(pData);
+      const sortedProps = [...pData].sort((a, b) => (a.sort_order ?? 999) - (b.sort_order ?? 999));
+      setProperties(sortedProps);
       setRooms(rData);
+
+      setSelectedPropertyId((prev) => {
+        if (prev && sortedProps.some((p) => p.id === prev)) return prev;
+        return sortedProps[0]?.id ?? "";
+      });
     } catch (e) {
       console.error(e);
       setError("物件・部屋データの取得に失敗しました。");
@@ -209,79 +260,48 @@ export default function PropertyManagementPage() {
     void loadAll();
   }, []);
 
-  const propertyNameMap = useMemo(() => {
-    return Object.fromEntries(properties.map((p) => [p.id, p.property_name]));
-  }, [properties]);
+  const selectedProperty = useMemo(
+    () => properties.find((p) => p.id === selectedPropertyId) ?? null,
+    [properties, selectedPropertyId]
+  );
+
+  const filteredProperties = useMemo(() => {
+    const q = propertySearch.trim().toLowerCase();
+
+    return properties
+      .filter((p) => (activeFilter === "all" ? true : p.is_active))
+      .filter((p) => {
+        if (!q) return true;
+        return `${p.property_name} ${p.property_code} ${p.normalized_name ?? ""}`.toLowerCase().includes(q);
+      })
+      .sort((a, b) => (a.sort_order ?? 999) - (b.sort_order ?? 999));
+  }, [properties, propertySearch, activeFilter]);
+
+  const filteredRooms = useMemo(() => {
+    if (!selectedProperty) return [];
+
+    const q = roomSearch.trim().toLowerCase();
+
+    return rooms
+      .filter((r) => r.property_id === selectedProperty.id)
+      .filter((r) => (activeFilter === "all" ? true : r.is_active))
+      .filter((r) => {
+        if (!q) return true;
+        return `${r.room_name} ${r.room_code ?? ""} ${r.room_key}`.toLowerCase().includes(q);
+      })
+      .sort((a, b) => (a.room_sort_order ?? 999) - (b.room_sort_order ?? 999));
+  }, [rooms, selectedProperty, roomSearch, activeFilter]);
 
   const propertyOptions = useMemo(
     () =>
       properties
         .filter((p) => p.is_active)
-        .sort((a, b) => (a.sort_order ?? 999) - (b.sort_order ?? 999))
         .map((p) => ({
           value: p.id,
           label: p.property_name,
         })),
     [properties]
   );
-
-  const filteredProperties = useMemo(() => {
-    return [...properties]
-      .filter((p) => (showInactive ? true : p.is_active))
-      .filter((p) => {
-        const keyword = propertySearch.trim().toLowerCase();
-        if (!keyword) return true;
-        return (
-          p.property_name.toLowerCase().includes(keyword) ||
-          p.property_code.toLowerCase().includes(keyword)
-        );
-      })
-      .sort((a, b) => (a.sort_order ?? 999) - (b.sort_order ?? 999));
-  }, [properties, propertySearch, showInactive]);
-
-  const filteredRooms = useMemo(() => {
-    return [...rooms]
-      .filter((r) => (showInactive ? true : r.is_active))
-      .filter((r) => {
-        const keyword = roomSearch.trim().toLowerCase();
-        if (!keyword) return true;
-        const propertyName = propertyNameMap[r.property_id] ?? "";
-        return (
-          r.room_name.toLowerCase().includes(keyword) ||
-          (r.room_code ?? "").toLowerCase().includes(keyword) ||
-          r.room_key.toLowerCase().includes(keyword) ||
-          propertyName.toLowerCase().includes(keyword)
-        );
-      })
-      .sort((a, b) => {
-        const pa = properties.find((p) => p.id === a.property_id)?.sort_order ?? 999;
-        const pb = properties.find((p) => p.id === b.property_id)?.sort_order ?? 999;
-        if (pa !== pb) return pa - pb;
-        return (a.room_sort_order ?? 999) - (b.room_sort_order ?? 999);
-      });
-  }, [rooms, properties, propertyNameMap, roomSearch, showInactive]);
-
-  const groupedRooms = useMemo(() => {
-    const map = new Map<string, RoomMaster[]>();
-
-    filteredRooms.forEach((room) => {
-      if (!map.has(room.property_id)) {
-        map.set(room.property_id, []);
-      }
-      map.get(room.property_id)!.push(room);
-    });
-
-    return [...map.entries()].map(([propertyId, roomList]) => ({
-      propertyId,
-      propertyName: propertyNameMap[propertyId] ?? propertyId,
-      rooms: roomList,
-    }));
-  }, [filteredRooms, propertyNameMap]);
-
-  const propertyCount = properties.length;
-  const roomCount = rooms.length;
-  const activePropertyCount = properties.filter((p) => p.is_active).length;
-  const activeRoomCount = rooms.filter((r) => r.is_active).length;
 
   const createProperty = async () => {
     try {
@@ -376,23 +396,26 @@ export default function PropertyManagementPage() {
   };
 
   return (
-    <div className="min-h-screen bg-neutral-50 p-6">
-      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+    <div className="min-h-screen bg-slate-50 p-6">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <div className="text-2xl font-semibold">物件管理</div>
-          <div className="text-xs text-black/60">物件マスタと部屋マスタを管理します。</div>
+          <div className="text-3xl font-black tracking-tight">物件管理</div>
+          <div className="mt-1 text-sm text-slate-500">物件マスタ・部屋マスタを管理します。</div>
         </div>
 
         <div className="flex flex-wrap gap-2">
           <Button
-            className="border-blue-200 bg-blue-50 hover:bg-blue-100"
+            className="border-sky-200 bg-sky-50 text-sky-800 hover:bg-sky-100"
             onClick={() => setPropertyDrawerOpen(true)}
           >
             ＋物件追加
           </Button>
           <Button
-            className="border-orange-200 bg-orange-50 hover:bg-orange-100"
-            onClick={() => setRoomDrawerOpen(true)}
+            className="border-orange-200 bg-orange-50 text-orange-800 hover:bg-orange-100"
+            onClick={() => {
+              setRoomForm((p) => ({ ...p, property_id: selectedPropertyId || "" }));
+              setRoomDrawerOpen(true);
+            }}
           >
             ＋部屋追加
           </Button>
@@ -401,277 +424,275 @@ export default function PropertyManagementPage() {
       </div>
 
       {error ? (
-        <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+        <div className="mb-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
           {error}
         </div>
       ) : null}
 
       {loading ? (
-        <div className="mb-4 rounded-xl border border-black/10 bg-white px-3 py-2 text-sm text-black/60">
+        <div className="mb-4 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-500">
           読み込み中...
         </div>
       ) : null}
 
-      <div className="mb-4 grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <StatCard label="物件数" value={propertyCount} />
-        <StatCard label="部屋数" value={roomCount} />
-        <StatCard label="有効物件" value={activePropertyCount} />
-        <StatCard label="有効部屋" value={activeRoomCount} />
-      </div>
-
-      <div className="mb-4 grid grid-cols-1 gap-4 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[420px_minmax(0,1fr)]">
+        {/* 左：物件一覧 */}
         <Card>
           <CardBody>
-            <div className="mb-2 text-sm font-semibold">物件検索</div>
-            <TextInput
-              value={propertySearch}
-              onChange={setPropertySearch}
-              placeholder="物件名・物件コードで検索"
-            />
-          </CardBody>
-        </Card>
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <div>
+                <div className="text-xl font-extrabold">物件一覧</div>
+                <div className="text-xs text-slate-500 mt-1">{filteredProperties.length} 件</div>
+              </div>
+              <div className="flex gap-2">
+                <ChipButton
+                  active={activeFilter === "active"}
+                  onClick={() => setActiveFilter("active")}
+                >
+                  有効のみ
+                </ChipButton>
+                <ChipButton
+                  active={activeFilter === "all"}
+                  onClick={() => setActiveFilter("all")}
+                >
+                  すべて
+                </ChipButton>
+              </div>
+            </div>
 
-        <Card>
-          <CardBody>
-            <div className="mb-2 text-sm font-semibold">部屋検索</div>
-            <TextInput
-              value={roomSearch}
-              onChange={setRoomSearch}
-              placeholder="物件名・部屋名・room_keyで検索"
-            />
-          </CardBody>
-        </Card>
-
-        <Card>
-          <CardBody>
-            <div className="mb-2 text-sm font-semibold">表示設定</div>
-            <label className="inline-flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={showInactive}
-                onChange={(e) => setShowInactive(e.target.checked)}
+            <div className="mb-4">
+              <TextInput
+                value={propertySearch}
+                onChange={setPropertySearch}
+                placeholder="物件名・物件コード・キーで検索"
               />
-              無効データも表示
-            </label>
+            </div>
+
+            <div className="space-y-2">
+              {filteredProperties.map((p) => {
+                const selected = p.id === selectedPropertyId;
+                const roomCount = rooms.filter((r) => r.property_id === p.id).length;
+
+                return (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => setSelectedPropertyId(p.id)}
+                    className={[
+                      "w-full rounded-2xl border px-4 py-3 text-left transition",
+                      selected
+                        ? "border-slate-900 bg-slate-900 text-white"
+                        : "border-slate-200 bg-white hover:bg-slate-50",
+                    ].join(" ")}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <div className="text-sm font-bold">
+                          {p.sort_order ?? 999}. {p.property_name}
+                        </div>
+                        <div className={`mt-1 text-xs ${selected ? "text-white/70" : "text-slate-500"}`}>
+                          {p.property_code} / {p.normalized_name ?? p.property_name}
+                        </div>
+                      </div>
+                      <div className="flex flex-col items-end gap-2">
+                        <Badge on={p.is_active} />
+                        <div className={`text-xs ${selected ? "text-white/70" : "text-slate-500"}`}>
+                          {roomCount} 室
+                        </div>
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
+
+              {filteredProperties.length === 0 ? (
+                <div className="rounded-2xl border border-slate-200 bg-white px-4 py-8 text-center text-sm text-slate-500">
+                  表示できる物件がありません。
+                </div>
+              ) : null}
+            </div>
           </CardBody>
         </Card>
-      </div>
 
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-12">
-        <div className="xl:col-span-5">
-          <Card>
-            <CardBody>
-              <div className="mb-3 flex items-center justify-between">
-                <div className="text-base font-semibold">物件一覧</div>
-                <div className="text-xs text-black/50">{filteredProperties.length} 件</div>
+        {/* 右：部屋一覧 */}
+        <Card>
+          <CardBody>
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <div className="text-xl font-extrabold">
+                  部屋一覧{selectedProperty ? ` / ${selectedProperty.property_name}` : ""}
+                </div>
+                <div className="text-xs text-slate-500 mt-1">
+                  {selectedProperty ? `${filteredRooms.length} 件` : "物件を選択してください"}
+                </div>
               </div>
 
-              <div className="overflow-auto rounded-2xl border">
-                <table className="w-full min-w-[520px] text-sm">
+              <div className="w-full max-w-sm">
+                <TextInput
+                  value={roomSearch}
+                  onChange={setRoomSearch}
+                  placeholder="部屋名・部屋コード・room_keyで検索"
+                />
+              </div>
+            </div>
+
+            {!selectedProperty ? (
+              <div className="rounded-2xl border border-slate-200 bg-white px-4 py-10 text-center text-sm text-slate-500">
+                左の物件一覧から対象物件を選択してください。
+              </div>
+            ) : (
+              <div className="overflow-auto rounded-2xl border border-slate-200">
+                <table className="w-full min-w-[760px] text-sm">
                   <thead>
                     <tr>
-                      <th className="border-b bg-white px-3 py-2 text-left">並び順</th>
-                      <th className="border-b bg-white px-3 py-2 text-left">物件コード</th>
-                      <th className="border-b bg-white px-3 py-2 text-left">物件名</th>
-                      <th className="border-b bg-white px-3 py-2 text-left">有効</th>
+                      <th className="border-b bg-slate-50 px-4 py-3 text-left font-bold">部屋名</th>
+                      <th className="border-b bg-slate-50 px-4 py-3 text-left font-bold">部屋コード</th>
+                      <th className="border-b bg-slate-50 px-4 py-3 text-left font-bold">room_key</th>
+                      <th className="border-b bg-slate-50 px-4 py-3 text-left font-bold">定員</th>
+                      <th className="border-b bg-slate-50 px-4 py-3 text-left font-bold">並び順</th>
+                      <th className="border-b bg-slate-50 px-4 py-3 text-left font-bold">有効</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredProperties.map((p) => (
-                      <tr key={p.id} className="hover:bg-black/5">
-                        <td className="border-b px-3 py-2">{p.sort_order ?? ""}</td>
-                        <td className="border-b px-3 py-2">{p.property_code}</td>
-                        <td className="border-b px-3 py-2">{p.property_name}</td>
-                        <td className="border-b px-3 py-2">{p.is_active ? "有効" : "無効"}</td>
+                    {filteredRooms.map((r) => (
+                      <tr key={r.id} className="hover:bg-slate-50">
+                        <td className="border-b px-4 py-3 font-medium">{r.room_name}</td>
+                        <td className="border-b px-4 py-3">{r.room_code}</td>
+                        <td className="border-b px-4 py-3">{r.room_key}</td>
+                        <td className="border-b px-4 py-3">{r.capacity ?? ""}</td>
+                        <td className="border-b px-4 py-3">{r.room_sort_order ?? ""}</td>
+                        <td className="border-b px-4 py-3">
+                          <Badge on={r.is_active} />
+                        </td>
                       </tr>
                     ))}
-                    {filteredProperties.length === 0 ? (
+
+                    {filteredRooms.length === 0 ? (
                       <tr>
-                        <td colSpan={4} className="px-3 py-8 text-center text-sm text-black/60">
-                          表示できる物件データがありません。
+                        <td colSpan={6} className="px-4 py-10 text-center text-sm text-slate-500">
+                          表示できる部屋がありません。
                         </td>
                       </tr>
                     ) : null}
                   </tbody>
                 </table>
               </div>
-            </CardBody>
-          </Card>
-        </div>
-
-        <div className="xl:col-span-7">
-          <Card>
-            <CardBody>
-              <div className="mb-3 flex items-center justify-between">
-                <div className="text-base font-semibold">部屋一覧</div>
-                <div className="text-xs text-black/50">{filteredRooms.length} 件</div>
-              </div>
-
-              <div className="space-y-4">
-                {groupedRooms.length === 0 ? (
-                  <div className="rounded-2xl border bg-white px-3 py-8 text-center text-sm text-black/60">
-                    表示できる部屋データがありません。
-                  </div>
-                ) : null}
-
-                {groupedRooms.map((group) => (
-                  <div key={group.propertyId} className="overflow-hidden rounded-2xl border">
-                    <div className="border-b bg-neutral-50 px-4 py-3">
-                      <div className="font-semibold">{group.propertyName}</div>
-                      <div className="text-xs text-black/50">{group.rooms.length} 室</div>
-                    </div>
-
-                    <div className="overflow-auto">
-                      <table className="w-full min-w-[720px] text-sm">
-                        <thead>
-                          <tr>
-                            <th className="border-b bg-white px-3 py-2 text-left">部屋名</th>
-                            <th className="border-b bg-white px-3 py-2 text-left">部屋コード</th>
-                            <th className="border-b bg-white px-3 py-2 text-left">room_key</th>
-                            <th className="border-b bg-white px-3 py-2 text-left">定員</th>
-                            <th className="border-b bg-white px-3 py-2 text-left">並び順</th>
-                            <th className="border-b bg-white px-3 py-2 text-left">有効</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {group.rooms.map((r) => (
-                            <tr key={r.id} className="hover:bg-black/5">
-                              <td className="border-b px-3 py-2">{r.room_name}</td>
-                              <td className="border-b px-3 py-2">{r.room_code}</td>
-                              <td className="border-b px-3 py-2">{r.room_key}</td>
-                              <td className="border-b px-3 py-2">{r.capacity ?? ""}</td>
-                              <td className="border-b px-3 py-2">{r.room_sort_order ?? ""}</td>
-                              <td className="border-b px-3 py-2">{r.is_active ? "有効" : "無効"}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardBody>
-          </Card>
-        </div>
+            )}
+          </CardBody>
+        </Card>
       </div>
 
       <Drawer
         open={propertyDrawerOpen}
         title="物件追加"
+        subtitle="物件マスタに新しい物件を追加します。"
         onClose={() => setPropertyDrawerOpen(false)}
         footer={
-          <div className="flex items-center justify-between gap-2">
-            <div className="text-xs text-black/50">物件マスタに追加します。</div>
+          <div className="flex items-center justify-between gap-3">
+            <div className="text-xs text-slate-500">保存後、一覧に反映されます。</div>
             <div className="flex gap-2">
               <Button onClick={() => setPropertyDrawerOpen(false)}>キャンセル</Button>
               <Button
-                className="border-blue-200 bg-blue-50 hover:bg-blue-100"
+                className="bg-slate-900 text-white border-slate-900 hover:bg-black"
                 onClick={createProperty}
               >
-                追加
+                保存
               </Button>
             </div>
           </div>
         }
       >
-        <div className="grid gap-3">
-          <div>
-            <div className="mb-1 text-xs text-black/60">物件コード</div>
+        <div className="space-y-4">
+          <Field label="物件コード">
             <TextInput
               value={propertyForm.property_code}
               onChange={(v) => setPropertyForm((p) => ({ ...p, property_code: v }))}
               placeholder="例）ATLAS"
             />
-          </div>
+          </Field>
 
-          <div>
-            <div className="mb-1 text-xs text-black/60">物件名</div>
+          <Field label="物件名">
             <TextInput
               value={propertyForm.property_name}
               onChange={(v) => setPropertyForm((p) => ({ ...p, property_name: v }))}
               placeholder="例）アトラス"
             />
-          </div>
+          </Field>
 
-          <div>
-            <div className="mb-1 text-xs text-black/60">並び順</div>
+          <Field label="並び順">
             <TextInput
               type="number"
               value={propertyForm.sort_order}
               onChange={(v) => setPropertyForm((p) => ({ ...p, sort_order: v }))}
               placeholder="999"
             />
-          </div>
+          </Field>
         </div>
       </Drawer>
 
       <Drawer
         open={roomDrawerOpen}
         title="部屋追加"
+        subtitle="選択した物件、または指定した物件に部屋を追加します。"
         onClose={() => setRoomDrawerOpen(false)}
         footer={
-          <div className="flex items-center justify-between gap-2">
-            <div className="text-xs text-black/50">部屋マスタに追加します。</div>
+          <div className="flex items-center justify-between gap-3">
+            <div className="text-xs text-slate-500">保存後、部屋一覧に反映されます。</div>
             <div className="flex gap-2">
               <Button onClick={() => setRoomDrawerOpen(false)}>キャンセル</Button>
               <Button
-                className="border-orange-200 bg-orange-50 hover:bg-orange-100"
+                className="bg-slate-900 text-white border-slate-900 hover:bg-black"
                 onClick={createRoom}
               >
-                追加
+                保存
               </Button>
             </div>
           </div>
         }
       >
-        <div className="grid gap-3">
-          <div>
-            <div className="mb-1 text-xs text-black/60">物件</div>
+        <div className="space-y-4">
+          <Field label="物件">
             <Select
               value={roomForm.property_id}
               onChange={(v) => setRoomForm((p) => ({ ...p, property_id: v }))}
               options={propertyOptions}
               placeholder="物件を選択"
             />
-          </div>
+          </Field>
 
-          <div>
-            <div className="mb-1 text-xs text-black/60">部屋名</div>
+          <Field label="部屋名">
             <TextInput
               value={roomForm.room_name}
               onChange={(v) => setRoomForm((p) => ({ ...p, room_name: v }))}
               placeholder="例）101"
             />
-          </div>
+          </Field>
 
-          <div>
-            <div className="mb-1 text-xs text-black/60">部屋コード</div>
+          <Field label="部屋コード">
             <TextInput
               value={roomForm.room_code}
               onChange={(v) => setRoomForm((p) => ({ ...p, room_code: v }))}
               placeholder="例）101"
             />
-          </div>
+          </Field>
 
-          <div>
-            <div className="mb-1 text-xs text-black/60">定員</div>
+          <Field label="定員">
             <TextInput
               type="number"
               value={roomForm.capacity}
               onChange={(v) => setRoomForm((p) => ({ ...p, capacity: v }))}
               placeholder="1"
             />
-          </div>
+          </Field>
 
-          <div>
-            <div className="mb-1 text-xs text-black/60">並び順</div>
+          <Field label="並び順">
             <TextInput
               type="number"
               value={roomForm.room_sort_order}
               onChange={(v) => setRoomForm((p) => ({ ...p, room_sort_order: v }))}
               placeholder="999"
             />
-          </div>
+          </Field>
         </div>
       </Drawer>
     </div>
