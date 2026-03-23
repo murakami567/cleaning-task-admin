@@ -4,6 +4,7 @@ import PropertyManagementPage from "./PropertyManagementPage";
 import OpeningManagementPage from "./OpeningManagementPage";
 import FacilityManagementPage from "./FacilityManagementPage";
 import ShiftManagementPage from "./ShiftManagementPage";
+import ShiftBoardPage from "./ShiftBoardPage";
 
 function Button({
   children,
@@ -28,7 +29,7 @@ function Button({
 
 export default function App() {
   const [page, setPage] = useState<
-    "tasks" | "properties" | "openings" | "facilities" | "shifts"
+    "tasks" | "properties" | "openings" | "facilities" | "shifts" | "shiftboard"
   >("tasks");
 
   return (
@@ -49,6 +50,9 @@ export default function App() {
         <Button active={page === "shifts"} onClick={() => setPage("shifts")}>
           シフト管理
         </Button>
+        <Button active={page === "shiftboard"} onClick={() => setPage("shiftboard")}>
+          シフト表
+        </Button>
       </div>
 
       {page === "tasks" && <AdminTasksPagePreview />}
@@ -56,6 +60,7 @@ export default function App() {
       {page === "openings" && <OpeningManagementPage />}
       {page === "facilities" && <FacilityManagementPage />}
       {page === "shifts" && <ShiftManagementPage />}
+      {page === "shiftboard" && <ShiftBoardPage />}
     </div>
   );
 }
