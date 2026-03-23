@@ -204,10 +204,33 @@ export default function PropertyManagementPage() {
   const [propertyDrawerOpen, setPropertyDrawerOpen] = useState(false);
   const [roomDrawerOpen, setRoomDrawerOpen] = useState(false);
 
+  const [editPropertyDrawerOpen, setEditPropertyDrawerOpen] = useState(false);
+  const [editRoomDrawerOpen, setEditRoomDrawerOpen] = useState(false);
+
+  const [editingProperty, setEditingProperty] = useState<PropertyMaster | null>(null);
+  const [editingRoom, setEditingRoom] = useState<RoomMaster | null>(null);
+
+  const [propertyEditForm, setPropertyEditForm] = useState({
+    id: "",
+    property_code: "",
+    property_name: "",
+    sort_order: "999",
+    is_active: true,
+  });
+
+  const [roomEditForm, setRoomEditForm] = useState({
+    id: "",
+    property_id: "",
+    room_name: "",
+    room_code: "",
+    capacity: "1",
+    room_sort_order: "999",
+    is_active: true,
+  });
+
   const [propertySearch, setPropertySearch] = useState("");
   const [activeFilter, setActiveFilter] = useState<"active" | "all">("active");
   const [selectedPropertyId, setSelectedPropertyId] = useState("");
-
   const [roomSearch, setRoomSearch] = useState("");
 
   const [propertyForm, setPropertyForm] = useState({
@@ -395,6 +418,118 @@ export default function PropertyManagementPage() {
     }
   };
 
+  const openEditProperty = (property: PropertyMaster) => {
+    setEditingProperty(property);
+    setPropertyEditForm({
+      id: property.id,
+      property_code: property.property_code,
+      property_name: property.property_name,
+      sort_order: String(property.sort_order ?? 999),
+      is_active: property.is_active,
+    });
+    setEditPropertyDrawerOpen(true);
+  };
+
+  const openEditRoom = (room: RoomMaster) => {
+    setEditingRoom(room);
+    setRoomEditForm({
+      id: room.id,
+      property_id: room.property_id,
+      room_name: room.room_name,
+      room_code: room.room_code ?? "",
+      capacity: String(room.capacity ?? 1),
+      room_sort_order: String(room.room_sort_order ?? 999),
+      is_active: room.is_active,
+    });
+    setEditRoomDrawerOpen(true);
+  };
+
+  const savePropertyEdit = async () => {
+    try {
+      if (!propertyEditForm.id) return;
+      if (!propertyEditForm.property_code.trim()) {
+        alert("物件コードを入力してください。");
+        return;
+      }
+      if (!propertyEditForm.property_name.trim()) {
+        alert("物件名を入力してください。");
+        return;
+      }
+
+      const res = await fetch(`${API_BASE}/properties/update`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          property_id: propertyEditForm.id,
+          property_code: propertyEditForm.property_code.trim(),
+          property_name: propertyEditForm.property_name.trim(),
+          normalized_name: propertyEditForm.property_name.trim(),
+          sort_order: Number(propertyEditForm.sort_order || 999),
+          is_active: propertyEditForm.is_active,
+        }),
+      });
+
+      if (!res.ok) throw new Error(`property update failed: ${res.status}`);
+
+      await res.json();
+      setEditPropertyDrawerOpen(false);
+      setEditingProperty(null);
+      await loadAll();
+    } catch (e) {
+      console.error(e);
+      alert("物件更新に失敗しました。");
+    }
+  };
+
+  const saveRoomEdit = async () => {
+    try {
+      if (!roomEditForm.id) return;
+      if (!roomEditForm.property_id) {
+        alert("物件を選択してください。");
+        return;
+      }
+      if (!roomEditForm.room_name.trim()) {
+        alert("部屋名を入力してください。");
+        return;
+      }
+
+      const property = properties.find((p) => p.id === roomEditForm.property_id);
+      if (!property) {
+        alert("物件が見つかりません。");
+        return;
+      }
+
+      const roomCode = roomEditForm.room_code.trim() || roomEditForm.room_name.trim();
+      const roomKey = `${property.property_name}${roomEditForm.room_name.trim()}`;
+
+      const res = await fetch(`${API_BASE}/rooms/update`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          room_id: roomEditForm.id,
+          property_id: roomEditForm.property_id,
+          room_name: roomEditForm.room_name.trim(),
+          room_code: roomCode,
+          room_key: roomKey,
+          normalized_room_key: roomKey,
+          capacity: Number(roomEditForm.capacity || 1),
+          room_sort_order: Number(roomEditForm.room_sort_order || 999),
+          is_active: roomEditForm.is_active,
+        }),
+      });
+
+      if (!res.ok) throw new Error(`room update failed: ${res.status}`);
+
+      await res.json();
+      setEditRoomDrawerOpen(false);
+      setEditingRoom(null);
+      await loadAll();
+    } catch (e) {
+      console.error(e);
+      alert("部屋更新に失敗しました。");
+    }
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 p-6">
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
@@ -436,7 +571,6 @@ export default function PropertyManagementPage() {
       ) : null}
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-[420px_minmax(0,1fr)]">
-        {/* 左：物件一覧 */}
         <Card>
           <CardBody>
             <div className="mb-4 flex items-center justify-between gap-3">
@@ -445,16 +579,10 @@ export default function PropertyManagementPage() {
                 <div className="text-xs text-slate-500 mt-1">{filteredProperties.length} 件</div>
               </div>
               <div className="flex gap-2">
-                <ChipButton
-                  active={activeFilter === "active"}
-                  onClick={() => setActiveFilter("active")}
-                >
+                <ChipButton active={activeFilter === "active"} onClick={() => setActiveFilter("active")}>
                   有効のみ
                 </ChipButton>
-                <ChipButton
-                  active={activeFilter === "all"}
-                  onClick={() => setActiveFilter("all")}
-                >
+                <ChipButton active={activeFilter === "all"} onClick={() => setActiveFilter("all")}>
                   すべて
                 </ChipButton>
               </div>
@@ -493,12 +621,27 @@ export default function PropertyManagementPage() {
                         <div className={`mt-1 text-xs ${selected ? "text-white/70" : "text-slate-500"}`}>
                           {p.property_code} / {p.normalized_name ?? p.property_name}
                         </div>
-                      </div>
-                      <div className="flex flex-col items-end gap-2">
-                        <Badge on={p.is_active} />
-                        <div className={`text-xs ${selected ? "text-white/70" : "text-slate-500"}`}>
+                        <div className={`mt-1 text-xs ${selected ? "text-white/70" : "text-slate-500"}`}>
                           {roomCount} 室
                         </div>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <Badge on={p.is_active} />
+                        <button
+                          type="button"
+                          className={`rounded-full border px-3 py-1 text-xs font-bold ${
+                            selected
+                              ? "border-white/30 bg-white/10 text-white hover:bg-white/20"
+                              : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                          }`}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openEditProperty(p);
+                          }}
+                        >
+                          編集
+                        </button>
                       </div>
                     </div>
                   </button>
@@ -514,7 +657,6 @@ export default function PropertyManagementPage() {
           </CardBody>
         </Card>
 
-        {/* 右：部屋一覧 */}
         <Card>
           <CardBody>
             <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
@@ -542,7 +684,7 @@ export default function PropertyManagementPage() {
               </div>
             ) : (
               <div className="overflow-auto rounded-2xl border border-slate-200">
-                <table className="w-full min-w-[760px] text-sm">
+                <table className="w-full min-w-[860px] text-sm">
                   <thead>
                     <tr>
                       <th className="border-b bg-slate-50 px-4 py-3 text-left font-bold">部屋名</th>
@@ -551,6 +693,7 @@ export default function PropertyManagementPage() {
                       <th className="border-b bg-slate-50 px-4 py-3 text-left font-bold">定員</th>
                       <th className="border-b bg-slate-50 px-4 py-3 text-left font-bold">並び順</th>
                       <th className="border-b bg-slate-50 px-4 py-3 text-left font-bold">有効</th>
+                      <th className="border-b bg-slate-50 px-4 py-3 text-left font-bold">操作</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -564,12 +707,21 @@ export default function PropertyManagementPage() {
                         <td className="border-b px-4 py-3">
                           <Badge on={r.is_active} />
                         </td>
+                        <td className="border-b px-4 py-3">
+                          <button
+                            type="button"
+                            className="rounded-full border border-slate-200 px-3 py-1 text-xs font-bold hover:bg-slate-50"
+                            onClick={() => openEditRoom(r)}
+                          >
+                            編集
+                          </button>
+                        </td>
                       </tr>
                     ))}
 
                     {filteredRooms.length === 0 ? (
                       <tr>
-                        <td colSpan={6} className="px-4 py-10 text-center text-sm text-slate-500">
+                        <td colSpan={7} className="px-4 py-10 text-center text-sm text-slate-500">
                           表示できる部屋がありません。
                         </td>
                       </tr>
@@ -693,6 +845,135 @@ export default function PropertyManagementPage() {
               placeholder="999"
             />
           </Field>
+        </div>
+      </Drawer>
+
+      <Drawer
+        open={editPropertyDrawerOpen}
+        title="物件編集"
+        subtitle={editingProperty ? `${editingProperty.property_name} を編集します。` : ""}
+        onClose={() => setEditPropertyDrawerOpen(false)}
+        footer={
+          <div className="flex items-center justify-between gap-3">
+            <div className="text-xs text-slate-500">保存後、一覧に反映されます。</div>
+            <div className="flex gap-2">
+              <Button onClick={() => setEditPropertyDrawerOpen(false)}>キャンセル</Button>
+              <Button
+                className="bg-slate-900 text-white border-slate-900 hover:bg-black"
+                onClick={savePropertyEdit}
+              >
+                保存
+              </Button>
+            </div>
+          </div>
+        }
+      >
+        <div className="space-y-4">
+          <Field label="物件コード">
+            <TextInput
+              value={propertyEditForm.property_code}
+              onChange={(v) => setPropertyEditForm((p) => ({ ...p, property_code: v }))}
+            />
+          </Field>
+
+          <Field label="物件名">
+            <TextInput
+              value={propertyEditForm.property_name}
+              onChange={(v) => setPropertyEditForm((p) => ({ ...p, property_name: v }))}
+            />
+          </Field>
+
+          <Field label="並び順">
+            <TextInput
+              type="number"
+              value={propertyEditForm.sort_order}
+              onChange={(v) => setPropertyEditForm((p) => ({ ...p, sort_order: v }))}
+            />
+          </Field>
+
+          <label className="inline-flex items-center gap-2 text-sm font-medium">
+            <input
+              type="checkbox"
+              checked={propertyEditForm.is_active}
+              onChange={(e) =>
+                setPropertyEditForm((p) => ({ ...p, is_active: e.target.checked }))
+              }
+            />
+            有効
+          </label>
+        </div>
+      </Drawer>
+
+      <Drawer
+        open={editRoomDrawerOpen}
+        title="部屋編集"
+        subtitle={editingRoom ? `${editingRoom.room_key} を編集します。` : ""}
+        onClose={() => setEditRoomDrawerOpen(false)}
+        footer={
+          <div className="flex items-center justify-between gap-3">
+            <div className="text-xs text-slate-500">保存後、一覧に反映されます。</div>
+            <div className="flex gap-2">
+              <Button onClick={() => setEditRoomDrawerOpen(false)}>キャンセル</Button>
+              <Button
+                className="bg-slate-900 text-white border-slate-900 hover:bg-black"
+                onClick={saveRoomEdit}
+              >
+                保存
+              </Button>
+            </div>
+          </div>
+        }
+      >
+        <div className="space-y-4">
+          <Field label="物件">
+            <Select
+              value={roomEditForm.property_id}
+              onChange={(v) => setRoomEditForm((p) => ({ ...p, property_id: v }))}
+              options={propertyOptions}
+              placeholder="物件を選択"
+            />
+          </Field>
+
+          <Field label="部屋名">
+            <TextInput
+              value={roomEditForm.room_name}
+              onChange={(v) => setRoomEditForm((p) => ({ ...p, room_name: v }))}
+            />
+          </Field>
+
+          <Field label="部屋コード">
+            <TextInput
+              value={roomEditForm.room_code}
+              onChange={(v) => setRoomEditForm((p) => ({ ...p, room_code: v }))}
+            />
+          </Field>
+
+          <Field label="定員">
+            <TextInput
+              type="number"
+              value={roomEditForm.capacity}
+              onChange={(v) => setRoomEditForm((p) => ({ ...p, capacity: v }))}
+            />
+          </Field>
+
+          <Field label="並び順">
+            <TextInput
+              type="number"
+              value={roomEditForm.room_sort_order}
+              onChange={(v) => setRoomEditForm((p) => ({ ...p, room_sort_order: v }))}
+            />
+          </Field>
+
+          <label className="inline-flex items-center gap-2 text-sm font-medium">
+            <input
+              type="checkbox"
+              checked={roomEditForm.is_active}
+              onChange={(e) =>
+                setRoomEditForm((p) => ({ ...p, is_active: e.target.checked }))
+              }
+            />
+            有効
+          </label>
         </div>
       </Drawer>
     </div>
