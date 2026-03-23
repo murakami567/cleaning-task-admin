@@ -9,6 +9,15 @@ type PropertyMaster = {
   is_active: boolean;
 };
 
+type RoomMaster = {
+  id: string;
+  property_id: string;
+  room_name: string;
+  room_code: string | null;
+  room_key: string;
+  is_active: boolean;
+};
+
 type OpeningItem = {
   id: string;
   property_id: string | null;
@@ -41,14 +50,22 @@ function Card({ children }: any) {
 function Drawer({ open, title, subtitle, children, onClose, footer }: any) {
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-[999] flex justify-end bg-black/40" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+    <div
+      className="fixed inset-0 z-[999] flex justify-end bg-black/40"
+      onMouseDown={(e) => e.target === e.currentTarget && onClose()}
+    >
       <div className="h-full w-[560px] max-w-[92vw] bg-white shadow-2xl border-l border-slate-200 flex flex-col">
         <div className="p-4 border-b border-slate-200 flex items-start justify-between gap-3">
           <div>
             <div className="text-base font-extrabold">{title}</div>
             {subtitle ? <div className="text-xs text-slate-500 mt-1">{subtitle}</div> : null}
           </div>
-          <button className="rounded-full border border-slate-200 px-3 py-2 text-sm font-bold hover:bg-slate-50" onClick={onClose}>×</button>
+          <button
+            className="rounded-full border border-slate-200 px-3 py-2 text-sm font-bold hover:bg-slate-50"
+            onClick={onClose}
+          >
+            ×
+          </button>
         </div>
         <div className="p-4 overflow-auto flex-1">{children}</div>
         <div className="p-4 border-t border-slate-200">{footer}</div>
@@ -78,16 +95,19 @@ function TextInput({ value, onChange, placeholder, type = "text" }: any) {
   );
 }
 
-function Select({ value, onChange, options, placeholder }: any) {
+function Select({ value, onChange, options, placeholder, disabled = false }: any) {
   return (
     <select
-      className="h-11 w-full rounded-xl border border-slate-200 px-3 text-sm outline-none bg-white"
+      className="h-11 w-full rounded-xl border border-slate-200 px-3 text-sm outline-none bg-white disabled:bg-slate-50"
       value={value ?? ""}
       onChange={(e) => onChange(e.target.value)}
+      disabled={disabled}
     >
       {placeholder ? <option value="">{placeholder}</option> : null}
       {options.map((o: any) => (
-        <option key={o.value} value={o.value}>{o.label}</option>
+        <option key={o.value} value={o.value}>
+          {o.label}
+        </option>
       ))}
     </select>
   );
@@ -120,7 +140,10 @@ function ProgressBar({ progress }: { progress: number }) {
     <div className="w-full">
       <div className="mb-1 text-xs text-slate-500">{progress}%</div>
       <div className="h-2 rounded-full bg-slate-100 overflow-hidden">
-        <div className="h-full bg-slate-900" style={{ width: `${Math.max(0, Math.min(100, progress))}%` }} />
+        <div
+          className="h-full bg-slate-900"
+          style={{ width: `${Math.max(0, Math.min(100, progress))}%` }}
+        />
       </div>
     </div>
   );
@@ -129,6 +152,7 @@ function ProgressBar({ progress }: { progress: number }) {
 export default function OpeningManagementPage() {
   const [items, setItems] = useState<OpeningItem[]>([]);
   const [properties, setProperties] = useState<PropertyMaster[]>([]);
+  const [rooms, setRooms] = useState<RoomMaster[]>([]);
   const [q, setQ] = useState("");
   const [status, setStatus] = useState("all");
   const [loading, setLoading] = useState(false);
@@ -165,6 +189,16 @@ export default function OpeningManagementPage() {
     }
   };
 
+  const loadRooms = async (propertyId: string) => {
+    if (!propertyId) {
+      setRooms([]);
+      return;
+    }
+    const res = await fetch(`${API_BASE}/rooms?property_id=${propertyId}`);
+    const data = await res.json();
+    setRooms((data || []).filter((x: RoomMaster) => x.is_active));
+  };
+
   useEffect(() => {
     void loadAll();
   }, []);
@@ -174,13 +208,24 @@ export default function OpeningManagementPage() {
     [properties]
   );
 
+  const roomOptions = useMemo(
+    () =>
+      rooms.map((r) => ({
+        value: r.room_name,
+        label: `${r.room_name}${r.room_code ? ` / ${r.room_code}` : ""}`,
+      })),
+    [rooms]
+  );
+
   const filtered = useMemo(() => {
     const qq = q.trim().toLowerCase();
     return items
       .filter((x) => (status === "all" ? true : x.status === status))
       .filter((x) => {
         if (!qq) return true;
-        return `${x.title} ${x.property_name} ${x.room_name} ${x.owner_name}`.toLowerCase().includes(qq);
+        return `${x.title} ${x.property_name} ${x.room_name} ${x.owner_name}`
+          .toLowerCase()
+          .includes(qq);
       })
       .slice()
       .sort((a, b) => String(a.due_date || "").localeCompare(String(b.due_date || ""), "ja"));
@@ -201,8 +246,9 @@ export default function OpeningManagementPage() {
       .sort((a, b) => String(a.due_date || "").localeCompare(String(b.due_date || ""), "ja"))[0];
   }, [filtered]);
 
-  const openNew = () => {
+  const openNew = async () => {
     setSelected(null);
+    setRooms([]);
     setForm({
       id: "",
       property_id: null,
@@ -219,14 +265,20 @@ export default function OpeningManagementPage() {
     setDrawerOpen(true);
   };
 
-  const openEdit = (item: OpeningItem) => {
+  const openEdit = async (item: OpeningItem) => {
     setSelected(item);
     setForm(item);
+    if (item.property_id) {
+      await loadRooms(item.property_id);
+    } else {
+      setRooms([]);
+    }
     setDrawerOpen(true);
   };
 
   const save = async () => {
     if (!form.property_name.trim()) return alert("物件を入力してください。");
+    if (!form.room_name.trim()) return alert("号室を選択してください。");
     if (!form.title.trim()) return alert("案件名を入力してください。");
 
     const body = {
@@ -268,15 +320,31 @@ export default function OpeningManagementPage() {
         <div className="flex flex-wrap gap-2 items-center justify-end">
           <div className="flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-2">
             <span className="text-sm">🔎</span>
-            <input className="bg-transparent outline-none text-sm w-[260px] max-w-[56vw]" placeholder="検索：物件/号室/担当/タイトル" value={q} onChange={(e) => setQ(e.target.value)} />
+            <input
+              className="bg-transparent outline-none text-sm w-[260px] max-w-[56vw]"
+              placeholder="検索：物件/号室/担当/タイトル"
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+            />
           </div>
 
-          <select className="rounded-full border border-slate-200 bg-white px-3 py-2 text-sm font-semibold" value={status} onChange={(e) => setStatus(e.target.value)}>
+          <select
+            className="rounded-full border border-slate-200 bg-white px-3 py-2 text-sm font-semibold"
+            value={status}
+            onChange={(e) => setStatus(e.target.value)}
+          >
             <option value="all">全ステータス</option>
-            {["未着手", "進行中", "保留", "完了"].map((v) => <option value={v} key={v}>{v}</option>)}
+            {["未着手", "進行中", "保留", "完了"].map((v) => (
+              <option value={v} key={v}>
+                {v}
+              </option>
+            ))}
           </select>
 
-          <button className="rounded-full bg-slate-900 text-white px-4 py-2 text-sm font-bold hover:bg-black" onClick={openNew}>
+          <button
+            className="rounded-full bg-slate-900 text-white px-4 py-2 text-sm font-bold hover:bg-black"
+            onClick={openNew}
+          >
             ＋案件追加
           </button>
         </div>
@@ -310,14 +378,22 @@ export default function OpeningManagementPage() {
                   >
                     <td className="px-3 py-4">
                       <div className="font-extrabold">{it.title}</div>
-                      <div className="text-xs text-slate-500 mt-1">{it.property_name} {it.room_name} / {it.id.slice(0, 5)}</div>
+                      <div className="text-xs text-slate-500 mt-1">
+                        {it.property_name} {it.room_name} / {it.id.slice(0, 5)}
+                      </div>
                       {it.memo ? <div className="text-xs text-slate-500 mt-2">📝 {it.memo}</div> : null}
                     </td>
                     <td className="px-3 py-4 font-semibold">{it.due_date}</td>
                     <td className="px-3 py-4">{it.owner_name || "-"}</td>
-                    <td className="px-3 py-4"><StatusBadge value={it.status} /></td>
-                    <td className="px-3 py-4"><PriorityBadge value={it.priority} /></td>
-                    <td className="px-3 py-4"><ProgressBar progress={it.progress} /></td>
+                    <td className="px-3 py-4">
+                      <StatusBadge value={it.status} />
+                    </td>
+                    <td className="px-3 py-4">
+                      <PriorityBadge value={it.priority} />
+                    </td>
+                    <td className="px-3 py-4">
+                      <ProgressBar progress={it.progress} />
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -345,7 +421,9 @@ export default function OpeningManagementPage() {
             {nearest ? (
               <>
                 <div className="mt-2 font-extrabold text-xl">{nearest.title}</div>
-                <div className="text-xs text-slate-500 mt-1">期限：{nearest.due_date} / 担当：{nearest.owner_name || "-"}</div>
+                <div className="text-xs text-slate-500 mt-1">
+                  期限：{nearest.due_date} / 担当：{nearest.owner_name || "-"}
+                </div>
                 <div className="mt-3">
                   <ProgressBar progress={nearest.progress} />
                 </div>
@@ -378,9 +456,15 @@ export default function OpeningManagementPage() {
           <Field label="物件">
             <Select
               value={form.property_id ?? ""}
-              onChange={(v: string) => {
+              onChange={async (v: string) => {
                 const p = properties.find((x) => x.id === v);
-                setForm((s) => ({ ...s, property_id: v, property_name: p?.property_name ?? "" }));
+                setForm((s) => ({
+                  ...s,
+                  property_id: v,
+                  property_name: p?.property_name ?? "",
+                  room_name: "",
+                }));
+                await loadRooms(v);
               }}
               options={propertyOptions}
               placeholder="物件を選択"
@@ -388,7 +472,13 @@ export default function OpeningManagementPage() {
           </Field>
 
           <Field label="号室">
-            <TextInput value={form.room_name} onChange={(v: string) => setForm((s) => ({ ...s, room_name: v }))} />
+            <Select
+              value={form.room_name}
+              onChange={(v: string) => setForm((s) => ({ ...s, room_name: v }))}
+              options={roomOptions}
+              placeholder={form.property_id ? "号室を選択" : "先に物件を選択"}
+              disabled={!form.property_id}
+            />
           </Field>
 
           <Field label="案件名">
@@ -400,33 +490,53 @@ export default function OpeningManagementPage() {
           </Field>
 
           <Field label="期限">
-            <TextInput type="date" value={form.due_date || ""} onChange={(v: string) => setForm((s) => ({ ...s, due_date: v }))} />
+            <TextInput
+              type="date"
+              value={form.due_date || ""}
+              onChange={(v: string) => setForm((s) => ({ ...s, due_date: v }))}
+            />
           </Field>
 
           <Field label="ステータス">
-            <Select value={form.status} onChange={(v: string) => setForm((s) => ({ ...s, status: v }))} options={[
-              { value: "未着手", label: "未着手" },
-              { value: "進行中", label: "進行中" },
-              { value: "保留", label: "保留" },
-              { value: "完了", label: "完了" },
-            ]} />
+            <Select
+              value={form.status}
+              onChange={(v: string) => setForm((s) => ({ ...s, status: v }))}
+              options={[
+                { value: "未着手", label: "未着手" },
+                { value: "進行中", label: "進行中" },
+                { value: "保留", label: "保留" },
+                { value: "完了", label: "完了" },
+              ]}
+            />
           </Field>
 
           <Field label="優先度">
-            <Select value={form.priority} onChange={(v: string) => setForm((s) => ({ ...s, priority: v }))} options={[
-              { value: "高", label: "高" },
-              { value: "中", label: "中" },
-              { value: "低", label: "低" },
-            ]} />
+            <Select
+              value={form.priority}
+              onChange={(v: string) => setForm((s) => ({ ...s, priority: v }))}
+              options={[
+                { value: "高", label: "高" },
+                { value: "中", label: "中" },
+                { value: "低", label: "低" },
+              ]}
+            />
           </Field>
 
           <Field label="進捗（0〜100）">
-            <TextInput type="number" value={form.progress} onChange={(v: string) => setForm((s) => ({ ...s, progress: Number(v || 0) }))} />
+            <TextInput
+              type="number"
+              value={form.progress}
+              onChange={(v: string) => setForm((s) => ({ ...s, progress: Number(v || 0) }))}
+            />
           </Field>
 
           <div className="sm:col-span-2">
             <Field label="メモ">
-              <textarea className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none min-h-[96px]" value={form.memo || ""} onChange={(e) => setForm((s) => ({ ...s, memo: e.target.value }))} />
+              <textarea
+                className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none min-h-[96px]"
+                value={form.memo || ""}
+                onChange={(e) => setForm((s) => ({ ...s, memo: e.target.value }))}
+              />
             </Field>
           </div>
         </div>
