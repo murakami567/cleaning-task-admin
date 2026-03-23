@@ -9,6 +9,15 @@ type PropertyMaster = {
   is_active: boolean;
 };
 
+type RoomMaster = {
+  id: string;
+  property_id: string;
+  room_name: string;
+  room_code: string | null;
+  room_key: string;
+  is_active: boolean;
+};
+
 type FacilityItem = {
   id: string;
   property_id: string | null;
@@ -36,14 +45,22 @@ function Button({ children, className = "", ...props }: any) {
 function Drawer({ open, title, subtitle, children, onClose, footer }: any) {
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-[999] flex justify-end bg-black/40" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+    <div
+      className="fixed inset-0 z-[999] flex justify-end bg-black/40"
+      onMouseDown={(e) => e.target === e.currentTarget && onClose()}
+    >
       <div className="h-full w-[560px] max-w-[92vw] bg-white shadow-2xl border-l border-slate-200 flex flex-col">
         <div className="p-4 border-b border-slate-200 flex items-start justify-between gap-3">
           <div>
             <div className="text-base font-extrabold">{title}</div>
             {subtitle ? <div className="text-xs text-slate-500 mt-1">{subtitle}</div> : null}
           </div>
-          <button className="rounded-full border border-slate-200 px-3 py-2 text-sm font-bold hover:bg-slate-50" onClick={onClose}>×</button>
+          <button
+            className="rounded-full border border-slate-200 px-3 py-2 text-sm font-bold hover:bg-slate-50"
+            onClick={onClose}
+          >
+            ×
+          </button>
         </div>
         <div className="p-4 overflow-auto flex-1">{children}</div>
         <div className="p-4 border-t border-slate-200">{footer}</div>
@@ -73,16 +90,19 @@ function TextInput({ value, onChange, placeholder, type = "text" }: any) {
   );
 }
 
-function Select({ value, onChange, options, placeholder }: any) {
+function Select({ value, onChange, options, placeholder, disabled = false }: any) {
   return (
     <select
-      className="h-11 w-full rounded-xl border border-slate-200 px-3 text-sm outline-none bg-white"
+      className="h-11 w-full rounded-xl border border-slate-200 px-3 text-sm outline-none bg-white disabled:bg-slate-50"
       value={value ?? ""}
       onChange={(e) => onChange(e.target.value)}
+      disabled={disabled}
     >
       {placeholder ? <option value="">{placeholder}</option> : null}
       {options.map((o: any) => (
-        <option key={o.value} value={o.value}>{o.label}</option>
+        <option key={o.value} value={o.value}>
+          {o.label}
+        </option>
       ))}
     </select>
   );
@@ -103,6 +123,7 @@ function StatusBadge({ value }: { value: string }) {
 export default function FacilityManagementPage() {
   const [items, setItems] = useState<FacilityItem[]>([]);
   const [properties, setProperties] = useState<PropertyMaster[]>([]);
+  const [rooms, setRooms] = useState<RoomMaster[]>([]);
   const [q, setQ] = useState("");
   const [status, setStatus] = useState("all");
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -132,6 +153,16 @@ export default function FacilityManagementPage() {
     setProperties((pData || []).filter((x: PropertyMaster) => x.is_active));
   };
 
+  const loadRooms = async (propertyId: string) => {
+    if (!propertyId) {
+      setRooms([]);
+      return;
+    }
+    const res = await fetch(`${API_BASE}/rooms?property_id=${propertyId}`);
+    const data = await res.json();
+    setRooms((data || []).filter((x: RoomMaster) => x.is_active));
+  };
+
   useEffect(() => {
     void loadAll();
   }, []);
@@ -141,20 +172,32 @@ export default function FacilityManagementPage() {
     [properties]
   );
 
+  const roomOptions = useMemo(
+    () =>
+      rooms.map((r) => ({
+        value: r.room_name,
+        label: `${r.room_name}${r.room_code ? ` / ${r.room_code}` : ""}`,
+      })),
+    [rooms]
+  );
+
   const filtered = useMemo(() => {
     const qq = q.trim().toLowerCase();
     return items
       .filter((x) => (status === "all" ? true : x.status === status))
       .filter((x) => {
         if (!qq) return true;
-        return `${x.property_name} ${x.room_name} ${x.assignee} ${x.content}`.toLowerCase().includes(qq);
+        return `${x.property_name} ${x.room_name} ${x.assignee} ${x.content}`
+          .toLowerCase()
+          .includes(qq);
       })
       .slice()
       .sort((a, b) => String(a.start_date || "").localeCompare(String(b.start_date || ""), "ja"));
   }, [items, q, status]);
 
-  const openNew = () => {
+  const openNew = async () => {
     setSelected(null);
+    setRooms([]);
     setForm({
       id: "",
       property_id: null,
@@ -170,14 +213,20 @@ export default function FacilityManagementPage() {
     setDrawerOpen(true);
   };
 
-  const openEdit = (item: FacilityItem) => {
+  const openEdit = async (item: FacilityItem) => {
     setSelected(item);
     setForm(item);
+    if (item.property_id) {
+      await loadRooms(item.property_id);
+    } else {
+      setRooms([]);
+    }
     setDrawerOpen(true);
   };
 
   const save = async () => {
     if (!form.property_name.trim()) return alert("物件を入力してください。");
+    if (!form.room_name.trim()) return alert("部屋を選択してください。");
     if (!form.assignee.trim()) return alert("担当を入力してください。");
     if (!form.content.trim()) return alert("対応内容を入力してください。");
 
@@ -219,15 +268,31 @@ export default function FacilityManagementPage() {
         <div className="flex flex-wrap gap-2 items-center justify-end">
           <div className="flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-2">
             <span className="text-sm">🔎</span>
-            <input className="bg-transparent outline-none text-sm w-[320px] max-w-[70vw]" placeholder="検索：物件/部屋/担当/内容" value={q} onChange={(e) => setQ(e.target.value)} />
+            <input
+              className="bg-transparent outline-none text-sm w-[320px] max-w-[70vw]"
+              placeholder="検索：物件/部屋/担当/内容"
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+            />
           </div>
 
-          <select className="rounded-full border border-slate-200 bg-white px-3 py-2 text-sm font-semibold" value={status} onChange={(e) => setStatus(e.target.value)}>
+          <select
+            className="rounded-full border border-slate-200 bg-white px-3 py-2 text-sm font-semibold"
+            value={status}
+            onChange={(e) => setStatus(e.target.value)}
+          >
             <option value="all">全ステータス</option>
-            {["未着手", "対応中", "保留", "完了"].map((v) => <option value={v} key={v}>{v}</option>)}
+            {["未着手", "対応中", "保留", "完了"].map((v) => (
+              <option value={v} key={v}>
+                {v}
+              </option>
+            ))}
           </select>
 
-          <button className="rounded-full bg-slate-900 text-white px-4 py-2 text-sm font-bold hover:bg-black" onClick={openNew}>
+          <button
+            className="rounded-full bg-slate-900 text-white px-4 py-2 text-sm font-bold hover:bg-black"
+            onClick={openNew}
+          >
             ＋対応追加
           </button>
         </div>
@@ -258,7 +323,9 @@ export default function FacilityManagementPage() {
                   onClick={() => openEdit(it)}
                 >
                   <td className="px-3 py-4">
-                    <div className="font-extrabold">{it.property_name} {it.room_name}</div>
+                    <div className="font-extrabold">
+                      {it.property_name} {it.room_name}
+                    </div>
                     <div className="text-xs text-slate-500 mt-1">ID: {it.id.slice(0, 5)}</div>
                   </td>
                   <td className="px-3 py-4">{it.assignee}</td>
@@ -267,7 +334,9 @@ export default function FacilityManagementPage() {
                     {it.note ? <div className="text-xs text-slate-500 mt-1">📝 {it.note}</div> : null}
                   </td>
                   <td className="px-3 py-4 font-semibold">
-                    {it.start_date}〜<br />{it.end_date}
+                    {it.start_date}〜
+                    <br />
+                    {it.end_date}
                   </td>
                   <td className="px-3 py-4">
                     <StatusBadge value={it.status} />
@@ -300,9 +369,15 @@ export default function FacilityManagementPage() {
           <Field label="物件">
             <Select
               value={form.property_id ?? ""}
-              onChange={(v: string) => {
+              onChange={async (v: string) => {
                 const p = properties.find((x) => x.id === v);
-                setForm((s) => ({ ...s, property_id: v, property_name: p?.property_name ?? "" }));
+                setForm((s) => ({
+                  ...s,
+                  property_id: v,
+                  property_name: p?.property_name ?? "",
+                  room_name: "",
+                }));
+                await loadRooms(v);
               }}
               options={propertyOptions}
               placeholder="物件を選択"
@@ -310,7 +385,13 @@ export default function FacilityManagementPage() {
           </Field>
 
           <Field label="部屋（号室）">
-            <TextInput value={form.room_name} onChange={(v: string) => setForm((s) => ({ ...s, room_name: v }))} />
+            <Select
+              value={form.room_name}
+              onChange={(v: string) => setForm((s) => ({ ...s, room_name: v }))}
+              options={roomOptions}
+              placeholder={form.property_id ? "部屋を選択" : "先に物件を選択"}
+              disabled={!form.property_id}
+            />
           </Field>
 
           <Field label="担当">
@@ -318,31 +399,51 @@ export default function FacilityManagementPage() {
           </Field>
 
           <Field label="状態">
-            <Select value={form.status} onChange={(v: string) => setForm((s) => ({ ...s, status: v }))} options={[
-              { value: "未着手", label: "未着手" },
-              { value: "対応中", label: "対応中" },
-              { value: "保留", label: "保留" },
-              { value: "完了", label: "完了" },
-            ]} />
+            <Select
+              value={form.status}
+              onChange={(v: string) => setForm((s) => ({ ...s, status: v }))}
+              options={[
+                { value: "未着手", label: "未着手" },
+                { value: "対応中", label: "対応中" },
+                { value: "保留", label: "保留" },
+                { value: "完了", label: "完了" },
+              ]}
+            />
           </Field>
 
           <Field label="開始日">
-            <TextInput type="date" value={form.start_date || ""} onChange={(v: string) => setForm((s) => ({ ...s, start_date: v }))} />
+            <TextInput
+              type="date"
+              value={form.start_date || ""}
+              onChange={(v: string) => setForm((s) => ({ ...s, start_date: v }))}
+            />
           </Field>
 
           <Field label="終了日">
-            <TextInput type="date" value={form.end_date || ""} onChange={(v: string) => setForm((s) => ({ ...s, end_date: v }))} />
+            <TextInput
+              type="date"
+              value={form.end_date || ""}
+              onChange={(v: string) => setForm((s) => ({ ...s, end_date: v }))}
+            />
           </Field>
 
           <div className="sm:col-span-2">
             <Field label="対応内容">
-              <textarea className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none min-h-[88px]" value={form.content || ""} onChange={(e) => setForm((s) => ({ ...s, content: e.target.value }))} />
+              <textarea
+                className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none min-h-[88px]"
+                value={form.content || ""}
+                onChange={(e) => setForm((s) => ({ ...s, content: e.target.value }))}
+              />
             </Field>
           </div>
 
           <div className="sm:col-span-2">
             <Field label="備考">
-              <textarea className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none min-h-[88px]" value={form.note || ""} onChange={(e) => setForm((s) => ({ ...s, note: e.target.value }))} />
+              <textarea
+                className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none min-h-[88px]"
+                value={form.note || ""}
+                onChange={(e) => setForm((s) => ({ ...s, note: e.target.value }))}
+              />
             </Field>
           </div>
         </div>
