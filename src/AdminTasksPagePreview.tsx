@@ -602,6 +602,38 @@ const loadRooms = async (propertyId: string) => {
       setLoadingCleaning(true);
       setCleaningError("");
       const tasks = await fetchCleaningTasks(viewMode);
+      const refresh = async () => {
+  try {
+    setLoadingCleaning(true);
+    setCleaningError("");
+
+    const tasks = await fetchCleaningTasks(viewMode);
+    setCleaningTasks(tasks);
+    setSelectedCleaningId((prev) => (tasks.some((t) => t.id === prev) ? prev : tasks[0]?.id ?? ""));
+
+    const uniqueDates = Array.from(new Set(tasks.map((t) => t.date).filter(Boolean)));
+
+    const attendeesEntries = await Promise.all(
+      uniqueDates.map(async (d) => {
+        try {
+          const users = await fetchAvailableStaffByDate(d);
+          return [d, users] as const;
+        } catch (error) {
+          console.error(`shift fetch failed: ${d}`, error);
+          return [d, []] as const;
+        }
+      })
+    );
+
+    setAttendeesByDate(Object.fromEntries(attendeesEntries));
+    setLastUpdated(new Date());
+  } catch (error) {
+    console.error(error);
+    setCleaningError("清掃タスクの取得に失敗しました");
+  } finally {
+    setLoadingCleaning(false);
+  }
+};
       setCleaningTasks(tasks);
       setSelectedCleaningId((prev) => (tasks.some((t) => t.id === prev) ? prev : tasks[0]?.id ?? ""));
       setLastUpdated(new Date());
@@ -647,10 +679,10 @@ const loadRooms = async (propertyId: string) => {
     setCleaningDrawerOpen(false);
   }, [viewMode, visibleCleaningTasks, selectedCleaningId]);
 
-  const selectedCleaningTask = useMemo(
-    () => cleaningTasks.find((t) => t.id === selectedCleaningId) ?? null,
-    [cleaningTasks, selectedCleaningId]
-  );
+  const selectedCleaningAttendees = useMemo(() => {
+  if (!selectedCleaningTask) return [] as Attendee[];
+  return attendeesByDate[selectedCleaningTask.date] ?? [];
+}, [selectedCleaningTask, attendeesByDate]);
 
   const selectedCleaningAttendees = useMemo(() => {
     if (!selectedCleaningTask) return [] as Attendee[];
@@ -785,9 +817,9 @@ const loadRooms = async (propertyId: string) => {
 
   // 清掃外も「日付ごとの出勤者だけ」を候補に
   const draftAttendees = useMemo(() => {
-    if (!draftNonCleaning) return [] as Attendee[];
-    return MOCK_ATTENDEES_BY_DATE[draftNonCleaning.date] ?? [];
-  }, [draftNonCleaning]);
+  if (!draftNonCleaning) return [] as Attendee[];
+  return attendeesByDate[draftNonCleaning.date] ?? [];
+}, [draftNonCleaning, attendeesByDate]);
 
   const draftAssigneeOptions = useMemo(() => buildAssigneeOptions(draftAttendees), [draftAttendees]);
   const draftCheckerOptions = useMemo(
@@ -875,7 +907,7 @@ const loadRooms = async (propertyId: string) => {
                   </thead>
                   <tbody>
                     {visibleCleaningTasks.map((t) => {
-                      const attendees = MOCK_ATTENDEES_BY_DATE[t.date] ?? [];
+                      const attendees = attendeesByDate[t.date] ?? [];
                       const isSelected = t.id === selectedCleaningId;
 
                       const assigneeOptions = buildAssigneeOptions(attendees);
@@ -1089,7 +1121,7 @@ const loadRooms = async (propertyId: string) => {
                   </thead>
                   <tbody>
                     {visibleNonCleaningTasks.map((t) => {
-                      const attendees = MOCK_ATTENDEES_BY_DATE[t.date] ?? [];
+                      const attendees = attendeesByDate[t.date] ?? [];
                       return (
                         <tr key={t.id} className="bg-white">
                           <td className="border-b px-3 py-2">{formatMd(t.date)}</td>
@@ -1172,9 +1204,11 @@ const loadRooms = async (propertyId: string) => {
                 className="h-9 w-full rounded-lg border px-2 text-sm"
                 value={selectedCleaningTask.date}
                 onChange={(e) => {
-                  const nextDate = e.target.value;
-                  updateCleaningTask(selectedCleaningTask.id, { date: nextDate, assigneeId: "UNASSIGNED", checkerId: "" });
-                }}
+                  onChange={async (e) => {
+  const nextDate = e.target.value;
+  await ensureAttendeesLoaded(nextDate);
+  updateCleaningTask(t.id, { date: nextDate, assigneeId: "UNASSIGNED", checkerId: "" });
+}}
               />
               <div className="mt-1 text-xs text-black/50">
                 {formatMd(selectedCleaningTask.date)} / 出勤者: {selectedCleaningAttendees.map((u) => u.name).join(" / ") || "なし"}
@@ -1288,10 +1322,11 @@ const loadRooms = async (propertyId: string) => {
                 type="date"
                 className="h-9 w-full rounded-lg border px-2 text-sm"
                 value={draftNonCleaning.date}
-                onChange={(e) => {
-                  const nextDate = e.target.value;
-                  setDraftNonCleaning((p) => (p ? { ...p, date: nextDate, assigneeId: "UNASSIGNED", checkerId: "" } : p));
-                }}
+                onChange={async (e) => {
+  const nextDate = e.target.value;
+  await ensureAttendeesLoaded(nextDate);
+  updateCleaningTask(t.id, { date: nextDate, assigneeId: "UNASSIGNED", checkerId: "" });
+}}
               />
               <div className="mt-1 text-xs text-black/50">
                 {formatMd(draftNonCleaning.date)} / 出勤者: {draftAttendees.map((u) => u.name).join(" / ") || "なし"}
@@ -1454,6 +1489,19 @@ const loadRooms = async (propertyId: string) => {
 </Drawer>
     </div>
   );
+const ensureAttendeesLoaded = async (targetDate: string) => {
+  if (!targetDate) return;
+  if (attendeesByDate[targetDate]) return;
+
+  try {
+    const users = await fetchAvailableStaffByDate(targetDate);
+    setAttendeesByDate((prev) => ({ ...prev, [targetDate]: users }));
+  } catch (error) {
+    console.error(error);
+    setAttendeesByDate((prev) => ({ ...prev, [targetDate]: [] }));
+  }
+};
+  
 }
 
 
