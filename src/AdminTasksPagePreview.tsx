@@ -1,22 +1,8 @@
 import React, { useEffect, useMemo, useState } from "react";
 
-// ------------------------------------------------------------
-// タスク管理（管理者）Reactプレビュー
-//
-// 要件（今回反映）
-// - 初期表示は「当日」タスク管理
-// - 「翌日以降」への切替ボタンで表示を切り替える
-// - 画面は二面：左=清掃タスク（7） / 右=清掃外タスク（3）
-// - 清掃タスク：編集モード（表内編集）と通常モード（行クリックで右ドロワー編集）
-// - 清掃外タスク：右上の追加ボタン（薄い青）→右ドロワーで追加 → 右カラムの一覧に表示
-//
-// 重要ルール（プレビュー）
-// - 担当/チェッカー候補は「対象日付の出勤者のみ」
-// ------------------------------------------------------------
-
-/** ------------------------
+/* =========================
  * Options
- * ------------------------ */
+ * ========================= */
 
 const STATUS_OPTIONS = [
   { value: "未着手", label: "未着手" },
@@ -31,7 +17,6 @@ const DUE_OPTIONS = [
   { value: "DUE_LATER", label: "翌々日以降" },
 ];
 
-
 const CATEGORY_OPTIONS = [
   { value: "WAREHOUSE", label: "倉庫" },
   { value: "TRANSPORT", label: "運搬" },
@@ -41,16 +26,9 @@ const CATEGORY_OPTIONS = [
   { value: "OTHER", label: "その他" },
 ];
 
-const PROPERTY_OPTIONS = [
-  { value: "FFFホテル", label: "FFFホテル" },
-  { value: "住吉", label: "住吉" },
-  { value: "やなぎ橋", label: "やなぎ橋" },
-  { value: "エスコート", label: "エスコート" },
-];
-
-/** ------------------------
+/* =========================
  * Utilities
- * ------------------------ */
+ * ========================= */
 
 const pad2 = (n: number) => String(n).padStart(2, "0");
 
@@ -85,9 +63,9 @@ function categoryLabel(v: string) {
   return CATEGORY_OPTIONS.find((o) => o.value === v)?.label ?? v;
 }
 
-/** ------------------------
- * Lightweight UI parts
- * ------------------------ */
+/* =========================
+ * UI parts
+ * ========================= */
 
 function Badge({ children }: { children: React.ReactNode }) {
   return <span className="inline-flex items-center rounded-full border px-2 py-0.5 text-xs">{children}</span>;
@@ -307,9 +285,9 @@ function Td({
   );
 }
 
-/** ------------------------
- * Domain types + helpers
- * ------------------------ */
+/* =========================
+ * Domain types
+ * ========================= */
 
 type Attendee = { userId: string; name: string };
 
@@ -331,31 +309,15 @@ type ShiftDayApi = {
   shift_entries: ShiftEntryApi[];
 };
 
-async function fetchAvailableStaffByDate(shiftDate: string): Promise<Attendee[]> {
-  const res = await fetch(`${API_BASE}/shifts?shift_date=${shiftDate}`);
-  if (!res.ok) throw new Error(`shift fetch failed: ${res.status}`);
-
-  const data: ShiftDayApi[] = await res.json();
-  const day = data?.[0];
-  if (!day) return [];
-
-  return (day.shift_entries || [])
-    .filter((e) => e.status === "出勤" || e.status === "遅刻")
-    .map((e) => ({
-      userId: e.staff_id,
-      name: e.staff_members?.staff_name || e.staff_id,
-    }));
-}
-
 type CleaningTask = {
   id: string;
   status: string;
   property: string;
   room: string;
   assigneeId: string;
-  date: string; // yyyy-mm-dd
-  due: string; // 当日/翌日/翌々日以降
-  baggageTime: string; // HH:mm 荷物預かり
+  date: string;
+  due: string;
+  baggageTime: string;
   checkerId: string;
   note: string;
   loadScore?: number;
@@ -380,6 +342,7 @@ type ApiCleaningTask = {
   assigned_staff_code: string | null;
   assigned_staff_name: string | null;
 };
+
 type PropertyMaster = {
   id: string;
   property_code: string;
@@ -401,7 +364,25 @@ type RoomMaster = {
   is_active: boolean;
 };
 
-const API_BASE = (import.meta as any).env?.VITE_API_BASE_URL || "https://cleaning-task-api.onrender.com";
+type NonCleaningTask = {
+  id: string;
+  status: string;
+  category: string;
+  title: string;
+  date: string;
+  deadline: string;
+  assigneeId: string;
+  checkerId: string;
+};
+
+type ViewMode = "TODAY" | "FUTURE";
+
+const API_BASE =
+  (import.meta as any).env?.VITE_API_BASE_URL || "https://cleaning-task-api.onrender.com";
+
+/* =========================
+ * API helpers
+ * ========================= */
 
 function computeDueLabel(taskDate: string) {
   if (taskDate === baseDate) return "DUE_TODAY";
@@ -452,16 +433,21 @@ async function persistCleaningTaskPatch(taskId: string, patch: Partial<CleaningT
   return res.json();
 }
 
-type NonCleaningTask = {
-  id: string;
-  status: string;
-  category: string;
-  title: string;
-  date: string;
-  deadline: string;
-  assigneeId: string;
-  checkerId: string;
-};
+async function fetchAvailableStaffByDate(shiftDate: string): Promise<Attendee[]> {
+  const res = await fetch(`${API_BASE}/shifts?shift_date=${shiftDate}`);
+  if (!res.ok) throw new Error(`shift fetch failed: ${res.status}`);
+
+  const data: ShiftDayApi[] = await res.json();
+  const day = data?.[0];
+  if (!day) return [];
+
+  return (day.shift_entries || [])
+    .filter((e) => e.status === "出勤" || e.status === "遅刻")
+    .map((e) => ({
+      userId: e.staff_id,
+      name: e.staff_members?.staff_name || e.staff_id,
+    }));
+}
 
 function buildAssigneeOptions(attendees: Attendee[]) {
   const base = [{ value: "UNASSIGNED", label: "未割当" }];
@@ -475,167 +461,151 @@ function assigneeLabel(userId: string, attendees: Attendee[]) {
   return found?.name ?? userId;
 }
 
-/** ------------------------
- * Mock Data (Replace with API)
- * ------------------------ */
+/* =========================
+ * Main component
+ * ========================= */
 
 const baseDate = todayIso();
-
-const MOCK_CLEANING_TASKS: CleaningTask[] = [
-  {
-    id: "ct_001",
-    status: "未着手",
-    property: "FFFホテル",
-    room: "1203",
-    assigneeId: "UNASSIGNED",
-    date: baseDate,
-    due: "DUE_TODAY",
-    baggageTime: "09:30",
-    checkerId: "",
-    note: "ベッド多め。アメニティ補充。",
-  },
-  {
-    id: "ct_002",
-    status: "進行中",
-    property: "住吉",
-    room: "305",
-    assigneeId: "u_tanaka",
-    date: baseDate,
-    due: "DUE_TODAY",
-    baggageTime: "10:15",
-    checkerId: "u_ueno",
-    note: "リネン追加あり。",
-  },
-  {
-    id: "ct_003",
-    status: "完了",
-    property: "やなぎ橋",
-    room: "802",
-    assigneeId: "u_matsumoto",
-    date: baseDate,
-    due: "DUE_TODAY",
-    baggageTime: "",
-    checkerId: "u_tsune",
-    note: "写真OK",
-  },
-  {
-    id: "ct_004",
-    status: "未着手",
-    property: "エスコート",
-    room: "204",
-    assigneeId: "UNASSIGNED",
-    date: addDaysIso(baseDate, 2),
-    due: "DUE_LATER",
-    baggageTime: "",
-    checkerId: "",
-    note: "（翌日以降の例）",
-  },
-];
-
-/** ------------------------
- * Main Component
- * ------------------------ */
-
-type ViewMode = "TODAY" | "FUTURE";
+const UI_VERSION = "v6-2026-03-24";
 
 function isFutureDate(isoDate: string) {
-  // yyyy-mm-dd なので文字列比較でOK
   return isoDate > baseDate;
 }
-
-const UI_VERSION = "v5-2026-01-07";
 
 export default function AdminTasksPagePreview() {
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [lastUpdated, setLastUpdated] = useState(new Date());
-
   const [viewMode, setViewMode] = useState<ViewMode>("TODAY");
+
   const [attendeesByDate, setAttendeesByDate] = useState<Record<string, Attendee[]>>({});
 
-// 清掃
-const [cleaningTasks, setCleaningTasks] = useState<CleaningTask[]>(() => []);
-const [selectedCleaningId, setSelectedCleaningId] = useState<string>("");
-const [cleaningDrawerOpen, setCleaningDrawerOpen] = useState(false);
-const [tableEditMode, setTableEditMode] = useState(false);
-const [loadingCleaning, setLoadingCleaning] = useState(false);
-const [cleaningError, setCleaningError] = useState("");
+  const [cleaningTasks, setCleaningTasks] = useState<CleaningTask[]>([]);
+  const [selectedCleaningId, setSelectedCleaningId] = useState<string>("");
+  const [cleaningDrawerOpen, setCleaningDrawerOpen] = useState(false);
+  const [tableEditMode, setTableEditMode] = useState(false);
+  const [loadingCleaning, setLoadingCleaning] = useState(false);
+  const [cleaningError, setCleaningError] = useState("");
 
-const [addCleaningDrawerOpen, setAddCleaningDrawerOpen] = useState(false);
-const [draftCleaningTask, setDraftCleaningTask] = useState({
-  property: "",
-  room: "",
-  date: viewMode === "TODAY" ? baseDate : addDaysIso(baseDate, 1),
-  status: "未着手",
-  note: "",
-});
+  const [addCleaningDrawerOpen, setAddCleaningDrawerOpen] = useState(false);
+  const [draftCleaningTask, setDraftCleaningTask] = useState({
+    property: "",
+    room: "",
+    date: viewMode === "TODAY" ? baseDate : addDaysIso(baseDate, 1),
+    status: "未着手",
+    note: "",
+  });
 
-const [properties, setProperties] = useState<PropertyMaster[]>([]);
-const [rooms, setRooms] = useState<RoomMaster[]>([]);
-const [selectedPropertyId, setSelectedPropertyId] = useState("");
-const [selectedRoomId, setSelectedRoomId] = useState("");
+  const [properties, setProperties] = useState<PropertyMaster[]>([]);
+  const [rooms, setRooms] = useState<RoomMaster[]>([]);
+  const [selectedPropertyId, setSelectedPropertyId] = useState("");
+  const [selectedRoomId, setSelectedRoomId] = useState("");
 
-// 清掃外
-const [nonCleaningTasks, setNonCleaningTasks] = useState<NonCleaningTask[]>(() => []);
-const [nonCleaningDrawerOpen, setNonCleaningDrawerOpen] = useState(false);
-const [draftNonCleaning, setDraftNonCleaning] = useState<NonCleaningTask | null>(null);
+  const [nonCleaningTasks, setNonCleaningTasks] = useState<NonCleaningTask[]>([]);
+  const [nonCleaningDrawerOpen, setNonCleaningDrawerOpen] = useState(false);
+  const [draftNonCleaning, setDraftNonCleaning] = useState<NonCleaningTask | null>(null);
 
-const loadProperties = async () => {
-  const res = await fetch(`${API_BASE}/properties`);
-  if (!res.ok) throw new Error(`properties fetch failed: ${res.status}`);
-  const data: PropertyMaster[] = await res.json();
-  setProperties(data.filter((p) => p.is_active));
-};
+  const selectedCleaningTask = useMemo(
+    () => cleaningTasks.find((t) => t.id === selectedCleaningId) ?? null,
+    [cleaningTasks, selectedCleaningId]
+  );
 
-const loadRooms = async (propertyId: string) => {
-  if (!propertyId) {
-    setRooms([]);
-    return;
-  }
-  const res = await fetch(`${API_BASE}/rooms?property_id=${propertyId}`);
-  if (!res.ok) throw new Error(`rooms fetch failed: ${res.status}`);
-  const data: RoomMaster[] = await res.json();
-  setRooms(data.filter((r) => r.is_active));
-};
-  
+  const selectedCleaningAttendees = useMemo(() => {
+    if (!selectedCleaningTask) return [] as Attendee[];
+    return attendeesByDate[selectedCleaningTask.date] ?? [];
+  }, [selectedCleaningTask, attendeesByDate]);
+
+  const selectedAssigneeOptions = useMemo(
+    () => buildAssigneeOptions(selectedCleaningAttendees),
+    [selectedCleaningAttendees]
+  );
+
+  const selectedCheckerOptions = useMemo(
+    () =>
+      [{ value: "", label: "未設定" }].concat(
+        selectedCleaningAttendees.map((u) => ({ value: u.userId, label: u.name }))
+      ),
+    [selectedCleaningAttendees]
+  );
+
+  const draftAttendees = useMemo(() => {
+    if (!draftNonCleaning) return [] as Attendee[];
+    return attendeesByDate[draftNonCleaning.date] ?? [];
+  }, [draftNonCleaning, attendeesByDate]);
+
+  const draftAssigneeOptions = useMemo(() => buildAssigneeOptions(draftAttendees), [draftAttendees]);
+
+  const draftCheckerOptions = useMemo(
+    () =>
+      [{ value: "", label: "未設定" }].concat(
+        draftAttendees.map((u) => ({ value: u.userId, label: u.name }))
+      ),
+    [draftAttendees]
+  );
+
+  const loadProperties = async () => {
+    const res = await fetch(`${API_BASE}/properties`);
+    if (!res.ok) throw new Error(`properties fetch failed: ${res.status}`);
+    const data: PropertyMaster[] = await res.json();
+    setProperties(
+      data
+        .filter((p) => p.is_active)
+        .sort((a, b) => (a.sort_order ?? 9999) - (b.sort_order ?? 9999))
+    );
+  };
+
+  const loadRooms = async (propertyId: string) => {
+    if (!propertyId) {
+      setRooms([]);
+      return;
+    }
+    const res = await fetch(`${API_BASE}/rooms?property_id=${propertyId}`);
+    if (!res.ok) throw new Error(`rooms fetch failed: ${res.status}`);
+    const data: RoomMaster[] = await res.json();
+    setRooms(
+      data
+        .filter((r) => r.is_active)
+        .sort((a, b) => (a.room_sort_order ?? 9999) - (b.room_sort_order ?? 9999))
+    );
+  };
+
+  const ensureAttendeesLoaded = async (targetDate: string) => {
+    if (!targetDate) return;
+    if (attendeesByDate[targetDate]) return;
+
+    try {
+      const users = await fetchAvailableStaffByDate(targetDate);
+      setAttendeesByDate((prev) => ({ ...prev, [targetDate]: users }));
+    } catch (error) {
+      console.error(error);
+      setAttendeesByDate((prev) => ({ ...prev, [targetDate]: [] }));
+    }
+  };
+
   const refresh = async () => {
     try {
       setLoadingCleaning(true);
       setCleaningError("");
+
       const tasks = await fetchCleaningTasks(viewMode);
-      const refresh = async () => {
-  try {
-    setLoadingCleaning(true);
-    setCleaningError("");
-
-    const tasks = await fetchCleaningTasks(viewMode);
-    setCleaningTasks(tasks);
-    setSelectedCleaningId((prev) => (tasks.some((t) => t.id === prev) ? prev : tasks[0]?.id ?? ""));
-
-    const uniqueDates = Array.from(new Set(tasks.map((t) => t.date).filter(Boolean)));
-
-    const attendeesEntries = await Promise.all(
-      uniqueDates.map(async (d) => {
-        try {
-          const users = await fetchAvailableStaffByDate(d);
-          return [d, users] as const;
-        } catch (error) {
-          console.error(`shift fetch failed: ${d}`, error);
-          return [d, []] as const;
-        }
-      })
-    );
-
-    setAttendeesByDate(Object.fromEntries(attendeesEntries));
-    setLastUpdated(new Date());
-  } catch (error) {
-    console.error(error);
-    setCleaningError("清掃タスクの取得に失敗しました");
-  } finally {
-    setLoadingCleaning(false);
-  }
-};
       setCleaningTasks(tasks);
-      setSelectedCleaningId((prev) => (tasks.some((t) => t.id === prev) ? prev : tasks[0]?.id ?? ""));
+      setSelectedCleaningId((prev) =>
+        tasks.some((t) => t.id === prev) ? prev : tasks[0]?.id ?? ""
+      );
+
+      const uniqueDates = Array.from(new Set(tasks.map((t) => t.date).filter(Boolean)));
+      const attendeesEntries = await Promise.all(
+        uniqueDates.map(async (d) => {
+          try {
+            const users = await fetchAvailableStaffByDate(d);
+            return [d, users] as const;
+          } catch (error) {
+            console.error(`shift fetch failed: ${d}`, error);
+            return [d, []] as const;
+          }
+        })
+      );
+
+      setAttendeesByDate(Object.fromEntries(attendeesEntries));
       setLastUpdated(new Date());
     } catch (error) {
       console.error(error);
@@ -646,12 +616,12 @@ const loadRooms = async (propertyId: string) => {
   };
 
   useEffect(() => {
-    void refresh();
-  }, [viewMode]);
+    void loadProperties();
+  }, []);
 
   useEffect(() => {
-  void loadProperties();
-}, []);
+    void refresh();
+  }, [viewMode]);
 
   useEffect(() => {
     if (!autoRefresh) return;
@@ -661,7 +631,6 @@ const loadRooms = async (propertyId: string) => {
     return () => window.clearInterval(t);
   }, [autoRefresh, viewMode]);
 
-  // 表示対象（当日 / 翌日以降）
   const visibleCleaningTasks = useMemo(() => {
     if (viewMode === "TODAY") return cleaningTasks.filter((t) => t.date === baseDate);
     return cleaningTasks.filter((t) => isFutureDate(t.date));
@@ -672,100 +641,85 @@ const loadRooms = async (propertyId: string) => {
     return nonCleaningTasks.filter((t) => isFutureDate(t.date));
   }, [nonCleaningTasks, viewMode]);
 
-  // 選択タスクが表示対象から外れたら先頭に寄せる
   useEffect(() => {
     if (visibleCleaningTasks.some((t) => t.id === selectedCleaningId)) return;
     setSelectedCleaningId(visibleCleaningTasks[0]?.id ?? "");
     setCleaningDrawerOpen(false);
   }, [viewMode, visibleCleaningTasks, selectedCleaningId]);
 
-  const selectedCleaningAttendees = useMemo(() => {
-  if (!selectedCleaningTask) return [] as Attendee[];
-  return attendeesByDate[selectedCleaningTask.date] ?? [];
-}, [selectedCleaningTask, attendeesByDate]);
-
-  const selectedCleaningAttendees = useMemo(() => {
-    if (!selectedCleaningTask) return [] as Attendee[];
-    return MOCK_ATTENDEES_BY_DATE[selectedCleaningTask.date] ?? [];
-  }, [selectedCleaningTask]);
-
-  const selectedAssigneeOptions = useMemo(() => buildAssigneeOptions(selectedCleaningAttendees), [selectedCleaningAttendees]);
-  const selectedCheckerOptions = useMemo(
-    () => [{ value: "", label: "未設定" }].concat(selectedCleaningAttendees.map((u) => ({ value: u.userId, label: u.name }))),
-    [selectedCleaningAttendees]
-  );
-
   const addCleaningTask = () => {
-  setDraftCleaningTask({
-    property: "",
-    room: "",
-    date: viewMode === "TODAY" ? baseDate : addDaysIso(baseDate, 1),
-    status: "未着手",
-    note: "",
-  });
-  setSelectedPropertyId("");
-  setSelectedRoomId("");
-  setRooms([]);
-  setAddCleaningDrawerOpen(true);
-};
+    setDraftCleaningTask({
+      property: "",
+      room: "",
+      date: viewMode === "TODAY" ? baseDate : addDaysIso(baseDate, 1),
+      status: "未着手",
+      note: "",
+    });
+    setSelectedPropertyId("");
+    setSelectedRoomId("");
+    setRooms([]);
+    setAddCleaningDrawerOpen(true);
+  };
 
   const commitCleaningTask = async () => {
-  try {
-    if (!selectedPropertyId) {
-      window.alert("物件を選択してください。");
-      return;
-    }
-    if (!selectedRoomId) {
-      window.alert("部屋を選択してください。");
-      return;
-    }
-    if (!draftCleaningTask.date.trim()) {
-      window.alert("日付を入力してください。");
-      return;
-    }
+    try {
+      if (!selectedPropertyId) {
+        window.alert("物件を選択してください。");
+        return;
+      }
+      if (!selectedRoomId) {
+        window.alert("部屋を選択してください。");
+        return;
+      }
+      if (!draftCleaningTask.date.trim()) {
+        window.alert("日付を入力してください。");
+        return;
+      }
 
-    const property = properties.find((p) => p.id === selectedPropertyId);
-    const room = rooms.find((r) => r.id === selectedRoomId);
+      const property = properties.find((p) => p.id === selectedPropertyId);
+      const room = rooms.find((r) => r.id === selectedRoomId);
 
-    if (!property || !room) {
-      window.alert("物件または部屋の選択が不正です。");
-      return;
+      if (!property || !room) {
+        window.alert("物件または部屋の選択が不正です。");
+        return;
+      }
+
+      const res = await fetch(`${API_BASE}/tasks/create`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          property_name: property.property_name,
+          room_name: room.room_name,
+          room_key: room.room_key,
+          task_date: draftCleaningTask.date,
+          status: draftCleaningTask.status,
+          note: draftCleaningTask.note,
+        }),
+      });
+
+      if (!res.ok) {
+        throw new Error(`create failed: ${res.status}`);
+      }
+
+      await res.json();
+      setAddCleaningDrawerOpen(false);
+      await refresh();
+    } catch (error) {
+      console.error(error);
+      window.alert("清掃タスクの追加に失敗しました。");
     }
-
-    const res = await fetch(`${API_BASE}/tasks/create`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        property_name: property.property_name,
-        room_name: room.room_name,
-        room_key: room.room_key,
-        task_date: draftCleaningTask.date,
-        status: draftCleaningTask.status,
-        note: draftCleaningTask.note,
-      }),
-    });
-
-    if (!res.ok) {
-      throw new Error(`create failed: ${res.status}`);
-    }
-
-    await res.json();
-    setAddCleaningDrawerOpen(false);
-    await refresh();
-  } catch (error) {
-    console.error(error);
-    window.alert("清掃タスクの追加に失敗しました。");
-  }
-};
+  };
 
   const updateCleaningTask = async (id: string, patch: Partial<CleaningTask>) => {
     setCleaningTasks((prev) => prev.map((t) => (t.id === id ? { ...t, ...patch } : t)));
     setLastUpdated(new Date());
+
     const persistableKeys = ["status", "note", "assigneeId"];
     const shouldPersist = Object.keys(patch).some((k) => persistableKeys.includes(k));
     if (!shouldPersist) return;
+
     try {
       await persistCleaningTaskPatch(id, patch);
     } catch (error) {
@@ -785,7 +739,6 @@ const loadRooms = async (propertyId: string) => {
     setCleaningDrawerOpen(false);
   };
 
-  // 清掃外タスク：追加→右ドロワーで入力→「追加」で確定
   const openAddNonCleaning = () => {
     const id = `nct_${Math.random().toString(16).slice(2, 8)}`;
     setDraftNonCleaning({
@@ -807,35 +760,24 @@ const loadRooms = async (propertyId: string) => {
     setNonCleaningTasks((prev) => [{ ...draftNonCleaning, title: draftNonCleaning.title.trim() }, ...prev]);
     setNonCleaningDrawerOpen(false);
     setDraftNonCleaning(null);
-    refresh();
+    void refresh();
   };
 
   const removeNonCleaning = (id: string) => {
     setNonCleaningTasks((prev) => prev.filter((t) => t.id !== id));
-    refresh();
+    void refresh();
   };
-
-  // 清掃外も「日付ごとの出勤者だけ」を候補に
-  const draftAttendees = useMemo(() => {
-  if (!draftNonCleaning) return [] as Attendee[];
-  return attendeesByDate[draftNonCleaning.date] ?? [];
-}, [draftNonCleaning, attendeesByDate]);
-
-  const draftAssigneeOptions = useMemo(() => buildAssigneeOptions(draftAttendees), [draftAttendees]);
-  const draftCheckerOptions = useMemo(
-    () => [{ value: "", label: "未設定" }].concat(draftAttendees.map((u) => ({ value: u.userId, label: u.name }))),
-    [draftAttendees]
-  );
 
   return (
     <div className="min-h-screen bg-neutral-50 p-6">
-      {/* Header */}
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
         <div className="space-y-1">
           <div className="text-2xl font-semibold">タスク管理（管理者）</div>
           <div className="mt-1 inline-flex items-center gap-2 text-xs text-black/60">
-            <span className="rounded-full border px-2 py-0.5 bg-yellow-50 border-yellow-200 text-yellow-800">UI \'+UI_VERSION+\'</span>
-            <span>※これが見えれば新ZIPが読み込まれています</span>
+            <span className="rounded-full border px-2 py-0.5 bg-yellow-50 border-yellow-200 text-yellow-800">
+              UI {UI_VERSION}
+            </span>
+            <span>※これが見えれば新コードが読み込まれています</span>
           </div>
           <div className="text-xs text-black/60">
             表示：{viewMode === "TODAY" ? "当日" : "翌日以降"} / 最終更新 {lastUpdated.toLocaleTimeString()}
@@ -860,9 +802,7 @@ const loadRooms = async (propertyId: string) => {
         </div>
       </div>
 
-      {/* Two-pane layout 7:3 */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-10">
-        {/* Left 7/10: 清掃タスク */}
         <div className="lg:col-span-7">
           <Card>
             <CardBody>
@@ -888,8 +828,18 @@ const loadRooms = async (propertyId: string) => {
               />
 
               <div className="mt-3">
-                {cleaningError ? <div className="mb-3 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{cleaningError}</div> : null}
-                {loadingCleaning ? <div className="mb-3 rounded-xl border border-black/10 bg-white px-3 py-2 text-sm text-black/60">読み込み中...</div> : null}
+                {cleaningError ? (
+                  <div className="mb-3 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                    {cleaningError}
+                  </div>
+                ) : null}
+
+                {loadingCleaning ? (
+                  <div className="mb-3 rounded-xl border border-black/10 bg-white px-3 py-2 text-sm text-black/60">
+                    読み込み中...
+                  </div>
+                ) : null}
+
                 <Table>
                   <thead>
                     <tr>
@@ -933,7 +883,6 @@ const loadRooms = async (propertyId: string) => {
                             setCleaningDrawerOpen(true);
                           }}
                         >
-                          {/* ステータス */}
                           <Td>
                             {tableEditMode ? (
                               <Select
@@ -949,33 +898,10 @@ const loadRooms = async (propertyId: string) => {
                             )}
                           </Td>
 
-                          {/* 物件 */}
-                          <Td>
-                            {tableEditMode ? (
-                              <Select
-                                value={t.property}
-                                onChange={(v) => updateCleaningTask(t.id, { property: v })}
-                                options={PROPERTY_OPTIONS}
-                              />
-                            ) : (
-                              t.property
-                            )}
-                          </Td>
+                          <Td>{t.property}</Td>
 
-                          {/* 部屋 */}
-                          <Td>
-                            {tableEditMode ? (
-                              <TextInput
-                                value={t.room}
-                                onChange={(v) => updateCleaningTask(t.id, { room: v })}
-                                placeholder="例）1203"
-                              />
-                            ) : (
-                              t.room || "-"
-                            )}
-                          </Td>
+                          <Td>{t.room || "-"}</Td>
 
-                          {/* 担当 */}
                           <Td>
                             {tableEditMode ? (
                               <Select
@@ -989,17 +915,20 @@ const loadRooms = async (propertyId: string) => {
                             )}
                           </Td>
 
-                          {/* 日付 */}
                           <Td>
                             {tableEditMode ? (
                               <input
                                 type="date"
                                 className="h-9 w-full rounded-lg border px-2 text-sm"
                                 value={t.date}
-                                onChange={(e) => {
+                                onChange={async (e) => {
                                   const nextDate = e.target.value;
-                                  // 日付を変えたら「その日の出勤者」制約が変わるので、担当/チェッカーはリセット
-                                  updateCleaningTask(t.id, { date: nextDate, assigneeId: "UNASSIGNED", checkerId: "" });
+                                  await ensureAttendeesLoaded(nextDate);
+                                  updateCleaningTask(t.id, {
+                                    date: nextDate,
+                                    assigneeId: "UNASSIGNED",
+                                    checkerId: "",
+                                  });
                                 }}
                               />
                             ) : (
@@ -1007,7 +936,6 @@ const loadRooms = async (propertyId: string) => {
                             )}
                           </Td>
 
-                          {/* 期限（当日/翌日/翌々日以降） */}
                           <Td>
                             {tableEditMode ? (
                               <Select value={t.due} onChange={(v) => updateCleaningTask(t.id, { due: v })} options={DUE_OPTIONS} />
@@ -1016,7 +944,6 @@ const loadRooms = async (propertyId: string) => {
                             )}
                           </Td>
 
-                          {/* 荷物預かり（時間） */}
                           <Td>
                             {tableEditMode ? (
                               <input
@@ -1030,7 +957,6 @@ const loadRooms = async (propertyId: string) => {
                             )}
                           </Td>
 
-                          {/* チェッカー */}
                           <Td>
                             {tableEditMode ? (
                               <Select
@@ -1044,7 +970,6 @@ const loadRooms = async (propertyId: string) => {
                             )}
                           </Td>
 
-                          {/* 備考 */}
                           <Td>
                             {tableEditMode ? (
                               <TextInput value={t.note || ""} onChange={(v) => updateCleaningTask(t.id, { note: v })} placeholder="備考…" />
@@ -1053,7 +978,6 @@ const loadRooms = async (propertyId: string) => {
                             )}
                           </Td>
 
-                          {/* 操作 */}
                           <Td>
                             <Button variant="outline" size="sm" onClick={openDetails}>
                               詳細
@@ -1085,7 +1009,6 @@ const loadRooms = async (propertyId: string) => {
           </Card>
         </div>
 
-        {/* Right 3/10: 清掃外タスク */}
         <div className="lg:col-span-3">
           <Card>
             <CardBody>
@@ -1151,20 +1074,19 @@ const loadRooms = async (propertyId: string) => {
                 </table>
               </div>
 
-              <div className="mt-2 text-xs text-black/50">※担当/チェッカーは「その日付の出勤者のみ」想定</div>
+              <div className="mt-2 text-xs text-black/50">※担当/チェッカーはその日付の出勤者のみ</div>
             </CardBody>
           </Card>
         </div>
       </div>
 
-      {/* 右側ドロワー：清掃タスク編集 */}
       <Drawer
         open={cleaningDrawerOpen}
         title={selectedCleaningTask ? `清掃タスク編集：${selectedCleaningTask.property} ${selectedCleaningTask.room || ""}` : "清掃タスク編集"}
         onClose={() => setCleaningDrawerOpen(false)}
         footer={
           <div className="flex items-center justify-between">
-            <div className="text-xs text-black/50">※プレビュー：編集内容は state のみ（保存は後工程）</div>
+            <div className="text-xs text-black/50">※変更は対象項目のみ保存されます</div>
             {selectedCleaningTask ? (
               <Button variant="danger" size="sm" onClick={() => removeCleaningTask(selectedCleaningTask.id)}>
                 削除
@@ -1184,17 +1106,21 @@ const loadRooms = async (propertyId: string) => {
 
             <div>
               <div className="mb-1 text-xs text-black/60">ステータス</div>
-              <Select value={selectedCleaningTask.status} onChange={(v) => updateCleaningTask(selectedCleaningTask.id, { status: v })} options={STATUS_OPTIONS} />
+              <Select
+                value={selectedCleaningTask.status}
+                onChange={(v) => updateCleaningTask(selectedCleaningTask.id, { status: v })}
+                options={STATUS_OPTIONS}
+              />
             </div>
 
             <div>
               <div className="mb-1 text-xs text-black/60">物件</div>
-              <Select value={selectedCleaningTask.property} onChange={(v) => updateCleaningTask(selectedCleaningTask.id, { property: v })} options={PROPERTY_OPTIONS} />
+              <TextInput value={selectedCleaningTask.property} onChange={() => {}} placeholder="" />
             </div>
 
             <div>
               <div className="mb-1 text-xs text-black/60">部屋</div>
-              <TextInput value={selectedCleaningTask.room} onChange={(v) => updateCleaningTask(selectedCleaningTask.id, { room: v })} placeholder="例）1203" />
+              <TextInput value={selectedCleaningTask.room} onChange={() => {}} placeholder="" />
             </div>
 
             <div>
@@ -1203,12 +1129,15 @@ const loadRooms = async (propertyId: string) => {
                 type="date"
                 className="h-9 w-full rounded-lg border px-2 text-sm"
                 value={selectedCleaningTask.date}
-                onChange={(e) => {
-                  onChange={async (e) => {
-  const nextDate = e.target.value;
-  await ensureAttendeesLoaded(nextDate);
-  updateCleaningTask(t.id, { date: nextDate, assigneeId: "UNASSIGNED", checkerId: "" });
-}}
+                onChange={async (e) => {
+                  const nextDate = e.target.value;
+                  await ensureAttendeesLoaded(nextDate);
+                  updateCleaningTask(selectedCleaningTask.id, {
+                    date: nextDate,
+                    assigneeId: "UNASSIGNED",
+                    checkerId: "",
+                  });
+                }}
               />
               <div className="mt-1 text-xs text-black/50">
                 {formatMd(selectedCleaningTask.date)} / 出勤者: {selectedCleaningAttendees.map((u) => u.name).join(" / ") || "なし"}
@@ -1217,7 +1146,11 @@ const loadRooms = async (propertyId: string) => {
 
             <div>
               <div className="mb-1 text-xs text-black/60">期限</div>
-              <Select value={selectedCleaningTask.due} onChange={(v) => updateCleaningTask(selectedCleaningTask.id, { due: v })} options={DUE_OPTIONS} />
+              <Select
+                value={selectedCleaningTask.due}
+                onChange={(v) => updateCleaningTask(selectedCleaningTask.id, { due: v })}
+                options={DUE_OPTIONS}
+              />
             </div>
 
             <div>
@@ -1267,7 +1200,6 @@ const loadRooms = async (propertyId: string) => {
         )}
       </Drawer>
 
-      {/* 右側ドロワー：清掃外タスク追加 */}
       <Drawer
         open={nonCleaningDrawerOpen}
         title="清掃外タスク追加"
@@ -1277,7 +1209,7 @@ const loadRooms = async (propertyId: string) => {
         }}
         footer={
           <div className="flex items-center justify-between gap-2">
-            <div className="text-xs text-black/50">※「追加」で確定（プレビュー：stateのみ）</div>
+            <div className="text-xs text-black/50">※追加で右側一覧に表示されます</div>
             <div className="flex items-center gap-2">
               <Button
                 variant="outline"
@@ -1323,10 +1255,12 @@ const loadRooms = async (propertyId: string) => {
                 className="h-9 w-full rounded-lg border px-2 text-sm"
                 value={draftNonCleaning.date}
                 onChange={async (e) => {
-  const nextDate = e.target.value;
-  await ensureAttendeesLoaded(nextDate);
-  updateCleaningTask(t.id, { date: nextDate, assigneeId: "UNASSIGNED", checkerId: "" });
-}}
+                  const nextDate = e.target.value;
+                  await ensureAttendeesLoaded(nextDate);
+                  setDraftNonCleaning((p) =>
+                    p ? { ...p, date: nextDate, assigneeId: "UNASSIGNED", checkerId: "" } : p
+                  );
+                }}
               />
               <div className="mt-1 text-xs text-black/50">
                 {formatMd(draftNonCleaning.date)} / 出勤者: {draftAttendees.map((u) => u.name).join(" / ") || "なし"}
@@ -1347,7 +1281,7 @@ const loadRooms = async (propertyId: string) => {
               <TextInput
                 value={draftNonCleaning.title}
                 onChange={(v) => setDraftNonCleaning((p) => (p ? { ...p, title: v } : p))}
-                placeholder="例）倉庫整理 / FFF→住吉 運搬 / 買い出し…"
+                placeholder="例）倉庫整理 / 運搬 / 買い出し…"
               />
             </div>
 
@@ -1369,7 +1303,6 @@ const loadRooms = async (propertyId: string) => {
                 options={draftAssigneeOptions}
                 disabled={draftAttendees.length === 0}
               />
-              {draftAttendees.length === 0 ? <div className="mt-1 text-xs text-black/50">出勤者なし</div> : null}
             </div>
 
             <div>
@@ -1380,7 +1313,6 @@ const loadRooms = async (propertyId: string) => {
                 options={draftCheckerOptions}
                 disabled={draftAttendees.length === 0}
               />
-              {draftAttendees.length === 0 ? <div className="mt-1 text-xs text-black/50">出勤者なし</div> : null}
             </div>
           </div>
         ) : (
@@ -1389,133 +1321,120 @@ const loadRooms = async (propertyId: string) => {
       </Drawer>
 
       <Drawer
-  open={addCleaningDrawerOpen}
-  title="清掃タスク追加"
-  onClose={() => setAddCleaningDrawerOpen(false)}
-  footer={
-    <div className="flex items-center justify-between gap-2">
-      <div className="text-xs text-black/50">必要項目を入力して追加してください。</div>
-      <div className="flex items-center gap-2">
-        <Button variant="outline" onClick={() => setAddCleaningDrawerOpen(false)}>
-          キャンセル
-        </Button>
-        <Button
-          variant="outline"
-          className="border-orange-200 bg-orange-50 hover:bg-orange-100"
-          onClick={commitCleaningTask}
-        >
-          追加
-        </Button>
-      </div>
-    </div>
-  }
->
-  <div className="grid gap-3">
-    <div>
-      <div className="mb-1 text-xs text-black/60">物件</div>
-      <Select
-  value={selectedPropertyId}
-  onChange={(v) => {
-    setSelectedPropertyId(v);
-    setSelectedRoomId("");
-    void loadRooms(v);
+        open={addCleaningDrawerOpen}
+        title="清掃タスク追加"
+        onClose={() => setAddCleaningDrawerOpen(false)}
+        footer={
+          <div className="flex items-center justify-between gap-2">
+            <div className="text-xs text-black/50">必要項目を入力して追加してください。</div>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" onClick={() => setAddCleaningDrawerOpen(false)}>
+                キャンセル
+              </Button>
+              <Button
+                variant="outline"
+                className="border-orange-200 bg-orange-50 hover:bg-orange-100"
+                onClick={commitCleaningTask}
+              >
+                追加
+              </Button>
+            </div>
+          </div>
+        }
+      >
+        <div className="grid gap-3">
+          <div>
+            <div className="mb-1 text-xs text-black/60">物件</div>
+            <Select
+              value={selectedPropertyId}
+              onChange={(v) => {
+                setSelectedPropertyId(v);
+                setSelectedRoomId("");
+                void loadRooms(v);
 
-    const selected = properties.find((p) => p.id === v);
-    setDraftCleaningTask((prev) => ({
-      ...prev,
-      property: selected?.property_name ?? "",
-      room: "",
-    }));
-  }}
-  options={properties.map((p) => ({
-    value: p.id,
-    label: p.property_name,
-  }))}
-  placeholder="物件を選択"
-/>
-    </div>
+                const selected = properties.find((p) => p.id === v);
+                setDraftCleaningTask((prev) => ({
+                  ...prev,
+                  property: selected?.property_name ?? "",
+                  room: "",
+                }));
+              }}
+              options={properties.map((p) => ({
+                value: p.id,
+                label: p.property_name,
+              }))}
+              placeholder="物件を選択"
+            />
+          </div>
 
-    <div>
-      <div className="mb-1 text-xs text-black/60">部屋</div>
-      <Select
-  value={selectedRoomId}
-  onChange={(v) => {
-    setSelectedRoomId(v);
+          <div>
+            <div className="mb-1 text-xs text-black/60">部屋</div>
+            <Select
+              value={selectedRoomId}
+              onChange={(v) => {
+                setSelectedRoomId(v);
+                const selected = rooms.find((r) => r.id === v);
+                setDraftCleaningTask((prev) => ({
+                  ...prev,
+                  room: selected?.room_name ?? "",
+                }));
+              }}
+              options={rooms.map((r) => ({
+                value: r.id,
+                label: `${r.room_name}（${r.room_key}）`,
+              }))}
+              placeholder={selectedPropertyId ? "部屋を選択" : "先に物件を選択"}
+              disabled={!selectedPropertyId}
+            />
+          </div>
 
-    const selected = rooms.find((r) => r.id === v);
-    setDraftCleaningTask((prev) => ({
-      ...prev,
-      room: selected?.room_name ?? "",
-    }));
-  }}
-  options={rooms.map((r) => ({
-    value: r.id,
-    label: `${r.room_name}（${r.room_key}）`,
-  }))}
-  placeholder={selectedPropertyId ? "部屋を選択" : "先に物件を選択"}
-  disabled={!selectedPropertyId}
-/>
-    </div>
+          <div>
+            <div className="mb-1 text-xs text-black/60">日付</div>
+            <input
+              type="date"
+              className="h-9 w-full rounded-lg border px-2 text-sm"
+              value={draftCleaningTask.date}
+              onChange={async (e) => {
+                const nextDate = e.target.value;
+                await ensureAttendeesLoaded(nextDate);
+                setDraftCleaningTask((p) => ({ ...p, date: nextDate }));
+              }}
+            />
+          </div>
 
-    <div>
-      <div className="mb-1 text-xs text-black/60">日付</div>
-      <input
-        type="date"
-        className="h-9 w-full rounded-lg border px-2 text-sm"
-        value={draftCleaningTask.date}
-        onChange={(e) => setDraftCleaningTask((p) => ({ ...p, date: e.target.value }))}
-      />
-    </div>
+          <div>
+            <div className="mb-1 text-xs text-black/60">ステータス</div>
+            <Select
+              value={draftCleaningTask.status}
+              onChange={(v) => setDraftCleaningTask((p) => ({ ...p, status: v }))}
+              options={STATUS_OPTIONS}
+            />
+          </div>
 
-    <div>
-      <div className="mb-1 text-xs text-black/60">ステータス</div>
-      <Select
-        value={draftCleaningTask.status}
-        onChange={(v) => setDraftCleaningTask((p) => ({ ...p, status: v }))}
-        options={STATUS_OPTIONS}
-      />
-    </div>
-
-    <div>
-      <div className="mb-1 text-xs text-black/60">備考</div>
-      <textarea
-        className="h-28 w-full rounded-xl border bg-white p-3 text-sm outline-none focus:ring-2 focus:ring-black/20"
-        value={draftCleaningTask.note}
-        onChange={(e) => setDraftCleaningTask((p) => ({ ...p, note: e.target.value }))}
-        placeholder="備考…"
-      />
-    </div>
-  </div>
-</Drawer>
+          <div>
+            <div className="mb-1 text-xs text-black/60">備考</div>
+            <textarea
+              className="h-28 w-full rounded-xl border bg-white p-3 text-sm outline-none focus:ring-2 focus:ring-black/20"
+              value={draftCleaningTask.note}
+              onChange={(e) => setDraftCleaningTask((p) => ({ ...p, note: e.target.value }))}
+              placeholder="備考…"
+            />
+          </div>
+        </div>
+      </Drawer>
     </div>
   );
-const ensureAttendeesLoaded = async (targetDate: string) => {
-  if (!targetDate) return;
-  if (attendeesByDate[targetDate]) return;
-
-  try {
-    const users = await fetchAvailableStaffByDate(targetDate);
-    setAttendeesByDate((prev) => ({ ...prev, [targetDate]: users }));
-  } catch (error) {
-    console.error(error);
-    setAttendeesByDate((prev) => ({ ...prev, [targetDate]: [] }));
-  }
-};
-  
 }
 
-
-/** ------------------------
- * Lightweight self-tests (dev only)
- * ------------------------ */
+/* =========================
+ * Lightweight self-tests
+ * ========================= */
 
 function __assert(name: string, cond: boolean) {
   if (!cond) {
-    // eslint-disable-next-line no-console
     console.error(`❌ ${name}`);
     throw new Error(`Test failed: ${name}`);
   }
-  // eslint-disable-next-line no-console
   console.log(`✅ ${name}`);
 }
 
@@ -1534,11 +1453,8 @@ function __runTests() {
   __assert("assigneeLabel resolve", assigneeLabel("u1", [{ userId: "u1", name: "A" }]) === "A");
   __assert("statusLabel existing", statusLabel("未着手") === "未着手");
   __assert("dueLabel TODAY", dueLabel("DUE_TODAY") === "当日");
-
   __assert("formatMd 2025-12-09", formatMd("2025-12-09") === "12/9");
   __assert("categoryLabel TRANSPORT", categoryLabel("TRANSPORT") === "運搬");
-
-  // string compare check
   __assert("date string compare", "2025-01-02" > "2025-01-01");
 }
 
