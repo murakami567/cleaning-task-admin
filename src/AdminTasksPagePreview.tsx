@@ -550,6 +550,7 @@ export default function AdminTasksPagePreview() {
   const [lastUpdated, setLastUpdated] = useState(new Date());
 
   const [viewMode, setViewMode] = useState<ViewMode>("TODAY");
+  const [attendeesByDate, setAttendeesByDate] = useState<Record<string, Attendee[]>>({});
 
 // 清掃
 const [cleaningTasks, setCleaningTasks] = useState<CleaningTask[]>(() => []);
