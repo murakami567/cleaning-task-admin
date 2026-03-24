@@ -30,7 +30,7 @@ type ShiftDay = {
   shift_entries: ShiftEntry[];
 };
 
-type ShiftMark = "出勤" | "休み" | "定休" | "半休" | "応援" | "未定";
+type ShiftMark = "出勤" | "定休" | "休み" | "欠勤" | "遅刻";
 
 const WEEKDAYS = ["日", "月", "火", "水", "木", "金", "土"];
 
@@ -103,18 +103,11 @@ function SmallToggle({
 }
 
 function markClass(value: ShiftMark) {
+  if (value === "出勤") return "bg-emerald-50 text-emerald-700 border-emerald-200";
   if (value === "定休") return "bg-blue-50 text-blue-600 border-blue-200";
   if (value === "休み") return "bg-slate-100 text-slate-500 border-slate-200";
-  if (value === "半休") return "bg-amber-50 text-amber-700 border-amber-200";
-  if (value === "応援") return "bg-indigo-50 text-indigo-700 border-indigo-200";
-  if (value === "出勤") return "bg-emerald-50 text-emerald-700 border-emerald-200";
-  return "bg-white text-slate-400 border-slate-200";
-}
-
-function cycleShift(current: ShiftMark): ShiftMark {
-  const order: ShiftMark[] = ["未定", "出勤", "休み", "定休", "半休", "応援"];
-  const idx = order.indexOf(current);
-  return order[(idx + 1) % order.length];
+  if (value === "欠勤") return "bg-rose-50 text-rose-700 border-rose-200";
+  return "bg-amber-50 text-amber-700 border-amber-200"; // 遅刻
 }
 
 export default function ShiftBoardPage() {
@@ -198,8 +191,14 @@ export default function ShiftBoardPage() {
           shift_day_id: day.id,
           staff_id: staffId,
           status: nextStatus,
-          start_time: nextStatus === "休み" || nextStatus === "定休" ? null : "09:00",
-          end_time: nextStatus === "休み" || nextStatus === "定休" ? null : "18:00",
+          start_time:
+  nextStatus === "休み" || nextStatus === "定休" || nextStatus === "欠勤"
+    ? null
+    : "09:00",
+end_time:
+  nextStatus === "休み" || nextStatus === "定休" || nextStatus === "欠勤"
+    ? null
+    : "18:00",
           assigned_area: "",
           note: "",
         }),
@@ -252,7 +251,7 @@ export default function ShiftBoardPage() {
               <div>
                 <div className="text-[18px] font-extrabold">シフト</div>
                 <div className="mt-1 text-sm text-slate-500">
-                  クリックで 出勤 / 休み / 定休 / 半休 / 応援 / 未定 を切替保存
+                  プルダウンで 出勤 / 定休 / 休み / 欠勤 / 遅刻 を選択して保存
                 </div>
               </div>
 
@@ -319,27 +318,29 @@ export default function ShiftBoardPage() {
                         <td className="px-4 py-3">{getCleanCount(date)}</td>
 
                         {staffs.map((staff) => {
-                          const current = getShiftMark(date, staff.id);
-                          const next = cycleShift(current);
-                          const key = `${date}-${staff.id}`;
-                          const saving = savingKey === key;
+  const current = getShiftMark(date, staff.id);
+  const key = `${date}-${staff.id}`;
+  const saving = savingKey === key;
 
-                          return (
-                            <td key={staff.id} className="px-4 py-3">
-                              <button
-                                type="button"
-                                disabled={saving}
-                                onClick={() => void saveCell(date, staff.id, next)}
-                                className={`inline-flex rounded-xl border px-3 py-1 text-sm font-medium transition ${markClass(
-                                  current
-                                )} ${saving ? "opacity-50" : "hover:opacity-80"}`}
-                                title={`クリックで ${next} に変更`}
-                              >
-                                {saving ? "保存中..." : current}
-                              </button>
-                            </td>
-                          );
-                        })}
+  return (
+    <td key={staff.id} className="px-4 py-3">
+      <select
+        value={current}
+        disabled={saving}
+        onChange={(e) => void saveCell(date, staff.id, e.target.value as ShiftMark)}
+        className={`h-10 min-w-[96px] rounded-xl border px-3 text-sm font-medium outline-none bg-white ${markClass(
+          current
+        )} ${saving ? "opacity-50" : ""}`}
+      >
+        <option value="出勤">出勤</option>
+        <option value="定休">定休</option>
+        <option value="休み">休み</option>
+        <option value="欠勤">欠勤</option>
+        <option value="遅刻">遅刻</option>
+      </select>
+    </td>
+  );
+})}
                       </tr>
                     ))}
                   </tbody>
