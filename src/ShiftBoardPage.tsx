@@ -38,6 +38,10 @@ function pad2(n: number) {
   return String(n).padStart(2, "0");
 }
 
+function formatIsoDate(date: Date) {
+  return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`;
+}
+
 function formatDateLabel(iso: string) {
   const dt = new Date(iso);
   return `${dt.getMonth() + 1}/${dt.getDate()}`;
@@ -48,12 +52,34 @@ function weekdayLabel(iso: string) {
   return WEEKDAYS[dt.getDay()];
 }
 
+function addDays(iso: string, diff: number) {
+  const dt = new Date(iso);
+  dt.setDate(dt.getDate() + diff);
+  return formatIsoDate(dt);
+}
+
+function startOfWeek(iso: string) {
+  const dt = new Date(iso);
+  const day = dt.getDay();
+  dt.setDate(dt.getDate() - day);
+  return formatIsoDate(dt);
+}
+
+function endOfWeek(iso: string) {
+  return addDays(startOfWeek(iso), 6);
+}
+
 function buildMonthDates(year: number, month: number) {
   const lastDay = new Date(year, month, 0).getDate();
   return Array.from({ length: lastDay }, (_, i) => {
     const day = i + 1;
     return `${year}-${pad2(month)}-${pad2(day)}`;
   });
+}
+
+function buildWeekDates(baseIso: string) {
+  const start = startOfWeek(baseIso);
+  return Array.from({ length: 7 }, (_, i) => addDays(start, i));
 }
 
 function TabButton({
@@ -107,25 +133,36 @@ function markClass(value: ShiftMark) {
   if (value === "定休") return "bg-blue-50 text-blue-600 border-blue-200";
   if (value === "休み") return "bg-slate-100 text-slate-500 border-slate-200";
   if (value === "欠勤") return "bg-rose-50 text-rose-700 border-rose-200";
-  return "bg-amber-50 text-amber-700 border-amber-200"; // 遅刻
+  return "bg-amber-50 text-amber-700 border-amber-200";
 }
+
+const SHIFT_OPTIONS: { value: ShiftMark; label: string }[] = [
+  { value: "出勤", label: "出勤" },
+  { value: "定休", label: "定休" },
+  { value: "休み", label: "休み" },
+  { value: "欠勤", label: "欠勤" },
+  { value: "遅刻", label: "遅刻" },
+];
 
 export default function ShiftBoardPage() {
   const today = new Date();
+  const todayIso = formatIsoDate(today);
+
   const [mainTab, setMainTab] = useState<"shift" | "account" | "mate">("shift");
   const [viewMode, setViewMode] = useState<"month" | "week">("month");
   const [year, setYear] = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth() + 1);
+  const [weekBaseDate, setWeekBaseDate] = useState(todayIso);
 
   const [staffs, setStaffs] = useState<Staff[]>([]);
   const [days, setDays] = useState<ShiftDay[]>([]);
   const [loading, setLoading] = useState(false);
   const [savingKey, setSavingKey] = useState("");
 
-  const loadBoard = async () => {
+  const loadBoard = async (targetYear = year, targetMonth = month) => {
     try {
       setLoading(true);
-      const res = await fetch(`${API_BASE}/shift-board?year=${year}&month=${month}`);
+      const res = await fetch(`${API_BASE}/shift-board?year=${targetYear}&month=${targetMonth}`);
       if (!res.ok) throw new Error(`shift-board failed: ${res.status}`);
       const data = await res.json();
       setStaffs(data.staffs || []);
@@ -139,17 +176,15 @@ export default function ShiftBoardPage() {
   };
 
   useEffect(() => {
-    void loadBoard();
+    void loadBoard(year, month);
+  }, [year, month]);
+
+  useEffect(() => {
+    setWeekBaseDate(`${year}-${pad2(month)}-01`);
   }, [year, month]);
 
   const allDates = useMemo(() => buildMonthDates(year, month), [year, month]);
-
-  const weekDates = useMemo(() => {
-    const start = allDates[0] || "";
-    const idx = allDates.indexOf(start);
-    return allDates.slice(idx, idx + 7);
-  }, [allDates]);
-
+  const weekDates = useMemo(() => buildWeekDates(weekBaseDate), [weekBaseDate]);
   const visibleDates = viewMode === "month" ? allDates : weekDates;
 
   const dayMap = useMemo(() => {
@@ -161,7 +196,8 @@ export default function ShiftBoardPage() {
   const getShiftMark = (date: string, staffId: string): ShiftMark => {
     const day = dayMap.get(date);
     const entry = day?.shift_entries?.find((x) => x.staff_id === staffId);
-    return (entry?.status as ShiftMark) || "未定";
+    const status = entry?.status as ShiftMark | undefined;
+    return status || "休み";
   };
 
   const getCleanCount = (date: string) => {
@@ -170,19 +206,28 @@ export default function ShiftBoardPage() {
     return 30 + ((day * 4) % 23);
   };
 
+  const getOrCreateDay = async (date: string) => {
+    const existing = dayMap.get(date);
+    if (existing) return existing;
+
+    const dayRes = await fetch(`${API_BASE}/shifts/get_or_create_day`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ shift_date: date, note: "" }),
+    });
+
+    if (!dayRes.ok) throw new Error(`get_or_create_day failed: ${dayRes.status}`);
+    return await dayRes.json();
+  };
+
   const saveCell = async (date: string, staffId: string, nextStatus: ShiftMark) => {
     try {
       const key = `${date}-${staffId}`;
       setSavingKey(key);
 
-      const dayRes = await fetch(`${API_BASE}/shifts/get_or_create_day`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ shift_date: date, note: "" }),
-      });
+      const day = await getOrCreateDay(date);
 
-      if (!dayRes.ok) throw new Error(`get_or_create_day failed: ${dayRes.status}`);
-      const day = await dayRes.json();
+      const isOff = nextStatus === "休み" || nextStatus === "定休" || nextStatus === "欠勤";
 
       const saveRes = await fetch(`${API_BASE}/shifts/upsert_entry`, {
         method: "POST",
@@ -191,14 +236,8 @@ export default function ShiftBoardPage() {
           shift_day_id: day.id,
           staff_id: staffId,
           status: nextStatus,
-          start_time:
-  nextStatus === "休み" || nextStatus === "定休" || nextStatus === "欠勤"
-    ? null
-    : "09:00",
-end_time:
-  nextStatus === "休み" || nextStatus === "定休" || nextStatus === "欠勤"
-    ? null
-    : "18:00",
+          start_time: isOff ? null : "09:00",
+          end_time: isOff ? null : "18:00",
           assigned_area: "",
           note: "",
         }),
@@ -206,7 +245,7 @@ end_time:
 
       if (!saveRes.ok) throw new Error(`upsert_entry failed: ${saveRes.status}`);
 
-      await loadBoard();
+      await loadBoard(year, month);
     } catch (e) {
       console.error(e);
       alert("シフト保存に失敗しました。");
@@ -255,7 +294,7 @@ end_time:
                 </div>
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <select
                   className="rounded-xl border border-slate-200 px-3 py-2 text-sm bg-white"
                   value={year}
@@ -280,6 +319,25 @@ end_time:
                   ))}
                 </select>
 
+                {viewMode === "week" && (
+                  <>
+                    <button
+                      type="button"
+                      className="rounded-xl border border-slate-200 px-3 py-2 text-sm bg-white hover:bg-slate-50"
+                      onClick={() => setWeekBaseDate((prev) => addDays(prev, -7))}
+                    >
+                      前週
+                    </button>
+                    <button
+                      type="button"
+                      className="rounded-xl border border-slate-200 px-3 py-2 text-sm bg-white hover:bg-slate-50"
+                      onClick={() => setWeekBaseDate((prev) => addDays(prev, 7))}
+                    >
+                      次週
+                    </button>
+                  </>
+                )}
+
                 <div className="rounded-2xl border border-slate-200 p-1 flex gap-1">
                   <SmallToggle active={viewMode === "month"} onClick={() => setViewMode("month")}>
                     月
@@ -292,9 +350,15 @@ end_time:
             </div>
 
             <div className="p-4">
-              <div className="mb-3 text-[16px] font-extrabold">
+              <div className="mb-2 text-[16px] font-extrabold">
                 {year}年{month}月
               </div>
+
+              {viewMode === "week" && weekDates.length > 0 && (
+                <div className="mb-3 text-sm text-slate-500">
+                  {startOfWeek(weekBaseDate)} ～ {endOfWeek(weekBaseDate)}
+                </div>
+              )}
 
               <div className="overflow-auto rounded-[18px] border border-slate-200">
                 <table className="min-w-[980px] w-full text-sm">
@@ -318,29 +382,29 @@ end_time:
                         <td className="px-4 py-3">{getCleanCount(date)}</td>
 
                         {staffs.map((staff) => {
-  const current = getShiftMark(date, staff.id);
-  const key = `${date}-${staff.id}`;
-  const saving = savingKey === key;
+                          const current = getShiftMark(date, staff.id);
+                          const key = `${date}-${staff.id}`;
+                          const saving = savingKey === key;
 
-  return (
-    <td key={staff.id} className="px-4 py-3">
-      <select
-        value={current}
-        disabled={saving}
-        onChange={(e) => void saveCell(date, staff.id, e.target.value as ShiftMark)}
-        className={`h-10 min-w-[96px] rounded-xl border px-3 text-sm font-medium outline-none bg-white ${markClass(
-          current
-        )} ${saving ? "opacity-50" : ""}`}
-      >
-        <option value="出勤">出勤</option>
-        <option value="定休">定休</option>
-        <option value="休み">休み</option>
-        <option value="欠勤">欠勤</option>
-        <option value="遅刻">遅刻</option>
-      </select>
-    </td>
-  );
-})}
+                          return (
+                            <td key={staff.id} className="px-4 py-3">
+                              <select
+                                value={current}
+                                disabled={saving}
+                                onChange={(e) => void saveCell(date, staff.id, e.target.value as ShiftMark)}
+                                className={`h-10 min-w-[96px] rounded-xl border px-3 text-sm font-medium outline-none bg-white ${markClass(
+                                  current
+                                )} ${saving ? "opacity-50" : ""}`}
+                              >
+                                {SHIFT_OPTIONS.map((opt) => (
+                                  <option key={opt.value} value={opt.value}>
+                                    {saving && opt.value === current ? "保存中..." : opt.label}
+                                  </option>
+                                ))}
+                              </select>
+                            </td>
+                          );
+                        })}
                       </tr>
                     ))}
                   </tbody>
