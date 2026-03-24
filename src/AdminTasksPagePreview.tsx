@@ -313,6 +313,40 @@ function Td({
 
 type Attendee = { userId: string; name: string };
 
+type ShiftStaff = {
+  id: string;
+  staff_name: string;
+};
+
+type ShiftEntryApi = {
+  id: string;
+  staff_id: string;
+  status: string;
+  staff_members?: ShiftStaff;
+};
+
+type ShiftDayApi = {
+  id: string;
+  shift_date: string;
+  shift_entries: ShiftEntryApi[];
+};
+
+async function fetchAvailableStaffByDate(shiftDate: string): Promise<Attendee[]> {
+  const res = await fetch(`${API_BASE}/shifts?shift_date=${shiftDate}`);
+  if (!res.ok) throw new Error(`shift fetch failed: ${res.status}`);
+
+  const data: ShiftDayApi[] = await res.json();
+  const day = data?.[0];
+  if (!day) return [];
+
+  return (day.shift_entries || [])
+    .filter((e) => e.status === "出勤" || e.status === "遅刻")
+    .map((e) => ({
+      userId: e.staff_id,
+      name: e.staff_members?.staff_name || e.staff_id,
+    }));
+}
+
 type CleaningTask = {
   id: string;
   status: string;
@@ -446,20 +480,6 @@ function assigneeLabel(userId: string, attendees: Attendee[]) {
  * ------------------------ */
 
 const baseDate = todayIso();
-
-const MOCK_ATTENDEES_BY_DATE: Record<string, Attendee[]> = {
-  [baseDate]: [
-    { userId: "u_tanaka", name: "田中" },
-    { userId: "u_ueno", name: "上野" },
-    { userId: "u_matsumoto", name: "松元" },
-    { userId: "u_tsune", name: "恒松" },
-  ],
-  [addDaysIso(baseDate, 1)]: [
-    { userId: "u_tanaka", name: "田中" },
-    { userId: "u_matsumoto", name: "松元" },
-  ],
-  [addDaysIso(baseDate, 2)]: [],
-};
 
 const MOCK_CLEANING_TASKS: CleaningTask[] = [
   {
