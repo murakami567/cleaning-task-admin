@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import AccountManagementPage from "./AccountManagementPage";
 
 const API_BASE =
   (import.meta as any).env?.VITE_API_BASE_URL || "https://cleaning-task-api.onrender.com";
@@ -415,11 +416,8 @@ export default function ShiftBoardPage() {
         )}
 
         {mainTab === "account" && (
-          <div className="rounded-[22px] border border-slate-200 bg-white shadow-sm p-6">
-            <div className="text-[18px] font-extrabold">アカウント管理</div>
-            <div className="mt-2 text-sm text-slate-500">次段階で追加します。</div>
-          </div>
-        )}
+  <AccountManagementPage />
+)}
 
         {mainTab === "mate" && (
           <div className="rounded-[22px] border border-slate-200 bg-white shadow-sm p-6">
