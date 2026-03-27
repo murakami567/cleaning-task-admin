@@ -315,7 +315,8 @@ type CleaningTask = {
   status: string;
   property: string;
   room: string;
-  assigneeId: string;
+  assigneeIds: string[];
+  assigneeNames?: string[];
   date: string;
   due: string;
   baggageTime: string;
@@ -392,12 +393,27 @@ function computeDueLabel(taskDate: string) {
 }
 
 function mapApiTaskToUi(task: ApiCleaningTask): CleaningTask {
+  const ids =
+    task.assigned_staff_ids && task.assigned_staff_ids.length > 0
+      ? task.assigned_staff_ids
+      : task.assigned_staff_id
+      ? [task.assigned_staff_id]
+      : [];
+
+  const names =
+    task.assigned_staff_names && task.assigned_staff_names.length > 0
+      ? task.assigned_staff_names
+      : task.assigned_staff_name
+      ? [task.assigned_staff_name]
+      : [];
+
   return {
     id: task.id,
     status: task.status || "未着手",
     property: task.property_name,
     room: task.room_name,
-    assigneeId: task.assigned_staff_id ?? "UNASSIGNED",
+    assigneeIds: ids,
+    assigneeNames: names,
     date: task.task_date,
     due: computeDueLabel(task.task_date),
     baggageTime: "",
@@ -456,10 +472,54 @@ function buildAssigneeOptions(attendees: Attendee[]) {
   return base.concat(attendees.map((u) => ({ value: u.userId, label: u.name })));
 }
 
-function assigneeLabel(userId: string, attendees: Attendee[]) {
-  if (!userId || userId === "UNASSIGNED") return "未割当";
-  const found = attendees?.find((u) => u.userId === userId);
-  return found?.name ?? userId;
+function assigneeLabels(userIds: string[], attendees: Attendee[]) {
+  if (!userIds || userIds.length === 0) return "未割当";
+
+  return userIds
+    .map((id) => {
+      const found = attendees?.find((u) => u.userId === id);
+      return found?.name ?? id;
+    })
+    .join(" / ");
+}
+
+function MultiAssignSelect({
+  value,
+  attendees,
+  onChange,
+}: {
+  value: string[];
+  attendees: Attendee[];
+  onChange: (ids: string[]) => void;
+}) {
+  const selected = value ?? [];
+
+  const toggle = (id: string) => {
+    if (selected.includes(id)) {
+      onChange(selected.filter((x) => x !== id));
+    } else {
+      onChange([...selected, id]);
+    }
+  };
+
+  return (
+    <div className="max-h-36 overflow-auto rounded-lg border bg-white p-2 space-y-2">
+      {attendees.length === 0 ? (
+        <div className="text-xs text-black/50">出勤者なし</div>
+      ) : (
+        attendees.map((u) => (
+          <label key={u.userId} className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={selected.includes(u.userId)}
+              onChange={() => toggle(u.userId)}
+            />
+            <span>{u.name}</span>
+          </label>
+        ))
+      )}
+    </div>
+  );
 }
 
 /* =========================
