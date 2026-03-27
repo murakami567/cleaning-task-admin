@@ -792,21 +792,23 @@ const visibleNonCleaningTasks = useMemo(() => {
   };
 
   const updateCleaningTask = async (id: string, patch: Partial<CleaningTask>) => {
-    setCleaningTasks((prev) => prev.map((t) => (t.id === id ? { ...t, ...patch } : t)));
-    setLastUpdated(new Date());
+  const currentTask = cleaningTasks.find((t) => t.id === id);
 
-    const persistableKeys = ["status", "note", "assigneeId"];
-    const shouldPersist = Object.keys(patch).some((k) => persistableKeys.includes(k));
-    if (!shouldPersist) return;
+  setCleaningTasks((prev) => prev.map((t) => (t.id === id ? { ...t, ...patch } : t)));
+  setLastUpdated(new Date());
 
-    try {
-      await persistCleaningTaskPatch(id, patch);
-    } catch (error) {
-      console.error(error);
-      setCleaningError("更新に失敗しました。再読み込みしてください。");
-      void refresh();
-    }
-  };
+  const persistableKeys = ["status", "note", "assigneeIds"];
+  const shouldPersist = Object.keys(patch).some((k) => persistableKeys.includes(k));
+  if (!shouldPersist) return;
+
+  try {
+    await persistCleaningTaskPatch(id, patch, attendeesByDate, currentTask?.date);
+  } catch (error) {
+    console.error(error);
+    setCleaningError("更新に失敗しました。再読み込みしてください。");
+    void refresh();
+  }
+};
 
   const removeCleaningTask = (id: string) => {
     setCleaningTasks((prev) => {
@@ -983,14 +985,13 @@ const visibleNonCleaningTasks = useMemo(() => {
 
                           <Td>
                             {tableEditMode ? (
-                              <Select
-                                value={t.assigneeId}
-                                onChange={(v) => updateCleaningTask(t.id, { assigneeId: v })}
-                                options={assigneeOptions}
-                                disabled={attendees.length === 0}
-                              />
+                              <MultiAssignSelect
+  value={t.assigneeIds ?? []}
+  attendees={attendees}
+  onChange={(ids) => updateCleaningTask(t.id, { assigneeIds: ids })}
+/>
                             ) : (
-                              assigneeLabel(t.assigneeId, attendees)
+                              assigneeLabels(t.assigneeIds ?? [], attendees)
                             )}
                           </Td>
 
@@ -1244,12 +1245,13 @@ const visibleNonCleaningTasks = useMemo(() => {
 
             <div>
               <div className="mb-1 text-xs text-black/60">担当（その日付の出勤者のみ）</div>
-              <Select
-                value={selectedCleaningTask.assigneeId}
-                onChange={(v) => updateCleaningTask(selectedCleaningTask.id, { assigneeId: v })}
-                options={selectedAssigneeOptions}
-                disabled={selectedCleaningAttendees.length === 0}
-              />
+              <MultiAssignSelect
+  value={selectedCleaningTask.assigneeIds ?? []}
+  attendees={selectedCleaningAttendees}
+  onChange={(ids) =>
+    updateCleaningTask(selectedCleaningTask.id, { assigneeIds: ids })
+  }
+/>
               {selectedCleaningAttendees.length === 0 ? <div className="mt-1 text-xs text-black/50">出勤者なし</div> : null}
             </div>
 
