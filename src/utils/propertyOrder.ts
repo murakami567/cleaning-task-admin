@@ -22,8 +22,8 @@ export const PROPERTY_ORDER = [
   "県庁前",
   "西中洲",
   "冷泉",
-  "駅前",
-  "比恵",
+  "駅前モダン",
+  "比恵モダン",
   "浄水",
 ] as const;
 
