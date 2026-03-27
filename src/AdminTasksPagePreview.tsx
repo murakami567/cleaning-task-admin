@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { sortTasksByPropertyOrder, sortByPropertyOrder } from "./utils/propertyOrder";
+import { sortTasksByPropertyOrder } from "./utils/propertyOrder";
 
 /* =========================
  * Options
@@ -655,10 +655,14 @@ export default function AdminTasksPagePreview() {
   });
 }, [cleaningTasks, viewMode]);
 
-  const visibleNonCleaningTasks = useMemo(() => {
-    if (viewMode === "TODAY") return nonCleaningTasks.filter((t) => t.date === baseDate);
-    return nonCleaningTasks.filter((t) => isFutureDate(t.date));
-  }, [nonCleaningTasks, viewMode]);
+const visibleCleaningTasks = useMemo(() => {
+  const tasks =
+    viewMode === "TODAY"
+      ? cleaningTasks.filter((t) => t.date === baseDate)
+      : cleaningTasks.filter((t) => isFutureDate(t.date));
+
+  return sortTasksByPropertyOrder(tasks, viewMode);
+}, [cleaningTasks, viewMode]);
 
   useEffect(() => {
     if (visibleCleaningTasks.some((t) => t.id === selectedCleaningId)) return;
