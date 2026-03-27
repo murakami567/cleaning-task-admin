@@ -1046,7 +1046,7 @@ const visibleNonCleaningTasks = useMemo(() => {
                                 disabled={attendees.length === 0}
                               />
                             ) : (
-                              assigneeLabel(t.checkerId, attendees)
+                              assigneeLabels(t.assigneeIds ?? [], attendees)
                             )}
                           </Td>
 
@@ -1133,7 +1133,7 @@ const visibleNonCleaningTasks = useMemo(() => {
                             <div className="max-w-[320px] truncate">{t.title}</div>
                           </td>
                           <td className="border-b px-3 py-2">{t.deadline || "-"}</td>
-                          <td className="border-b px-3 py-2">{assigneeLabel(t.assigneeId, attendees)}</td>
+                          <td className="border-b px-3 py-2">{assigneeLabels(t.assigneeIds ?? [], attendees)}</td>
                           <td className="border-b px-3 py-2">
                             <Button variant="danger" size="sm" onClick={() => removeNonCleaning(t.id)}>
                               削除
