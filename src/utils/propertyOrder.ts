@@ -2,13 +2,16 @@ export const PROPERTY_ORDER = [
   "FFFホテル",
   "やなぎ橋",
   "住吉",
-  "美野島",
+  "アクシオン美野島",
   "ブランシェ",
   "ウィングス",
+  "美野島",
+  "ブランシェ",
   "玉井",
   "ウーブル博多",
   "いそのビル",
   "ジェン",
+  "ルッシェ",
   "東光",
   "グランデエス",
   "エスコート",
@@ -21,6 +24,7 @@ export const PROPERTY_ORDER = [
   "冷泉",
   "駅前",
   "比恵",
+  "浄水",
 ] as const;
 
 export function sortByPropertyOrder(property: string) {
