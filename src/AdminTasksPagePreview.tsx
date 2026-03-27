@@ -433,19 +433,39 @@ async function fetchCleaningTasks(mode: ViewMode): Promise<CleaningTask[]> {
   return data.map(mapApiTaskToUi);
 }
 
-async function persistCleaningTaskPatch(taskId: string, patch: Partial<CleaningTask>) {
+async function persistCleaningTaskPatch(
+  taskId: string,
+  patch: Partial<CleaningTask>,
+  attendeesByDate: Record<string, Attendee[]>,
+  taskDate?: string
+) {
   const body: Record<string, any> = { task_id: taskId };
+
   if (patch.status !== undefined) body.status = patch.status;
   if (patch.note !== undefined) body.note = patch.note;
-  if (patch.assigneeId !== undefined) {
-    body.assigned_staff_id = patch.assigneeId === "UNASSIGNED" ? null : patch.assigneeId;
-    body.assigned_staff_name = patch.assigneeId === "UNASSIGNED" ? null : patch.assigneeId;
+
+  if (patch.assigneeIds !== undefined) {
+    const attendees = taskDate ? attendeesByDate[taskDate] ?? [] : [];
+
+    const names = patch.assigneeIds.map((id) => {
+      const found = attendees.find((u) => u.userId === id);
+      return found?.name ?? id;
+    });
+
+    body.assigned_staff_ids = patch.assigneeIds;
+    body.assigned_staff_names = names;
+
+    // 互換維持
+    body.assigned_staff_id = patch.assigneeIds[0] ?? null;
+    body.assigned_staff_name = names[0] ?? null;
   }
+
   const res = await fetch(`${API_BASE}/tasks/update`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
+
   if (!res.ok) throw new Error(`update failed: ${res.status}`);
   return res.json();
 }
