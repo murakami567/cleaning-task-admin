@@ -633,9 +633,13 @@ export default function AdminTasksPagePreview() {
   }, [autoRefresh, viewMode]);
 
   const visibleCleaningTasks = useMemo(() => {
-    if (viewMode === "TODAY") return cleaningTasks.filter((t) => t.date === baseDate);
-    return cleaningTasks.filter((t) => isFutureDate(t.date));
-  }, [cleaningTasks, viewMode]);
+  const tasks =
+    viewMode === "TODAY"
+      ? cleaningTasks.filter((t) => t.date === baseDate)
+      : cleaningTasks.filter((t) => isFutureDate(t.date));
+
+  return sortTasksByPropertyOrder(tasks);
+}, [cleaningTasks, viewMode]);
 
   const visibleNonCleaningTasks = useMemo(() => {
     if (viewMode === "TODAY") return nonCleaningTasks.filter((t) => t.date === baseDate);
