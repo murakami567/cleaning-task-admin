@@ -641,6 +641,11 @@ export default function AdminTasksPagePreview() {
   return sortTasksByPropertyOrder(tasks, viewMode);
 }, [cleaningTasks, viewMode]);
 
+const visibleNonCleaningTasks = useMemo(() => {
+  if (viewMode === "TODAY") return nonCleaningTasks.filter((t) => t.date === baseDate);
+  return nonCleaningTasks.filter((t) => isFutureDate(t.date));
+}, [nonCleaningTasks, viewMode]);
+
   const addCleaningTask = () => {
     setDraftCleaningTask({
       property: "",
