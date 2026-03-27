@@ -638,7 +638,21 @@ export default function AdminTasksPagePreview() {
       ? cleaningTasks.filter((t) => t.date === baseDate)
       : cleaningTasks.filter((t) => isFutureDate(t.date));
 
-  return sortTasksByPropertyOrder(tasks);
+  return [...tasks].sort((a, b) => {
+    // ① 翌日以降は日付順を優先
+    if (viewMode === "FUTURE" && a.date !== b.date) {
+      return a.date.localeCompare(b.date);
+    }
+
+    // ② 同じ日付内は物件順
+    const propertyDiff = sortByPropertyOrder(a.property, b.property);
+    if (propertyDiff !== 0) return propertyDiff;
+
+    // ③ 同じ物件内は部屋順
+    return String(a.room ?? "").localeCompare(String(b.room ?? ""), "ja", {
+      numeric: true,
+    });
+  });
 }, [cleaningTasks, viewMode]);
 
   const visibleNonCleaningTasks = useMemo(() => {
