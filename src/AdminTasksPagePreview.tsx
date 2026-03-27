@@ -641,13 +641,6 @@ export default function AdminTasksPagePreview() {
   return sortTasksByPropertyOrder(tasks, viewMode);
 }, [cleaningTasks, viewMode]);
 
-
-  useEffect(() => {
-    if (visibleCleaningTasks.some((t) => t.id === selectedCleaningId)) return;
-    setSelectedCleaningId(visibleCleaningTasks[0]?.id ?? "");
-    setCleaningDrawerOpen(false);
-  }, [viewMode, visibleCleaningTasks, selectedCleaningId]);
-
   const addCleaningTask = () => {
     setDraftCleaningTask({
       property: "",
