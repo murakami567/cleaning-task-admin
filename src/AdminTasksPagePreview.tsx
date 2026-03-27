@@ -771,12 +771,12 @@ const visibleNonCleaningTasks = useMemo(() => {
     <div className="min-h-screen bg-neutral-50 p-6">
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
         <div className="space-y-1">
-          <div className="text-2xl font-semibold">タスク管理（管理者）</div>
+          <div className="text-2xl font-semibold">タスク管理</div>
           <div className="mt-1 inline-flex items-center gap-2 text-xs text-black/60">
             <span className="rounded-full border px-2 py-0.5 bg-yellow-50 border-yellow-200 text-yellow-800">
               UI {UI_VERSION}
             </span>
-            <span>※これが見えれば新コードが読み込まれています</span>
+            <span>ver.1</span>
           </div>
           <div className="text-xs text-black/60">
             表示：{viewMode === "TODAY" ? "当日" : "翌日以降"} / 最終更新 {lastUpdated.toLocaleTimeString()}
