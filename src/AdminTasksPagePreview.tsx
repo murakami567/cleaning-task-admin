@@ -340,9 +340,12 @@ type ApiCleaningTask = {
   load_score: number;
   status: string;
   note: string | null;
+
   assigned_staff_id: string | null;
-  assigned_staff_code: string | null;
   assigned_staff_name: string | null;
+
+  assigned_staff_ids?: string[] | null;
+  assigned_staff_names?: string[] | null;
 };
 
 type PropertyMaster = {
