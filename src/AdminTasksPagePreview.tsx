@@ -1041,17 +1041,17 @@ const visibleNonCleaningTasks = useMemo(() => {
                           </Td>
 
                           <Td>
-                            {tableEditMode ? (
-                              <Select
-                                value={t.checkerId}
-                                onChange={(v) => updateCleaningTask(t.id, { checkerId: v })}
-                                options={checkerOptions}
-                                disabled={attendees.length === 0}
-                              />
-                            ) : (
-                              assigneeLabels(t.assigneeIds ?? [], attendees)
-                            )}
-                          </Td>
+  {tableEditMode ? (
+    <Select
+      value={t.checkerId}
+      onChange={(v) => updateCleaningTask(t.id, { checkerId: v })}
+      options={checkerOptions}
+      disabled={attendees.length === 0}
+    />
+  ) : (
+    assigneeLabel(t.checkerId, attendees)
+  )}
+</Td>
 
                           <Td>
                             {tableEditMode ? (
