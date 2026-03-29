@@ -455,7 +455,7 @@ async function persistCleaningTaskPatch(
     body.assigned_staff_ids = patch.assigneeIds;
     body.assigned_staff_names = names;
 
-    // 互換維持
+    // 旧方式互換
     body.assigned_staff_id = patch.assigneeIds[0] ?? null;
     body.assigned_staff_name = names[0] ?? null;
   }
