@@ -469,9 +469,13 @@ async function persistCleaningTaskPatch(
     body: JSON.stringify(body),
   });
 
-  if (!res.ok) throw new Error(`update failed: ${res.status}`);
-  return res.json();
+  if (!res.ok) {
+  const text = await res.text();
+  throw new Error(`update failed: ${res.status} / ${text}`);
 }
+const json = await res.json();
+console.log("tasks/update response", json);
+return json;
 
 async function fetchAvailableStaffByDate(shiftDate: string): Promise<Attendee[]> {
   const res = await fetch(`${API_BASE}/shifts?shift_date=${shiftDate}`);
