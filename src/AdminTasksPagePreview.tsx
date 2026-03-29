@@ -1228,15 +1228,13 @@ const visibleNonCleaningTasks = useMemo(() => {
             </div>
 
             <div>
-              <div className="mb-1 text-xs text-black/60">期限</div>
-              <MultiAssignSelect
-  value={selectedCleaningTask.assigneeIds ?? []}
-  attendees={selectedCleaningAttendees}
-  onChange={(ids) =>
-    updateCleaningTask(selectedCleaningTask.id, { assigneeIds: ids })
-  }
-/>
-            </div>
+  <div className="mb-1 text-xs text-black/60">期限</div>
+  <Select
+    value={selectedCleaningTask.due}
+    onChange={(v) => updateCleaningTask(selectedCleaningTask.id, { due: v })}
+    options={DUE_OPTIONS}
+  />
+</div>
 
             <div>
               <div className="mb-1 text-xs text-black/60">荷物預かり（時間）</div>
