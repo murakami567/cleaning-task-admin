@@ -814,8 +814,7 @@ const visibleNonCleaningTasks = useMemo(() => {
     await persistCleaningTaskPatch(id, patch, attendeesByDate, currentTask?.date);
   } catch (error) {
     console.error(error);
-    setCleaningError("更新に失敗しました。再読み込みしてください。");
-    void refresh();
+    setCleaningError("更新に失敗しました。保存内容を確認してください。");
   }
 };
 
