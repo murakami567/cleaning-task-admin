@@ -506,6 +506,12 @@ function assigneeLabels(userIds: string[], attendees: Attendee[]) {
     .join(" / ");
 }
 
+function assigneeLabel(userId: string, attendees: Attendee[]) {
+  if (!userId || userId === "UNASSIGNED") return "未割当";
+  const found = attendees?.find((u) => u.userId === userId);
+  return found?.name ?? userId;
+}
+
 function MultiAssignSelect({
   value,
   attendees,
