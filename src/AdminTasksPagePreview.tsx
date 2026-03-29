@@ -396,14 +396,14 @@ function computeDueLabel(taskDate: string) {
 }
 
 function mapApiTaskToUi(task: ApiCleaningTask): CleaningTask {
-  const ids =
+  const assigneeIds =
     task.assigned_staff_ids && task.assigned_staff_ids.length > 0
       ? task.assigned_staff_ids
       : task.assigned_staff_id
       ? [task.assigned_staff_id]
       : [];
 
-  const names =
+  const assigneeNames =
     task.assigned_staff_names && task.assigned_staff_names.length > 0
       ? task.assigned_staff_names
       : task.assigned_staff_name
@@ -415,8 +415,8 @@ function mapApiTaskToUi(task: ApiCleaningTask): CleaningTask {
     status: task.status || "未着手",
     property: task.property_name,
     room: task.room_name,
-    assigneeIds: ids,
-    assigneeNames: names,
+    assigneeIds,
+    assigneeNames,
     date: task.task_date,
     due: computeDueLabel(task.task_date),
     baggageTime: "",
@@ -458,7 +458,7 @@ async function persistCleaningTaskPatch(
     body.assigned_staff_ids = patch.assigneeIds;
     body.assigned_staff_names = names;
 
-    // 旧方式互換
+    // 旧互換
     body.assigned_staff_id = patch.assigneeIds[0] ?? null;
     body.assigned_staff_name = names[0] ?? null;
   }
