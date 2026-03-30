@@ -505,22 +505,21 @@ async function fetchNonCleaningTasks(): Promise<NonCleaningTask[]> {
   const data = await res.json();
 
   return (data ?? []).map((t: any) => ({
-  id: t.id,
-  status: t.status ?? "未着手",
-  category: t.category ?? "OTHER",
-  title: t.title ?? "",
-  date: t.task_date,
-  deadline: t.deadline ?? "",
-  assigneeIds: t.assignee_ids ?? [],
-  assigneeNames: t.assignee_names ?? [],
-  checkerId: t.checker_id ?? "",
-  checkerName: t.checker_name ?? "",
-  note: t.note ?? "",
-}));
+    id: t.id,
+    status: t.status ?? "未着手",
+    category: t.category ?? "OTHER",
+    title: t.title ?? "",
+    date: t.task_date,
+    deadline: t.deadline ?? "",
+    assigneeIds: t.assignee_ids ?? [],
+    assigneeNames: t.assignee_names ?? [],
+    checkerId: t.checker_id ?? "",
+    checkerName: t.checker_name ?? "",
+    note: t.note ?? "",
+  }));
 }
-
 async function createNonCleaningTask(task: NonCleaningTask, attendees: Attendee[]) {
-  const names = (task.assigneeIds ?? []).map((id) => {
+  const assigneeNames = (task.assigneeIds ?? []).map((id) => {
     const found = attendees.find((u) => u.userId === id);
     return found?.name ?? id;
   });
@@ -537,14 +536,18 @@ async function createNonCleaningTask(task: NonCleaningTask, attendees: Attendee[
       title: task.title,
       deadline: task.deadline || null,
       assignee_ids: task.assigneeIds ?? [],
-      assignee_names: names,
+      assignee_names: assigneeNames,
       checker_id: task.checkerId || null,
       checker_name: checker?.name ?? null,
       note: task.note ?? "",
     }),
   });
 
-  if (!res.ok) throw new Error(`create failed: ${res.status}`);
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`create failed: ${res.status} / ${text}`);
+  }
+
   return res.json();
 }
 
@@ -1296,6 +1299,10 @@ const visibleNonCleaningTasks = useMemo(() => {
         setEditingNonCleaningId(t.id);
         setDraftNonCleaning({
           ...t,
+          assigneeIds: t.assigneeIds ?? [],
+          assigneeNames: t.assigneeNames ?? [],
+          checkerId: t.checkerId ?? "",
+          checkerName: t.checkerName ?? "",
           note: t.note ?? "",
         });
         setNonCleaningDrawerOpen(true);
