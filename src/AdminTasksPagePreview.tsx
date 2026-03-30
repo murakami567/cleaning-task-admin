@@ -764,38 +764,47 @@ export default function AdminTasksPagePreview() {
   };
 
   const refresh = async () => {
-    try {
-      setLoadingCleaning(true);
-      setCleaningError("");
+  try {
+    setLoadingCleaning(true);
+    setCleaningError("");
 
-      const tasks = await fetchCleaningTasks(viewMode);
-      setCleaningTasks(tasks);
-      setSelectedCleaningId((prev) =>
-        tasks.some((t) => t.id === prev) ? prev : tasks[0]?.id ?? ""
-      );
+    const [tasks, nonCleaning] = await Promise.all([
+      fetchCleaningTasks(viewMode),
+      fetchNonCleaningTasks(),
+    ]);
 
-      const uniqueDates = Array.from(new Set(tasks.map((t) => t.date).filter(Boolean)));
-      const attendeesEntries = await Promise.all(
-        uniqueDates.map(async (d) => {
-          try {
-            const users = await fetchAvailableStaffByDate(d);
-            return [d, users] as const;
-          } catch (error) {
-            console.error(`shift fetch failed: ${d}`, error);
-            return [d, []] as const;
-          }
-        })
-      );
+    setCleaningTasks(tasks);
+    setNonCleaningTasks(nonCleaning);
 
-      setAttendeesByDate(Object.fromEntries(attendeesEntries));
-      setLastUpdated(new Date());
-    } catch (error) {
-      console.error(error);
-      setCleaningError("清掃タスクの取得に失敗しました");
-    } finally {
-      setLoadingCleaning(false);
-    }
-  };
+    setSelectedCleaningId((prev) =>
+      tasks.some((t) => t.id === prev) ? prev : tasks[0]?.id ?? ""
+    );
+
+    const uniqueDates = Array.from(
+      new Set([...tasks.map((t) => t.date), ...nonCleaning.map((t) => t.date)].filter(Boolean))
+    );
+
+    const attendeesEntries = await Promise.all(
+      uniqueDates.map(async (d) => {
+        try {
+          const users = await fetchAvailableStaffByDate(d);
+          return [d, users] as const;
+        } catch (error) {
+          console.error(`shift fetch failed: ${d}`, error);
+          return [d, []] as const;
+        }
+      })
+    );
+
+    setAttendeesByDate(Object.fromEntries(attendeesEntries));
+    setLastUpdated(new Date());
+  } catch (error) {
+    console.error(error);
+    setCleaningError("タスクの取得に失敗しました");
+  } finally {
+    setLoadingCleaning(false);
+  }
+};
 
   useEffect(() => {
     void loadProperties();
