@@ -376,11 +376,11 @@ type NonCleaningTask = {
   title: string;
   date: string;
   deadline: string;
-  assigneeIds: string[];
-  assigneeNames?: string[];
-  checkerId: string;
-  checkerName?: string;
-  note?: string;
+  assigneeIds: [];
+  assigneeNames: [];
+  checkerId: "";
+  checkerName: "";
+  note: "";
 };
 
 type ViewMode = "TODAY" | "FUTURE";
