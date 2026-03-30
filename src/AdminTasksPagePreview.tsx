@@ -520,7 +520,11 @@ async function fetchNonCleaningTasks(): Promise<NonCleaningTask[]> {
 }
 
 async function createNonCleaningTask(task: NonCleaningTask, attendees: Attendee[]) {
-  const assignee = attendees.find((u) => u.userId === task.assigneeId);
+  const names = (task.assigneeIds ?? []).map((id) => {
+    const found = attendees.find((u) => u.userId === id);
+    return found?.name ?? id;
+  });
+
   const checker = attendees.find((u) => u.userId === task.checkerId);
 
   const res = await fetch(`${API_BASE}/non-cleaning-tasks/create`, {
@@ -532,8 +536,8 @@ async function createNonCleaningTask(task: NonCleaningTask, attendees: Attendee[
       category: task.category,
       title: task.title,
       deadline: task.deadline || null,
-      assignee_id: task.assigneeId === "UNASSIGNED" ? null : task.assigneeId,
-      assignee_name: assignee?.name ?? null,
+      assignee_ids: task.assigneeIds ?? [],
+      assignee_names: names,
       checker_id: task.checkerId || null,
       checker_name: checker?.name ?? null,
       note: task.note ?? "",
