@@ -949,18 +949,18 @@ const visibleNonCleaningTasks = useMemo(() => {
   setEditingNonCleaningId("");
 
   setDraftNonCleaning({
-  id,
-  status: "未着手",
-  category: "TRANSPORT",
-  title: "",
-  date: viewMode === "TODAY" ? baseDate : addDaysIso(baseDate, 1),
-  deadline: "",
-  assigneeIds: [],
-  assigneeNames: [],
-  checkerId: "",
-  checkerName: "",
-  note: "",
-});
+    id,
+    status: "未着手",
+    category: "TRANSPORT",
+    title: "",
+    date: viewMode === "TODAY" ? baseDate : addDaysIso(baseDate, 1),
+    deadline: "",
+    assigneeIds: [],
+    assigneeNames: [],
+    checkerId: "",
+    checkerName: "",
+    note: "",
+  });
 
   setNonCleaningDrawerOpen(true);
 };
@@ -971,7 +971,8 @@ const visibleNonCleaningTasks = useMemo(() => {
 
   try {
     const attendees = attendeesByDate[draftNonCleaning.date] ?? [];
-    const payload = {
+
+    const payload: NonCleaningTask = {
       ...draftNonCleaning,
       title: draftNonCleaning.title.trim(),
     };
