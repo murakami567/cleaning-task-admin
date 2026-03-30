@@ -957,16 +957,24 @@ const visibleNonCleaningTasks = useMemo(() => {
 
   try {
     const attendees = attendeesByDate[draftNonCleaning.date] ?? [];
-    await createNonCleaningTask(
-      { ...draftNonCleaning, title: draftNonCleaning.title.trim() },
-      attendees
-    );
+    const payload = {
+      ...draftNonCleaning,
+      title: draftNonCleaning.title.trim(),
+    };
+
+    if (editingNonCleaningId) {
+      await updateNonCleaningTask(payload, attendees);
+    } else {
+      await createNonCleaningTask(payload, attendees);
+    }
+
     setNonCleaningDrawerOpen(false);
     setDraftNonCleaning(null);
+    setEditingNonCleaningId("");
     await refresh();
   } catch (error) {
     console.error(error);
-    window.alert("清掃外タスクの追加に失敗しました。");
+    window.alert("清掃外タスクの保存に失敗しました。");
   }
 };
 
@@ -1223,7 +1231,7 @@ const visibleNonCleaningTasks = useMemo(() => {
           <Card>
             <CardBody>
               <SectionHeader
-                title="清掃外タスク"
+                title={editingNonCleaningId ? "清掃外タスク編集" : "清掃外タスク追加"}
                 actions={
                   <Button
                     variant="outline"
@@ -1430,11 +1438,12 @@ const visibleNonCleaningTasks = useMemo(() => {
 
       <Drawer
         open={nonCleaningDrawerOpen}
-        title="清掃外タスク追加"
+        title={editingNonCleaningId ? "清掃外タスク編集" : "清掃外タスク追加"}
         onClose={() => {
-          setNonCleaningDrawerOpen(false);
-          setDraftNonCleaning(null);
-        }}
+  setNonCleaningDrawerOpen(false);
+  setDraftNonCleaning(null);
+  setEditingNonCleaningId("");
+}}
         footer={
           <div className="flex items-center justify-between gap-2">
             <div className="text-xs text-black/50">※追加で右側一覧に表示されます</div>
@@ -1449,13 +1458,13 @@ const visibleNonCleaningTasks = useMemo(() => {
                 キャンセル
               </Button>
               <Button
-                variant="outline"
-                className="border-sky-200 bg-sky-50 hover:bg-sky-100"
-                disabled={!draftNonCleaning || draftNonCleaning.title.trim().length === 0}
-                onClick={commitNonCleaning}
-              >
-                追加
-              </Button>
+  variant="outline"
+  className="border-sky-200 bg-sky-50 hover:bg-sky-100"
+  disabled={!draftNonCleaning || draftNonCleaning.title.trim().length === 0}
+  onClick={commitNonCleaning}
+>
+  {editingNonCleaningId ? "更新" : "追加"}
+</Button>
             </div>
           </div>
         }
