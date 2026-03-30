@@ -1517,7 +1517,16 @@ const visibleNonCleaningTasks = useMemo(() => {
                   const nextDate = e.target.value;
                   await ensureAttendeesLoaded(nextDate);
                   setDraftNonCleaning((p) =>
-  p ? { ...p, date: nextDate, assigneeIds: [], assigneeNames: [], checkerId: "" } : p
+  p
+    ? {
+        ...p,
+        date: nextDate,
+        assigneeIds: [],
+        assigneeNames: [],
+        checkerId: "",
+        checkerName: "",
+      }
+    : p
 );
                 }}
               />
