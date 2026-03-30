@@ -944,20 +944,34 @@ const visibleNonCleaningTasks = useMemo(() => {
     setNonCleaningDrawerOpen(true);
   };
 
-  const commitNonCleaning = () => {
-    if (!draftNonCleaning) return;
-    if (draftNonCleaning.title.trim().length === 0) return;
-    setNonCleaningTasks((prev) => [{ ...draftNonCleaning, title: draftNonCleaning.title.trim() }, ...prev]);
+  const commitNonCleaning = async () => {
+  if (!draftNonCleaning) return;
+  if (draftNonCleaning.title.trim().length === 0) return;
+
+  try {
+    const attendees = attendeesByDate[draftNonCleaning.date] ?? [];
+    await createNonCleaningTask(
+      { ...draftNonCleaning, title: draftNonCleaning.title.trim() },
+      attendees
+    );
     setNonCleaningDrawerOpen(false);
     setDraftNonCleaning(null);
-    void refresh();
-  };
+    await refresh();
+  } catch (error) {
+    console.error(error);
+    window.alert("清掃外タスクの追加に失敗しました。");
+  }
+};
 
-  const removeNonCleaning = (id: string) => {
-    setNonCleaningTasks((prev) => prev.filter((t) => t.id !== id));
-    void refresh();
-  };
-
+  const removeNonCleaning = async (id: string) => {
+  try {
+    await deleteNonCleaningTaskApi(id);
+    await refresh();
+  } catch (error) {
+    console.error(error);
+    window.alert("清掃外タスクの削除に失敗しました。");
+  }
+};
   return (
     <div className="min-h-screen bg-neutral-50 p-6">
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
