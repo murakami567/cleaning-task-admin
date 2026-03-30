@@ -932,19 +932,24 @@ const visibleNonCleaningTasks = useMemo(() => {
   };
 
   const openAddNonCleaning = () => {
-    const id = `nct_${Math.random().toString(16).slice(2, 8)}`;
-    setDraftNonCleaning({
-      id,
-      status: "未着手",
-      category: "TRANSPORT",
-      title: "",
-      date: viewMode === "TODAY" ? baseDate : addDaysIso(baseDate, 1),
-      deadline: "",
-      assigneeId: "UNASSIGNED",
-      checkerId: "",
-    });
-    setNonCleaningDrawerOpen(true);
-  };
+  const id = `nct_${Math.random().toString(16).slice(2, 8)}`;
+
+  setEditingNonCleaningId("");
+
+  setDraftNonCleaning({
+    id,
+    status: "未着手",
+    category: "TRANSPORT",
+    title: "",
+    date: viewMode === "TODAY" ? baseDate : addDaysIso(baseDate, 1),
+    deadline: "",
+    assigneeId: "UNASSIGNED",
+    checkerId: "",
+    note: "",
+  });
+
+  setNonCleaningDrawerOpen(true);
+};
 
   const commitNonCleaning = async () => {
   if (!draftNonCleaning) return;
@@ -1260,10 +1265,27 @@ const visibleNonCleaningTasks = useMemo(() => {
                           <td className="border-b px-3 py-2">{t.deadline || "-"}</td>
                           <td className="border-b px-3 py-2">{assigneeLabels(t.assigneeIds ?? [], attendees)}</td>
                           <td className="border-b px-3 py-2">
-                            <Button variant="danger" size="sm" onClick={() => removeNonCleaning(t.id)}>
-                              削除
-                            </Button>
-                          </td>
+  <div className="flex gap-2">
+    <Button
+      variant="outline"
+      size="sm"
+      onClick={() => {
+        setEditingNonCleaningId(t.id);
+        setDraftNonCleaning({
+          ...t,
+          note: t.note ?? "",
+        });
+        setNonCleaningDrawerOpen(true);
+      }}
+    >
+      編集
+    </Button>
+
+    <Button variant="danger" size="sm" onClick={() => removeNonCleaning(t.id)}>
+      削除
+    </Button>
+  </div>
+</td>
                         </tr>
                       );
                     })}
