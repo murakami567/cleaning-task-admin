@@ -1536,12 +1536,15 @@ const visibleNonCleaningTasks = useMemo(() => {
 
             <div>
               <div className="mb-1 text-xs text-black/60">担当（その日付の出勤者のみ）</div>
-              <Select
-                value={draftNonCleaning.assigneeId}
-                onChange={(v) => setDraftNonCleaning((p) => (p ? { ...p, assigneeId: v } : p))}
-                options={draftAssigneeOptions}
-                disabled={draftAttendees.length === 0}
-              />
+              <MultiAssignSelect
+  value={draftNonCleaning.assigneeIds ?? []}
+  attendees={draftAttendees}
+  onChange={(ids) =>
+    setDraftNonCleaning((p) =>
+      p ? { ...p, assigneeIds: ids } : p
+    )
+  }
+/>
             </div>
 
             <div>
