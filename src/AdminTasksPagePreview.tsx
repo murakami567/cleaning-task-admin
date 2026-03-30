@@ -1570,7 +1570,7 @@ const visibleNonCleaningTasks = useMemo(() => {
   attendees={draftAttendees}
   onChange={(ids) =>
     setDraftNonCleaning((p) =>
-      p ? { ...p, assigneeIds: ids } : p
+      p ? { ...p, assigneeIds: ids, assigneeNames: ids } : p
     )
   }
 />
