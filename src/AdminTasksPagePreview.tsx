@@ -1497,8 +1497,8 @@ const visibleNonCleaningTasks = useMemo(() => {
                   const nextDate = e.target.value;
                   await ensureAttendeesLoaded(nextDate);
                   setDraftNonCleaning((p) =>
-                    p ? { ...p, date: nextDate, assigneeId: "UNASSIGNED", checkerId: "" } : p
-                  );
+  p ? { ...p, date: nextDate, assigneeIds: [], assigneeNames: [], checkerId: "" } : p
+);
                 }}
               />
               <div className="mt-1 text-xs text-black/50">
