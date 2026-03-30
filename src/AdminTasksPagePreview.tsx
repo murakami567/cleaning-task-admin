@@ -686,6 +686,8 @@ export default function AdminTasksPagePreview() {
   const [nonCleaningDrawerOpen, setNonCleaningDrawerOpen] = useState(false);
   const [draftNonCleaning, setDraftNonCleaning] = useState<NonCleaningTask | null>(null);
 
+  const [editingNonCleaningId, setEditingNonCleaningId] = useState<string>("");
+
   const selectedCleaningTask = useMemo(
     () => cleaningTasks.find((t) => t.id === selectedCleaningId) ?? null,
     [cleaningTasks, selectedCleaningId]
