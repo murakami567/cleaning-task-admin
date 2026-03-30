@@ -376,8 +376,8 @@ type NonCleaningTask = {
   title: string;
   date: string;
   deadline: string;
-  assigneeId: string;
-  assigneeName?: string;
+  assigneeIds: string[];
+  assigneeNames?: string[];
   checkerId: string;
   checkerName?: string;
   note?: string;
