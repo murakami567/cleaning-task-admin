@@ -377,7 +377,10 @@ type NonCleaningTask = {
   date: string;
   deadline: string;
   assigneeId: string;
+  assigneeName?: string;
   checkerId: string;
+  checkerName?: string;
+  note?: string;
 };
 
 type ViewMode = "TODAY" | "FUTURE";
@@ -436,6 +439,8 @@ async function fetchCleaningTasks(mode: ViewMode): Promise<CleaningTask[]> {
   return data.map(mapApiTaskToUi);
 }
 
+
+
 async function persistCleaningTaskPatch(
   taskId: string,
   patch: Partial<CleaningTask>,
@@ -477,6 +482,7 @@ const json = await res.json();
 console.log("tasks/update response", json);
 return json;
 }
+
 async function fetchAvailableStaffByDate(shiftDate: string): Promise<Attendee[]> {
   const res = await fetch(`${API_BASE}/shifts?shift_date=${shiftDate}`);
   if (!res.ok) throw new Error(`shift fetch failed: ${res.status}`);
@@ -491,6 +497,88 @@ async function fetchAvailableStaffByDate(shiftDate: string): Promise<Attendee[]>
       userId: e.staff_id,
       name: e.staff_members?.staff_name || e.staff_id,
     }));
+}
+
+async function fetchNonCleaningTasks(): Promise<NonCleaningTask[]> {
+  const res = await fetch(`${API_BASE}/non-cleaning-tasks`);
+  if (!res.ok) throw new Error(`fetch failed: ${res.status}`);
+  const data = await res.json();
+
+  return (data ?? []).map((t: any) => ({
+    id: t.id,
+    status: t.status ?? "未着手",
+    category: t.category ?? "OTHER",
+    title: t.title ?? "",
+    date: t.task_date,
+    deadline: t.deadline ?? "",
+    assigneeId: t.assignee_id ?? "UNASSIGNED",
+    assigneeName: t.assignee_name ?? "",
+    checkerId: t.checker_id ?? "",
+    checkerName: t.checker_name ?? "",
+    note: t.note ?? "",
+  }));
+}
+
+async function createNonCleaningTask(task: NonCleaningTask, attendees: Attendee[]) {
+  const assignee = attendees.find((u) => u.userId === task.assigneeId);
+  const checker = attendees.find((u) => u.userId === task.checkerId);
+
+  const res = await fetch(`${API_BASE}/non-cleaning-tasks/create`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      task_date: task.date,
+      status: task.status,
+      category: task.category,
+      title: task.title,
+      deadline: task.deadline || null,
+      assignee_id: task.assigneeId === "UNASSIGNED" ? null : task.assigneeId,
+      assignee_name: assignee?.name ?? null,
+      checker_id: task.checkerId || null,
+      checker_name: checker?.name ?? null,
+      note: task.note ?? "",
+    }),
+  });
+
+  if (!res.ok) throw new Error(`create failed: ${res.status}`);
+  return res.json();
+}
+
+async function updateNonCleaningTask(task: NonCleaningTask, attendees: Attendee[]) {
+  const assignee = attendees.find((u) => u.userId === task.assigneeId);
+  const checker = attendees.find((u) => u.userId === task.checkerId);
+
+  const res = await fetch(`${API_BASE}/non-cleaning-tasks/update`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      task_id: task.id,
+      task_date: task.date,
+      status: task.status,
+      category: task.category,
+      title: task.title,
+      deadline: task.deadline || null,
+      assignee_id: task.assigneeId === "UNASSIGNED" ? null : task.assigneeId,
+      assignee_name: assignee?.name ?? null,
+      checker_id: task.checkerId || null,
+      checker_name: checker?.name ?? null,
+      note: task.note ?? "",
+    }),
+  });
+
+  if (!res.ok) throw new Error(`update failed: ${res.status}`);
+  return res.json();
+}
+
+async function deleteNonCleaningTaskApi(taskId: string) {
+  const res = await fetch(`${API_BASE}/non-cleaning-tasks/delete`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ task_id: taskId }),
+  });
+
+  if (!res.ok) throw new Error(`delete failed: ${res.status}`);
+  return res.json();
 }
 
 function buildAssigneeOptions(attendees: Attendee[]) {
