@@ -505,18 +505,18 @@ async function fetchNonCleaningTasks(): Promise<NonCleaningTask[]> {
   const data = await res.json();
 
   return (data ?? []).map((t: any) => ({
-    id: t.id,
-    status: t.status ?? "未着手",
-    category: t.category ?? "OTHER",
-    title: t.title ?? "",
-    date: t.task_date,
-    deadline: t.deadline ?? "",
-    assigneeId: t.assignee_id ?? "UNASSIGNED",
-    assigneeName: t.assignee_name ?? "",
-    checkerId: t.checker_id ?? "",
-    checkerName: t.checker_name ?? "",
-    note: t.note ?? "",
-  }));
+  id: t.id,
+  status: t.status ?? "未着手",
+  category: t.category ?? "OTHER",
+  title: t.title ?? "",
+  date: t.task_date,
+  deadline: t.deadline ?? "",
+  assigneeIds: t.assignee_ids ?? [],
+  assigneeNames: t.assignee_names ?? [],
+  checkerId: t.checker_id ?? "",
+  checkerName: t.checker_name ?? "",
+  note: t.note ?? "",
+}));
 }
 
 async function createNonCleaningTask(task: NonCleaningTask, attendees: Attendee[]) {
