@@ -1222,12 +1222,17 @@ const commitNonCleaning = async () => {
                           </Td>
 
                           <Td>
-                            {tableEditMode ? (
-                              <Select value={t.due} onChange={(v) => updateCleaningTask(t.id, { due: v })} options={DUE_OPTIONS} />
-                            ) : (
-                              dueLabel(t.due)
-                            )}
-                          </Td>
+  {tableEditMode ? (
+    <Select
+      value={computeDueLabel(t.date)}
+      onChange={() => {}}
+      options={DUE_OPTIONS}
+      disabled
+    />
+  ) : (
+    dueLabel(computeDueLabel(t.date))
+  )}
+</Td>
 
                           <Td>
                             {tableEditMode ? (
