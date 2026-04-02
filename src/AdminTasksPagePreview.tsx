@@ -1728,22 +1728,6 @@ const commitNonCleaning = async () => {
   );
 }
 
-function computeDueLabel(taskDate) {
-
-  const today = todayIso()
-  const tomorrow = addDaysIso(today,1)
-
-  if (taskDate === today) {
-    return "DUE_TODAY"
-  }
-
-  if (taskDate === tomorrow) {
-    return "DUE_TOMORROW"
-  }
-
-  return "DUE_LATER"
-}
-
 /* =========================
  * Lightweight self-tests
  * ========================= */
