@@ -434,7 +434,7 @@ function mapApiTaskToUi(task: ApiCleaningTask): CleaningTask {
     assigneeIds,
     assigneeNames,
     date: task.task_date,
-    due: computeDueLabel(task.task_date),
+    due: computeDueLabel(task.next_checkin_date),
     baggageTime: "",
     checkerId: "",
     note: task.note ?? "",
