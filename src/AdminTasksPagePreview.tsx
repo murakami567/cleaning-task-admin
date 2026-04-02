@@ -1439,8 +1439,6 @@ const commitNonCleaning = async () => {
                 {formatMd(selectedCleaningTask.date)} / 出勤者: {selectedCleaningAttendees.map((u) => u.name).join(" / ") || "なし"}
               </div>
             </div>
-
-            <div>
   <div>
   <div className="mb-1 text-xs text-black/60">期限</div>
   <Select
