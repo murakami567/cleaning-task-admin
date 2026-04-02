@@ -435,10 +435,13 @@ async function fetchCleaningTasks(mode: ViewMode): Promise<CleaningTask[]> {
   const endpoint = mode === "TODAY" ? "/tasks/today" : "/tasks/future";
   const res = await fetch(`${API_BASE}${endpoint}`);
   if (!res.ok) throw new Error(`fetch failed: ${res.status}`);
-  const data: ApiCleaningTask[] = await res.json();
-  return data.map(mapApiTaskToUi);
-}
 
+  const data = await res.json();
+  console.log("cleaning tasks response", data);
+
+  const list = Array.isArray(data) ? data : [];
+  return list.map(mapApiTaskToUi);
+}
 
 
 async function persistCleaningTaskPatch(
@@ -462,10 +465,12 @@ async function persistCleaningTaskPatch(
 
     body.assigned_staff_ids = patch.assigneeIds;
     body.assigned_staff_names = names;
-
-    // 旧互換
     body.assigned_staff_id = patch.assigneeIds[0] ?? null;
     body.assigned_staff_name = names[0] ?? null;
+  }
+
+  if (patch.checkerId !== undefined) {
+    body.checker_id = patch.checkerId || null;
   }
 
   const res = await fetch(`${API_BASE}/tasks/update`, {
@@ -475,23 +480,29 @@ async function persistCleaningTaskPatch(
   });
 
   if (!res.ok) {
-  const text = await res.text();
-  throw new Error(`update failed: ${res.status} / ${text}`);
-}
-const json = await res.json();
-console.log("tasks/update response", json);
-return json;
+    const text = await res.text();
+    throw new Error(`update failed: ${res.status} / ${text}`);
+  }
+
+  const json = await res.json();
+  console.log("tasks/update response", json);
+  return json;
 }
 
 async function fetchAvailableStaffByDate(shiftDate: string): Promise<Attendee[]> {
   const res = await fetch(`${API_BASE}/shifts?shift_date=${shiftDate}`);
   if (!res.ok) throw new Error(`shift fetch failed: ${res.status}`);
 
-  const data: ShiftDayApi[] = await res.json();
-  const day = data?.[0];
+  const data = await res.json();
+  console.log("shifts response", data);
+
+  const list: ShiftDayApi[] = Array.isArray(data) ? data : [];
+  const day = list[0];
   if (!day) return [];
 
-  return (day.shift_entries || [])
+  const entries = Array.isArray(day.shift_entries) ? day.shift_entries : [];
+
+  return entries
     .filter((e) => e.status === "出勤" || e.status === "遅刻")
     .map((e) => ({
       userId: e.staff_id,
@@ -502,17 +513,21 @@ async function fetchAvailableStaffByDate(shiftDate: string): Promise<Attendee[]>
 async function fetchNonCleaningTasks(): Promise<NonCleaningTask[]> {
   const res = await fetch(`${API_BASE}/non-cleaning-tasks`);
   if (!res.ok) throw new Error(`fetch failed: ${res.status}`);
-  const data = await res.json();
 
-  return (data ?? []).map((t: any) => ({
+  const data = await res.json();
+  console.log("non-cleaning-tasks response", data);
+
+  const list = Array.isArray(data) ? data : [];
+
+  return list.map((t: any) => ({
     id: t.id,
     status: t.status ?? "未着手",
     category: t.category ?? "OTHER",
     title: t.title ?? "",
     date: t.task_date,
     deadline: t.deadline ?? "",
-    assigneeIds: t.assignee_ids ?? [],
-    assigneeNames: t.assignee_names ?? [],
+    assigneeIds: Array.isArray(t.assignee_ids) ? t.assignee_ids : [],
+    assigneeNames: Array.isArray(t.assignee_names) ? t.assignee_names : [],
     checkerId: t.checker_id ?? "",
     checkerName: t.checker_name ?? "",
     note: t.note ?? "",
@@ -786,10 +801,13 @@ export default function AdminTasksPagePreview() {
     setLoadingCleaning(true);
     setCleaningError("");
 
-    const [tasks, nonCleaning] = await Promise.all([
+    const [tasksRaw, nonCleaningRaw] = await Promise.all([
       fetchCleaningTasks(viewMode),
       fetchNonCleaningTasks(),
     ]);
+
+    const tasks = Array.isArray(tasksRaw) ? tasksRaw : [];
+    const nonCleaning = Array.isArray(nonCleaningRaw) ? nonCleaningRaw : [];
 
     setCleaningTasks(tasks);
     setNonCleaningTasks(nonCleaning);
@@ -799,14 +817,16 @@ export default function AdminTasksPagePreview() {
     );
 
     const uniqueDates = Array.from(
-      new Set([...tasks.map((t) => t.date), ...nonCleaning.map((t) => t.date)].filter(Boolean))
+      new Set(
+        [...tasks.map((t) => t.date), ...nonCleaning.map((t) => t.date)].filter(Boolean)
+      )
     );
 
     const attendeesEntries = await Promise.all(
       uniqueDates.map(async (d) => {
         try {
           const users = await fetchAvailableStaffByDate(d);
-          return [d, users] as const;
+          return [d, Array.isArray(users) ? users : []] as const;
         } catch (error) {
           console.error(`shift fetch failed: ${d}`, error);
           return [d, []] as const;
@@ -819,6 +839,9 @@ export default function AdminTasksPagePreview() {
   } catch (error) {
     console.error(error);
     setCleaningError("タスクの取得に失敗しました");
+    setCleaningTasks([]);
+    setNonCleaningTasks([]);
+    setAttendeesByDate({});
   } finally {
     setLoadingCleaning(false);
   }
@@ -841,17 +864,24 @@ export default function AdminTasksPagePreview() {
   }, [autoRefresh, viewMode]);
 
   const visibleCleaningTasks = useMemo(() => {
+  const list = Array.isArray(cleaningTasks) ? cleaningTasks : [];
+
   const tasks =
     viewMode === "TODAY"
-      ? cleaningTasks.filter((t) => t.date === baseDate)
-      : cleaningTasks.filter((t) => isFutureDate(t.date));
+      ? list.filter((t) => t.date === baseDate)
+      : list.filter((t) => isFutureDate(t.date));
 
   return sortTasksByPropertyOrder(tasks, viewMode);
 }, [cleaningTasks, viewMode]);
 
 const visibleNonCleaningTasks = useMemo(() => {
-  if (viewMode === "TODAY") return nonCleaningTasks.filter((t) => t.date === baseDate);
-  return nonCleaningTasks.filter((t) => isFutureDate(t.date));
+  const list = Array.isArray(nonCleaningTasks) ? nonCleaningTasks : [];
+
+  if (viewMode === "TODAY") {
+    return list.filter((t) => t.date === baseDate);
+  }
+
+  return list.filter((t) => isFutureDate(t.date));
 }, [nonCleaningTasks, viewMode]);
 
   const addCleaningTask = () => {
@@ -925,7 +955,7 @@ const visibleNonCleaningTasks = useMemo(() => {
   setCleaningTasks((prev) => prev.map((t) => (t.id === id ? { ...t, ...patch } : t)));
   setLastUpdated(new Date());
 
-  const persistableKeys = ["status", "note", "assigneeIds"];
+  const persistableKeys = ["status", "note", "assigneeIds", "checkerId"];
   const shouldPersist = Object.keys(patch).some((k) => persistableKeys.includes(k));
   if (!shouldPersist) return;
 
