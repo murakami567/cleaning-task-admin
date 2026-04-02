@@ -1196,7 +1196,7 @@ const commitNonCleaning = async () => {
                                   await ensureAttendeesLoaded(nextDate);
                                   updateCleaningTask(t.id, {
                                     date: nextDate,
-                                    assigneeId: "UNASSIGNED",
+                                    assigneeId: [],
                                     checkerId: "",
                                   });
                                 }}
@@ -1430,7 +1430,7 @@ const commitNonCleaning = async () => {
                   await ensureAttendeesLoaded(nextDate);
                   updateCleaningTask(selectedCleaningTask.id, {
                     date: nextDate,
-                    assigneeId: "UNASSIGNED",
+                    assigneeId: [],
                     checkerId: "",
                   });
                 }}
