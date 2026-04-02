@@ -189,17 +189,33 @@ export default function ShiftBoardPage() {
   const visibleDates = viewMode === "month" ? allDates : weekDates;
 
   const dayMap = useMemo(() => {
-    const map = new Map<string, ShiftDay>();
-    days.forEach((d) => map.set(d.shift_date, d));
-    return map;
-  }, [days]);
+  const map = new Map<string, ShiftDay>();
+
+  (Array.isArray(days) ? days : []).forEach((d) => {
+    map.set(d.shift_date, {
+      ...d,
+      shift_entries: Array.isArray(d.shift_entries) ? d.shift_entries : [],
+    });
+  });
+
+  return map;
+}, [days]);
 
   const getShiftMark = (date: string, staffId: string): ShiftMark => {
-    const day = dayMap.get(date);
-    const entry = day?.shift_entries?.find((x) => x.staff_id === staffId);
-    const status = entry?.status as ShiftMark | undefined;
-    return status || "休み";
-  };
+  const day = dayMap.get(date);
+
+  if (!day) return "休み";
+
+  const entries = Array.isArray(day.shift_entries)
+    ? day.shift_entries
+    : [];
+
+  const entry = entries.find((x) => x.staff_id === staffId);
+
+  const status = entry?.status as ShiftMark | undefined;
+
+  return status || "休み";
+};
 
   const getCleanCount = (date: string) => {
     const dt = new Date(date);
