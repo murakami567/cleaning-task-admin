@@ -1456,12 +1456,17 @@ const commitNonCleaning = async () => {
             </div>
 
             <div>
+  <div>
   <div className="mb-1 text-xs text-black/60">期限</div>
   <Select
-    value={selectedCleaningTask.due}
-    onChange={(v) => updateCleaningTask(selectedCleaningTask.id, { due: v })}
+    value={computeDueLabel(selectedCleaningTask.date)}
+    onChange={() => {}}
     options={DUE_OPTIONS}
+    disabled
   />
+  <div className="mt-1 text-xs text-black/50">
+    日付から自動判定されます
+  </div>
 </div>
 
             <div>
