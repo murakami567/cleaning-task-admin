@@ -64,6 +64,14 @@ function categoryLabel(v: string) {
   return CATEGORY_OPTIONS.find((o) => o.value === v)?.label ?? v;
 }
 
+function computeDueLabel(taskDate: string) {
+  if (!taskDate) return "DUE_LATER";
+
+  if (taskDate === baseDate) return "DUE_TODAY";
+  if (taskDate === addDaysIso(baseDate, 1)) return "DUE_TOMORROW";
+  return "DUE_LATER";
+}
+
 /* =========================
  * UI parts
  * ========================= */
