@@ -392,10 +392,20 @@ const API_BASE =
  * API helpers
  * ========================= */
 
-function computeDueLabel(taskDate: string) {
-  if (taskDate === baseDate) return "DUE_TODAY";
-  if (taskDate === addDaysIso(baseDate, 1)) return "DUE_TOMORROW";
-  return "DUE_LATER";
+function computeDueLabel(taskDate) {
+
+  const today = todayIso()
+  const tomorrow = addDaysIso(today,1)
+
+  if (taskDate === today) {
+    return "DUE_TODAY"
+  }
+
+  if (taskDate === tomorrow) {
+    return "DUE_TOMORROW"
+  }
+
+  return "DUE_LATER"
 }
 
 function mapApiTaskToUi(task: ApiCleaningTask): CleaningTask {
