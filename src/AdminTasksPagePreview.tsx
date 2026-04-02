@@ -64,12 +64,22 @@ function categoryLabel(v: string) {
   return CATEGORY_OPTIONS.find((o) => o.value === v)?.label ?? v;
 }
 
-function computeDueLabel(taskDate: string) {
-  if (!taskDate) return "DUE_LATER";
+function computeDueLabel(nextCheckinDate: string) {
 
-  if (taskDate === baseDate) return "DUE_TODAY";
-  if (taskDate === addDaysIso(baseDate, 1)) return "DUE_TOMORROW";
-  return "DUE_LATER";
+  if (!nextCheckinDate) return "DUE_LATER"
+
+  const today = todayIso()
+  const tomorrow = addDaysIso(today,1)
+
+  if (nextCheckinDate === today) {
+    return "DUE_TODAY"
+  }
+
+  if (nextCheckinDate === tomorrow) {
+    return "DUE_TOMORROW"
+  }
+
+  return "DUE_LATER"
 }
 
 /* =========================
