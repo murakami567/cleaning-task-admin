@@ -494,17 +494,16 @@ async function fetchAvailableStaffByDate(shiftDate: string): Promise<Attendee[]>
   if (!res.ok) throw new Error(`shift fetch failed: ${res.status}`);
 
   const data = await res.json();
-  console.log("shifts response", data);
 
-  const list: ShiftDayApi[] = Array.isArray(data) ? data : [];
-  const day = list[0];
+  // APIが object / array どちらでも動くようにする
+  const day = Array.isArray(data) ? data[0] : data;
   if (!day) return [];
 
   const entries = Array.isArray(day.shift_entries) ? day.shift_entries : [];
 
   return entries
-    .filter((e) => e.status === "出勤" || e.status === "遅刻")
-    .map((e) => ({
+    .filter((e: any) => e.status === "出勤" || e.status === "遅刻")
+    .map((e: any) => ({
       userId: e.staff_id,
       name: e.staff_members?.staff_name || e.staff_id,
     }));
