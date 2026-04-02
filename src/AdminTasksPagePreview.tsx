@@ -518,6 +518,7 @@ async function fetchNonCleaningTasks(): Promise<NonCleaningTask[]> {
     note: t.note ?? "",
   }));
 }
+
 async function createNonCleaningTask(task: NonCleaningTask, attendees: Attendee[]) {
   const assigneeNames = (task.assigneeIds ?? []).map((id) => {
     const found = attendees.find((u) => u.userId === id);
@@ -946,7 +947,8 @@ const visibleNonCleaningTasks = useMemo(() => {
     setCleaningDrawerOpen(false);
   };
 
-  const openAddNonCleaning = () => {
+
+const openAddNonCleaning = () => {
   const id = `nct_${Math.random().toString(16).slice(2, 8)}`;
 
   setEditingNonCleaningId("");
@@ -968,7 +970,7 @@ const visibleNonCleaningTasks = useMemo(() => {
   setNonCleaningDrawerOpen(true);
 };
 
-  const commitNonCleaning = async () => {
+const commitNonCleaning = async () => {
   if (!draftNonCleaning) return;
   if (draftNonCleaning.title.trim().length === 0) return;
 
@@ -1293,23 +1295,23 @@ const visibleNonCleaningTasks = useMemo(() => {
                           <td className="border-b px-3 py-2">
   <div className="flex gap-2">
     <Button
-      variant="outline"
-      size="sm"
-      onClick={() => {
-        setEditingNonCleaningId(t.id);
-        setDraftNonCleaning({
-          ...t,
-          assigneeIds: t.assigneeIds ?? [],
-          assigneeNames: t.assigneeNames ?? [],
-          checkerId: t.checkerId ?? "",
-          checkerName: t.checkerName ?? "",
-          note: t.note ?? "",
-        });
-        setNonCleaningDrawerOpen(true);
-      }}
-    >
-      編集
-    </Button>
+  variant="outline"
+  size="sm"
+  onClick={() => {
+    setEditingNonCleaningId(t.id);
+    setDraftNonCleaning({
+      ...t,
+      assigneeIds: t.assigneeIds ?? [],
+      assigneeNames: t.assigneeNames ?? [],
+      checkerId: t.checkerId ?? "",
+      checkerName: t.checkerName ?? "",
+      note: t.note ?? "",
+    });
+    setNonCleaningDrawerOpen(true);
+  }}
+>
+  編集
+</Button>
 
     <Button variant="danger" size="sm" onClick={() => removeNonCleaning(t.id)}>
       削除
@@ -1570,7 +1572,7 @@ const visibleNonCleaningTasks = useMemo(() => {
   attendees={draftAttendees}
   onChange={(ids) =>
     setDraftNonCleaning((p) =>
-      p ? { ...p, assigneeIds: ids, assigneeNames: ids } : p
+      p ? { ...p, assigneeIds: ids } : p
     )
   }
 />
