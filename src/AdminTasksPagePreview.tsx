@@ -423,21 +423,21 @@ function mapApiTaskToUi(task: ApiCleaningTask): CleaningTask {
       : [];
 
   return {
-    id: task.id,
-    status: task.status || "未着手",
-    property: task.property_name,
-    room: task.room_name,
-    assigneeIds,
-    assigneeNames,
-    date: task.task_date,
-    due: computeDueLabel(task.next_checkin_date),
-    baggageTime: "",
-    checkerId: "",
-    note: task.note ?? "",
-    loadScore: task.load_score ?? 0,
-    guestCount: task.guest_count ?? 0,
-    nextCheckinDate: task.next_checkin_date ?? "",
-  };
+  id: task.id,
+  status: task.status || "未着手",
+  property: task.property_name,
+  room: task.room_name,
+  assigneeIds,
+  assigneeNames,
+  date: task.task_date,
+  due: computeDueLabel(task.checkout_date, task.next_checkin_date ?? ""),
+  baggageTime: "",
+  checkerId: "",
+  note: task.note ?? "",
+  loadScore: task.load_score ?? 0,
+  guestCount: task.guest_count ?? 0,
+  nextCheckinDate: task.next_checkin_date ?? "",
+};
 }
 
 async function fetchCleaningTasks(mode: ViewMode): Promise<CleaningTask[]> {
