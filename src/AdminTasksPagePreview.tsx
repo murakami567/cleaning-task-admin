@@ -64,22 +64,18 @@ function categoryLabel(v: string) {
   return CATEGORY_OPTIONS.find((o) => o.value === v)?.label ?? v;
 }
 
-function computeDueLabel(nextCheckinDate: string) {
+function computeDueLabel(checkoutDate: string, nextCheckinDate: string) {
+  if (!checkoutDate || !nextCheckinDate) return "DUE_LATER";
 
-  if (!nextCheckinDate) return "DUE_LATER"
-
-  const today = todayIso()
-  const tomorrow = addDaysIso(today,1)
-
-  if (nextCheckinDate === today) {
-    return "DUE_TODAY"
+  if (nextCheckinDate === checkoutDate) {
+    return "DUE_TODAY";
   }
 
-  if (nextCheckinDate === tomorrow) {
-    return "DUE_TOMORROW"
+  if (nextCheckinDate === addDaysIso(checkoutDate, 1)) {
+    return "DUE_TOMORROW";
   }
 
-  return "DUE_LATER"
+  return "DUE_LATER";
 }
 
 /* =========================
