@@ -1215,13 +1215,13 @@ const commitNonCleaning = async () => {
                           <Td>
   {tableEditMode ? (
     <Select
-  value={computeDueLabel(t.nextCheckinDate ?? "")}
+  value={computeDueLabel(t.date, t.nextCheckinDate ?? "")}
   onChange={() => {}}
   options={DUE_OPTIONS}
   disabled
 />
   ) : (
-    dueLabel(computeDueLabel(t.nextCheckinDate ?? ""))
+    dueLabel(computeDueLabel(t.date, t.nextCheckinDate ?? ""))
   )}
 </Td>
 
@@ -1448,11 +1448,14 @@ const commitNonCleaning = async () => {
   <div>
   <div className="mb-1 text-xs text-black/60">期限</div>
   <Select
-    value={computeDueLabel(selectedCleaningTask.nextCheckinDate ?? "")}
-    onChange={() => {}}
-    options={DUE_OPTIONS}
-    disabled
-  />
+  value={computeDueLabel(
+    selectedCleaningTask.date,
+    selectedCleaningTask.nextCheckinDate ?? ""
+  )}
+  onChange={() => {}}
+  options={DUE_OPTIONS}
+  disabled
+/>
   <div className="mt-1 text-xs text-black/50">
     日付から自動判定されます
   </div>
