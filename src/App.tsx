@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { Routes, Route, Navigate } from "react-router-dom";
+
 import AdminTasksPagePreview from "./AdminTasksPagePreview";
 import PropertyManagementPage from "./PropertyManagementPage";
 import OpeningManagementPage from "./OpeningManagementPage";
@@ -6,61 +7,28 @@ import FacilityManagementPage from "./FacilityManagementPage";
 import ShiftManagementPage from "./ShiftManagementPage";
 import ShiftBoardPage from "./ShiftBoardPage";
 
-function Button({
-  children,
-  active,
-  onClick,
-}: {
-  children: React.ReactNode;
-  active?: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className={`rounded-xl px-4 py-2 text-sm border ${
-        active ? "bg-black text-white" : "bg-white hover:bg-black/5"
-      }`}
-    >
-      {children}
-    </button>
-  );
-}
+import EmployeeLoginPage from "./pages/employee/EmployeeLoginPage";
+import EmployeeHomePage from "./pages/employee/EmployeeHomePage";
 
 export default function App() {
-  const [page, setPage] = useState<
-    "tasks" | "properties" | "openings" | "facilities" | "shifts" | "shiftboard"
-  >("tasks");
-
   return (
-    <div className="min-h-screen bg-neutral-50">
-      <div className="border-b bg-white px-6 py-3 flex gap-2 flex-wrap">
-        <Button active={page === "tasks"} onClick={() => setPage("tasks")}>
-          タスク管理
-        </Button>
-        <Button active={page === "properties"} onClick={() => setPage("properties")}>
-          物件管理
-        </Button>
-        <Button active={page === "openings"} onClick={() => setPage("openings")}>
-          新規オープン進捗
-        </Button>
-        <Button active={page === "facilities"} onClick={() => setPage("facilities")}>
-          設備管理
-        </Button>
-        <Button active={page === "shifts"} onClick={() => setPage("shifts")}>
-          シフト管理
-        </Button>
-        <Button active={page === "shiftboard"} onClick={() => setPage("shiftboard")}>
-          シフト表
-        </Button>
-      </div>
+    <Routes>
 
-      {page === "tasks" && <AdminTasksPagePreview />}
-      {page === "properties" && <PropertyManagementPage />}
-      {page === "openings" && <OpeningManagementPage />}
-      {page === "facilities" && <FacilityManagementPage />}
-      {page === "shifts" && <ShiftManagementPage />}
-      {page === "shiftboard" && <ShiftBoardPage />}
-    </div>
+      {/* 管理画面 */}
+      <Route path="/admin/tasks" element={<AdminTasksPagePreview />} />
+      <Route path="/admin/properties" element={<PropertyManagementPage />} />
+      <Route path="/admin/openings" element={<OpeningManagementPage />} />
+      <Route path="/admin/facilities" element={<FacilityManagementPage />} />
+      <Route path="/admin/shifts" element={<ShiftManagementPage />} />
+      <Route path="/admin/shiftboard" element={<ShiftBoardPage />} />
+
+      {/* 一般画面 */}
+      <Route path="/employee/login" element={<EmployeeLoginPage />} />
+      <Route path="/employee/home" element={<EmployeeHomePage />} />
+
+      {/* デフォルト */}
+      <Route path="/" element={<Navigate to="/admin/tasks" replace />} />
+
+    </Routes>
   );
 }
