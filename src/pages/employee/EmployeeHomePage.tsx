@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { api } from "../../lib/api";
 import { useAuth } from "../../context/AuthContext";
 
@@ -43,6 +43,13 @@ export default function EmployeeHomePage() {
       });
     } catch (error) {
       console.error("ホームデータ取得エラー:", error);
+      setSummary({
+        todayTaskCount: 0,
+        upcomingTaskCount: 0,
+        todayScheduleCount: 0,
+        unreadNoticeCount: 0,
+        assignedProperties: [],
+      });
     } finally {
       setLoading(false);
     }
@@ -54,84 +61,80 @@ export default function EmployeeHomePage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-100">
-      <header className="border-b border-slate-200 bg-white">
-        <div className="mx-auto max-w-6xl px-4 py-4 flex items-center justify-between">
-          <div>
-            <h1 className="text-xl font-bold text-slate-800">一般画面ホーム</h1>
-            <p className="text-sm text-slate-500 mt-1">
-              {user?.name ? `${user.name} さん` : "社員ユーザー"}でログイン中
-            </p>
-          </div>
+    <div className="min-h-screen bg-slate-50 pb-24">
+      <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/95 backdrop-blur">
+        <div className="mx-auto w-full max-w-md px-4 pt-5 pb-4">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <div className="text-xs font-medium text-slate-500">一般画面</div>
+              <h1 className="mt-1 text-2xl font-bold text-slate-900">ホーム</h1>
+              <p className="mt-1 text-sm text-slate-500">
+                {user?.name ? `${user.name} さん` : "スタッフ"}でログイン中
+              </p>
+            </div>
 
-          <button
-            onClick={handleLogout}
-            className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm hover:bg-slate-50"
-          >
-            ログアウト
-          </button>
+            <button
+              onClick={handleLogout}
+              className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+            >
+              ログアウト
+            </button>
+          </div>
         </div>
       </header>
 
-      <main className="mx-auto max-w-6xl px-4 py-6">
-        <nav className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-          <Link
-            to="/employee/tasks"
-            className="rounded-2xl bg-white border border-slate-200 p-4 shadow-sm hover:bg-slate-50"
-          >
-            <div className="text-sm text-slate-500">メニュー</div>
-            <div className="mt-2 text-base font-semibold text-slate-800">タスク一覧</div>
-          </Link>
-
-          <Link
-            to="/employee/schedule"
-            className="rounded-2xl bg-white border border-slate-200 p-4 shadow-sm hover:bg-slate-50"
-          >
-            <div className="text-sm text-slate-500">メニュー</div>
-            <div className="mt-2 text-base font-semibold text-slate-800">スケジュール</div>
-          </Link>
-
-          <Link
-            to="/employee/worklog"
-            className="rounded-2xl bg-white border border-slate-200 p-4 shadow-sm hover:bg-slate-50"
-          >
-            <div className="text-sm text-slate-500">メニュー</div>
-            <div className="mt-2 text-base font-semibold text-slate-800">実働記入</div>
-          </Link>
-
-          <Link
-            to="/employee/settings"
-            className="rounded-2xl bg-white border border-slate-200 p-4 shadow-sm hover:bg-slate-50"
-          >
-            <div className="text-sm text-slate-500">メニュー</div>
-            <div className="mt-2 text-base font-semibold text-slate-800">設定</div>
-          </Link>
-        </nav>
-
+      <main className="mx-auto w-full max-w-md px-4 pt-4">
         {loading ? (
-          <div className="rounded-2xl bg-white border border-slate-200 p-6 shadow-sm text-sm text-slate-500">
-            読み込み中...
-          </div>
+          <LoadingBlock />
         ) : (
           <>
-            <section className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
-              <SummaryCard title="今日のタスク" value={summary.todayTaskCount} unit="件" />
-              <SummaryCard title="今後のタスク" value={summary.upcomingTaskCount} unit="件" />
-              <SummaryCard title="今日の予定" value={summary.todayScheduleCount} unit="件" />
-              <SummaryCard title="未読のお知らせ" value={summary.unreadNoticeCount} unit="件" />
+            <section className="grid grid-cols-2 gap-3">
+              <SummaryCard title="今日のタスク" value={summary.todayTaskCount} />
+              <SummaryCard title="今後のタスク" value={summary.upcomingTaskCount} />
+              <SummaryCard title="今日の予定" value={summary.todayScheduleCount} />
+              <SummaryCard title="未読" value={summary.unreadNoticeCount} />
             </section>
 
-            <section className="rounded-2xl bg-white border border-slate-200 p-6 shadow-sm">
-              <h2 className="text-base font-semibold text-slate-800 mb-4">担当物件</h2>
+            <section className="mt-5">
+              <div className="mb-3 text-sm font-bold text-slate-700">メニュー</div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <MenuCard
+                  to="/employee/tasks"
+                  title="タスク一覧"
+                  subtitle="担当タスクを確認"
+                />
+                <MenuCard
+                  to="/employee/schedule"
+                  title="スケジュール"
+                  subtitle="勤務予定を見る"
+                />
+                <MenuCard
+                  to="/employee/worklog"
+                  title="実働記入"
+                  subtitle="作業時間を登録"
+                />
+                <MenuCard
+                  to="/employee/settings"
+                  title="設定"
+                  subtitle="アカウント設定"
+                />
+              </div>
+            </section>
+
+            <section className="mt-5 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
+              <div className="text-sm font-bold text-slate-800">担当物件</div>
 
               {summary.assignedProperties.length === 0 ? (
-                <p className="text-sm text-slate-500">担当物件はありません。</p>
+                <div className="mt-3 rounded-2xl bg-slate-50 px-4 py-4 text-sm text-slate-500">
+                  担当物件はありません。
+                </div>
               ) : (
-                <div className="flex flex-wrap gap-2">
+                <div className="mt-3 flex flex-wrap gap-2">
                   {summary.assignedProperties.map((property) => (
                     <span
                       key={property}
-                      className="rounded-full bg-slate-100 border border-slate-200 px-3 py-1 text-sm text-slate-700"
+                      className="rounded-full border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-700"
                     >
                       {property}
                     </span>
@@ -139,29 +142,89 @@ export default function EmployeeHomePage() {
                 </div>
               )}
             </section>
+
+            <section className="mt-5 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
+              <div className="text-sm font-bold text-slate-800">今日のひとこと</div>
+              <div className="mt-3 rounded-2xl bg-slate-50 px-4 py-4 text-sm text-slate-600">
+                今日の担当内容と予定を確認して、順番に対応してください。
+              </div>
+            </section>
           </>
         )}
       </main>
+
+      <BottomNav />
     </div>
   );
 }
 
-function SummaryCard({
+function SummaryCard({ title, value }: { title: string; value: number }) {
+  return (
+    <div className="rounded-3xl border border-slate-200 bg-white px-4 py-4 shadow-sm">
+      <div className="text-xs font-medium text-slate-500">{title}</div>
+      <div className="mt-2 text-2xl font-bold text-slate-900">{value}</div>
+    </div>
+  );
+}
+
+function MenuCard({
+  to,
   title,
-  value,
-  unit,
+  subtitle,
 }: {
+  to: string;
   title: string;
-  value: number;
-  unit: string;
+  subtitle: string;
 }) {
   return (
-    <div className="rounded-2xl bg-white border border-slate-200 p-5 shadow-sm">
-      <div className="text-sm text-slate-500">{title}</div>
-      <div className="mt-3 text-3xl font-bold text-slate-800">
-        {value}
-        <span className="ml-1 text-base font-medium text-slate-500">{unit}</span>
-      </div>
+    <Link
+      to={to}
+      className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm transition hover:bg-slate-50"
+    >
+      <div className="text-sm font-bold text-slate-900">{title}</div>
+      <div className="mt-1 text-xs text-slate-500">{subtitle}</div>
+    </Link>
+  );
+}
+
+function LoadingBlock() {
+  return (
+    <div className="rounded-3xl border border-slate-200 bg-white p-5 text-sm text-slate-500 shadow-sm">
+      読み込み中...
     </div>
+  );
+}
+
+function BottomNav() {
+  const location = useLocation();
+
+  const items = [
+    { to: "/employee/home", label: "ホーム" },
+    { to: "/employee/tasks", label: "タスク" },
+    { to: "/employee/schedule", label: "予定" },
+    { to: "/employee/worklog", label: "実働" },
+    { to: "/employee/settings", label: "設定" },
+  ];
+
+  return (
+    <nav className="fixed bottom-0 left-0 right-0 z-30 border-t border-slate-200 bg-white/95 backdrop-blur">
+      <div className="mx-auto flex w-full max-w-md items-center justify-between px-2 py-2">
+        {items.map((item) => {
+          const active = location.pathname === item.to;
+
+          return (
+            <Link
+              key={item.to}
+              to={item.to}
+              className={`flex min-w-0 flex-1 flex-col items-center justify-center rounded-2xl px-2 py-2 text-xs font-semibold transition ${
+                active ? "bg-slate-900 text-white" : "text-slate-500 hover:bg-slate-50"
+              }`}
+            >
+              <span className="truncate">{item.label}</span>
+            </Link>
+          );
+        })}
+      </div>
+    </nav>
   );
 }
