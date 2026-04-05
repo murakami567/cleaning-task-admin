@@ -450,6 +450,7 @@ function mapApiTaskToUi(task: ApiCleaningTask): CleaningTask {
   note: task.note ?? "",
   loadScore: task.load_score ?? 0,
   guestCount: task.guest_count ?? 0,
+  gapNights: task.gap_nights ?? 0,
   nextCheckinDate: task.next_checkin_date ?? "",
 };
 }
