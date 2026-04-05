@@ -2,11 +2,11 @@ import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { api } from "../lib/api";
 
 type User = {
-  id?: string;
+  id?: string | number;
   name?: string;
   login_id?: string;
-  loginId?: string;
   role?: string;
+  assigned_properties?: string[];
 };
 
 type AuthContextType = {
@@ -28,6 +28,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const token = localStorage.getItem("employee_access_token");
+
     if (!token) {
       setLoading(false);
       return;
