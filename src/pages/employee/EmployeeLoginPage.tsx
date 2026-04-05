@@ -39,9 +39,7 @@ export default function EmployeeLoginPage() {
       <div className="w-full max-w-md bg-white rounded-2xl shadow-lg border border-slate-200 p-8">
         <div className="mb-8 text-center">
           <h1 className="text-2xl font-bold text-slate-800">一般画面ログイン</h1>
-          <p className="text-sm text-slate-500 mt-2">
-            社員用ログイン画面です
-          </p>
+          <p className="text-sm text-slate-500 mt-2">社員用ログイン画面です</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-5">
