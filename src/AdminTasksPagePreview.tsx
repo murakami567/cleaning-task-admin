@@ -78,6 +78,19 @@ function computeDueLabel(checkoutDate: string, nextCheckinDate: string) {
   return "DUE_LATER";
 }
 
+function getTowelCount(guestCount?: number, nights?: number) {
+  const g = guestCount ?? 0;
+  const n = nights ?? 0;
+
+  if (g === 0 || n === 0) return 0;
+
+  if (n >= 8) return g * 3;
+  if (n >= 3) return g * 2;
+  return g * 1;
+}
+
+
+
 /* =========================
  * UI parts
  * ========================= */
