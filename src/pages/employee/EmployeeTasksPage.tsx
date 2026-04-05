@@ -251,7 +251,7 @@ function TaskDetailModal({
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="w-full max-w-lg rounded-[28px] border border-slate-200 bg-white shadow-2xl">
+      <div className="w-full max-w-md rounded-[24px] border border-slate-200 bg-white shadow-xl">
         <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
           <div className="text-xl font-bold text-slate-900">タスク詳細</div>
           <button
