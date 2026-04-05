@@ -43,14 +43,6 @@ export default function EmployeeHomePage() {
       });
     } catch (error) {
       console.error("ホームデータ取得エラー:", error);
-
-      setSummary({
-        todayTaskCount: 0,
-        upcomingTaskCount: 0,
-        todayScheduleCount: 0,
-        unreadNoticeCount: 0,
-        assignedProperties: [],
-      });
     } finally {
       setLoading(false);
     }
@@ -88,9 +80,7 @@ export default function EmployeeHomePage() {
             className="rounded-2xl bg-white border border-slate-200 p-4 shadow-sm hover:bg-slate-50"
           >
             <div className="text-sm text-slate-500">メニュー</div>
-            <div className="mt-2 text-base font-semibold text-slate-800">
-              タスク一覧
-            </div>
+            <div className="mt-2 text-base font-semibold text-slate-800">タスク一覧</div>
           </Link>
 
           <Link
@@ -98,9 +88,7 @@ export default function EmployeeHomePage() {
             className="rounded-2xl bg-white border border-slate-200 p-4 shadow-sm hover:bg-slate-50"
           >
             <div className="text-sm text-slate-500">メニュー</div>
-            <div className="mt-2 text-base font-semibold text-slate-800">
-              スケジュール
-            </div>
+            <div className="mt-2 text-base font-semibold text-slate-800">スケジュール</div>
           </Link>
 
           <Link
@@ -108,9 +96,7 @@ export default function EmployeeHomePage() {
             className="rounded-2xl bg-white border border-slate-200 p-4 shadow-sm hover:bg-slate-50"
           >
             <div className="text-sm text-slate-500">メニュー</div>
-            <div className="mt-2 text-base font-semibold text-slate-800">
-              実働記入
-            </div>
+            <div className="mt-2 text-base font-semibold text-slate-800">実働記入</div>
           </Link>
 
           <Link
@@ -118,9 +104,7 @@ export default function EmployeeHomePage() {
             className="rounded-2xl bg-white border border-slate-200 p-4 shadow-sm hover:bg-slate-50"
           >
             <div className="text-sm text-slate-500">メニュー</div>
-            <div className="mt-2 text-base font-semibold text-slate-800">
-              設定
-            </div>
+            <div className="mt-2 text-base font-semibold text-slate-800">設定</div>
           </Link>
         </nav>
 
@@ -138,9 +122,7 @@ export default function EmployeeHomePage() {
             </section>
 
             <section className="rounded-2xl bg-white border border-slate-200 p-6 shadow-sm">
-              <h2 className="text-base font-semibold text-slate-800 mb-4">
-                担当物件
-              </h2>
+              <h2 className="text-base font-semibold text-slate-800 mb-4">担当物件</h2>
 
               {summary.assignedProperties.length === 0 ? (
                 <p className="text-sm text-slate-500">担当物件はありません。</p>
