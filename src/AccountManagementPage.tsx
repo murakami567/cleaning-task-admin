@@ -11,6 +11,7 @@ type Staff = {
   is_active: boolean;
   sort_order: number | null;
   note: string | null;
+  password?: string | null;
 };
 
 function Button({ children, className = "", ...props }: any) {
@@ -94,6 +95,7 @@ export default function AccountManagementPage() {
   const [showInactive, setShowInactive] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [selected, setSelected] = useState<Staff | null>(null);
+  const [saving, setSaving] = useState(false);
 
   const [form, setForm] = useState({
     id: "",
@@ -103,12 +105,19 @@ export default function AccountManagementPage() {
     is_active: true,
     sort_order: "999",
     note: "",
+    password: "",
   });
 
   const loadStaffs = async () => {
-    const res = await fetch(`${API_BASE}/staffs`);
-    const data = await res.json();
-    setStaffs(data || []);
+    try {
+      const res = await fetch(`${API_BASE}/staffs`);
+      if (!res.ok) throw new Error("スタッフ取得に失敗しました。");
+      const data = await res.json();
+      setStaffs(data || []);
+    } catch (error) {
+      console.error(error);
+      alert(error instanceof Error ? error.message : "スタッフ取得に失敗しました。");
+    }
   };
 
   useEffect(() => {
@@ -139,6 +148,7 @@ export default function AccountManagementPage() {
       is_active: true,
       sort_order: "999",
       note: "",
+      password: "",
     });
     setDrawerOpen(true);
   };
@@ -153,36 +163,59 @@ export default function AccountManagementPage() {
       is_active: staff.is_active,
       sort_order: String(staff.sort_order ?? 999),
       note: staff.note ?? "",
+      password: "",
     });
     setDrawerOpen(true);
   };
 
   const save = async () => {
-    if (!form.staff_code.trim()) return alert("スタッフコードを入力してください。");
-    if (!form.staff_name.trim()) return alert("名前を入力してください。");
+    if (!form.staff_code.trim()) {
+      alert("スタッフコードを入力してください。");
+      return;
+    }
 
-    const body = {
-      staff_code: form.staff_code.trim(),
-      staff_name: form.staff_name.trim(),
-      role: form.role,
-      is_active: form.is_active,
-      sort_order: Number(form.sort_order || 999),
-      note: form.note,
-    };
+    if (!form.staff_name.trim()) {
+      alert("名前を入力してください。");
+      return;
+    }
 
-    const url = selected ? `${API_BASE}/staffs/update` : `${API_BASE}/staffs/create`;
-    const payload = selected ? { staff_id: form.id, ...body } : body;
+    try {
+      setSaving(true);
 
-    const res = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
+      const body = {
+        staff_code: form.staff_code.trim(),
+        staff_name: form.staff_name.trim(),
+        role: form.role,
+        is_active: form.is_active,
+        sort_order: Number(form.sort_order || 999),
+        note: form.note,
+        password: form.password || null,
+      };
 
-    if (!res.ok) return alert("保存に失敗しました。");
+      const url = selected ? `${API_BASE}/staffs/update` : `${API_BASE}/staffs/create`;
+      const payload = selected ? { staff_id: form.id, ...body } : body;
 
-    setDrawerOpen(false);
-    await loadStaffs();
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await res.json().catch(() => null);
+
+      if (!res.ok) {
+        throw new Error(data?.detail || "保存に失敗しました。");
+      }
+
+      setDrawerOpen(false);
+      await loadStaffs();
+      alert("保存しました。");
+    } catch (error) {
+      console.error(error);
+      alert(error instanceof Error ? error.message : "保存に失敗しました。");
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -280,8 +313,12 @@ export default function AccountManagementPage() {
             <div className="text-xs text-slate-500">保存後、一覧に反映されます。</div>
             <div className="flex gap-2">
               <Button onClick={() => setDrawerOpen(false)}>キャンセル</Button>
-              <Button className="bg-slate-900 text-white border-slate-900 hover:bg-black" onClick={save}>
-                保存
+              <Button
+                className="bg-slate-900 text-white border-slate-900 hover:bg-black"
+                onClick={save}
+                disabled={saving}
+              >
+                {saving ? "保存中..." : "保存"}
               </Button>
             </div>
           </div>
@@ -289,11 +326,17 @@ export default function AccountManagementPage() {
       >
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <Field label="スタッフコード">
-            <TextInput value={form.staff_code} onChange={(v: string) => setForm((s) => ({ ...s, staff_code: v }))} />
+            <TextInput
+              value={form.staff_code}
+              onChange={(v: string) => setForm((s) => ({ ...s, staff_code: v }))}
+            />
           </Field>
 
           <Field label="名前">
-            <TextInput value={form.staff_name} onChange={(v: string) => setForm((s) => ({ ...s, staff_name: v }))} />
+            <TextInput
+              value={form.staff_name}
+              onChange={(v: string) => setForm((s) => ({ ...s, staff_name: v }))}
+            />
           </Field>
 
           <Field label="権限">
@@ -314,6 +357,15 @@ export default function AccountManagementPage() {
               type="number"
               value={form.sort_order}
               onChange={(v: string) => setForm((s) => ({ ...s, sort_order: v }))}
+            />
+          </Field>
+
+          <Field label="パスワード">
+            <TextInput
+              type="text"
+              value={form.password}
+              onChange={(v: string) => setForm((s) => ({ ...s, password: v }))}
+              placeholder={selected ? "未入力なら変更なし" : "パスワードを入力"}
             />
           </Field>
 
