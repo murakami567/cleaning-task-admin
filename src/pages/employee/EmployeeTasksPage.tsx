@@ -70,9 +70,7 @@ export default function EmployeeTasksPage() {
         )
       );
 
-      setSelectedTask((prev) =>
-        prev ? { ...prev, status, note } : prev
-      );
+      setSelectedTask((prev) => (prev ? { ...prev, status, note } : prev));
     } catch (error) {
       console.error("タスク保存エラー:", error);
       alert(error instanceof Error ? error.message : "保存に失敗しました。");
@@ -246,13 +244,13 @@ function TaskDetailModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 px-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 px-3 py-4 sm:px-4"
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="w-full max-w-md rounded-[24px] border border-slate-200 bg-white shadow-xl">
-        <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
+      <div className="flex w-full max-w-md flex-col overflow-hidden rounded-[26px] border border-slate-200 bg-white shadow-2xl">
+        <div className="flex items-center justify-between border-b border-slate-200 px-4 py-4 sm:px-5">
           <div className="text-xl font-bold text-slate-900">タスク詳細</div>
           <button
             onClick={onClose}
@@ -262,62 +260,66 @@ function TaskDetailModal({
           </button>
         </div>
 
-        <div className="space-y-3 px-5 py-4">
-          <InfoRow label="物件名" value={task.propertyName || "-"} />
-          <InfoRow label="部屋名" value={task.roomName || "-"} />
-          <InfoRow label="担当者" value={task.assigneeName || defaultAssigneeName || "-"} />
-          <InfoRow label="チェッカー" value={task.checkerName || "-"} />
-          <InfoRow label="日付" value={formatDate(task.date || task.dueDate)} />
-          <InfoRow label="期限" value={formatDate(task.deadline || task.dueDate)} />
+        <div className="max-h-[68vh] overflow-y-auto px-4 py-4 sm:px-5">
+          <div className="space-y-3">
+            <InfoRow label="物件名" value={task.propertyName || "-"} />
+            <InfoRow label="部屋名" value={task.roomName || "-"} />
+            <InfoRow label="担当者" value={task.assigneeName || defaultAssigneeName || "-"} />
+            <InfoRow label="チェッカー" value={task.checkerName || "-"} />
+            <InfoRow label="日付" value={formatDate(task.date || task.dueDate)} />
+            <InfoRow label="期限" value={formatDate(task.deadline || task.dueDate)} />
 
-          <RateBox
-            title="レイトCO / アーリーCI（部屋別）"
-            rateCi={task.rateCi}
-            rateCo={task.rateCo}
-          />
-
-          <InfoRow label="タオル数" value={String(task.towelCount ?? "-")} />
-
-          <div>
-            <div className="mb-2 text-sm font-semibold text-slate-700">ステータス</div>
-            <select
-              value={status}
-              onChange={(e) => setStatus(e.target.value)}
-              className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm outline-none"
-            >
-              <option value="pending">未着手</option>
-              <option value="in_progress">清掃中</option>
-              <option value="completed">完了</option>
-            </select>
-          </div>
-
-          <div>
-            <div className="mb-2 text-sm font-semibold text-slate-700">備考</div>
-            <textarea
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              placeholder="備考を入力"
-              rows={4}
-              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none resize-none"
+            <RateBox
+              title="レイトCO / アーリーCI（部屋別）"
+              rateCi={task.rateCi}
+              rateCo={task.rateCo}
             />
+
+            <InfoRow label="タオル数" value={String(task.towelCount ?? "-")} />
+
+            <div>
+              <div className="mb-2 text-sm font-semibold text-slate-700">ステータス</div>
+              <select
+                value={status}
+                onChange={(e) => setStatus(e.target.value)}
+                className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm outline-none"
+              >
+                <option value="pending">未着手</option>
+                <option value="in_progress">清掃中</option>
+                <option value="completed">完了</option>
+              </select>
+            </div>
+
+            <div>
+              <div className="mb-2 text-sm font-semibold text-slate-700">備考</div>
+              <textarea
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                placeholder="備考を入力"
+                rows={4}
+                className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none resize-none"
+              />
+            </div>
           </div>
         </div>
 
-        <div className="flex gap-3 px-5 pb-5">
-          <button
-            onClick={onClose}
-            className="flex-1 rounded-2xl border border-slate-200 bg-white px-4 py-4 text-sm font-bold text-slate-700 hover:bg-slate-50"
-          >
-            キャンセル
-          </button>
+        <div className="border-t border-slate-200 bg-white px-4 py-4 sm:px-5">
+          <div className="flex gap-3">
+            <button
+              onClick={onClose}
+              className="flex-1 rounded-2xl border border-slate-200 bg-white px-4 py-4 text-sm font-bold text-slate-700 hover:bg-slate-50"
+            >
+              キャンセル
+            </button>
 
-          <button
-            onClick={() => onSave(task.id, status, note)}
-            disabled={saving}
-            className="flex-1 rounded-2xl bg-slate-900 px-4 py-4 text-sm font-bold text-white hover:bg-black disabled:opacity-50"
-          >
-            {saving ? "保存中..." : "保存"}
-          </button>
+            <button
+              onClick={() => onSave(task.id, status, note)}
+              disabled={saving}
+              className="flex-1 rounded-2xl bg-slate-900 px-4 py-4 text-sm font-bold text-white hover:bg-black disabled:opacity-50"
+            >
+              {saving ? "保存中..." : "保存"}
+            </button>
+          </div>
         </div>
       </div>
     </div>
