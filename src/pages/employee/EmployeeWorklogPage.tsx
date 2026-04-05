@@ -1,5 +1,5 @@
 import { FormEvent, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { api } from "../../lib/api";
 
 type WorklogForm = {
@@ -80,141 +80,140 @@ export default function EmployeeWorklogPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-100">
-      <header className="border-b border-slate-200 bg-white">
-        <div className="mx-auto max-w-4xl px-4 py-4 flex items-center justify-between gap-3">
-          <div>
-            <h1 className="text-xl font-bold text-slate-800">実働記入</h1>
-            <p className="text-sm text-slate-500 mt-1">
-              実際の作業時間と内容を登録します
-            </p>
+    <div className="min-h-screen bg-slate-50 pb-24">
+      <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/95 backdrop-blur">
+        <div className="mx-auto w-full max-w-md px-4 pt-5 pb-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-xs font-medium text-slate-500">一般画面</div>
+              <h1 className="mt-1 text-2xl font-bold text-slate-900">実働記入</h1>
+            </div>
           </div>
-
-          <Link
-            to="/employee/home"
-            className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm hover:bg-slate-50"
-          >
-            ホームへ戻る
-          </Link>
         </div>
       </header>
 
-      <main className="mx-auto max-w-4xl px-4 py-6">
-        <form
-          onSubmit={handleSubmit}
-          className="rounded-2xl bg-white border border-slate-200 p-6 shadow-sm space-y-5"
-        >
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Field label="作業日" required>
-              <input
-                type="date"
-                value={form.workDate}
-                onChange={(e) => updateField("workDate", e.target.value)}
-                className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none focus:border-slate-500"
+      <main className="mx-auto w-full max-w-md px-4 pt-4">
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <section className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
+            <div className="text-sm font-bold text-slate-800">基本情報</div>
+
+            <div className="mt-4 space-y-4">
+              <Field label="作業日" required>
+                <TextInput
+                  type="date"
+                  value={form.workDate}
+                  onChange={(v: string) => updateField("workDate", v)}
+                />
+              </Field>
+
+              <Field label="作業種別" required>
+                <Select
+                  value={form.workType}
+                  onChange={(v: string) => updateField("workType", v)}
+                  options={[
+                    { value: "", label: "選択してください" },
+                    { value: "cleaning", label: "清掃" },
+                    { value: "inspection", label: "点検" },
+                    { value: "linen", label: "リネン対応" },
+                    { value: "support", label: "補助作業" },
+                  ]}
+                />
+              </Field>
+            </div>
+          </section>
+
+          <section className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
+            <div className="text-sm font-bold text-slate-800">作業場所</div>
+
+            <div className="mt-4 space-y-4">
+              <Field label="物件名" required>
+                <TextInput
+                  value={form.propertyName}
+                  onChange={(v: string) => updateField("propertyName", v)}
+                  placeholder="例: FFFホテル"
+                />
+              </Field>
+
+              <Field label="部屋名">
+                <TextInput
+                  value={form.roomName}
+                  onChange={(v: string) => updateField("roomName", v)}
+                  placeholder="例: 1001"
+                />
+              </Field>
+            </div>
+          </section>
+
+          <section className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
+            <div className="text-sm font-bold text-slate-800">作業時間</div>
+
+            <div className="mt-4 grid grid-cols-2 gap-3">
+              <Field label="開始" required>
+                <TextInput
+                  type="time"
+                  value={form.startTime}
+                  onChange={(v: string) => updateField("startTime", v)}
+                />
+              </Field>
+
+              <Field label="終了" required>
+                <TextInput
+                  type="time"
+                  value={form.endTime}
+                  onChange={(v: string) => updateField("endTime", v)}
+                />
+              </Field>
+            </div>
+
+            <div className="mt-4">
+              <Field label="休憩(分)">
+                <TextInput
+                  type="number"
+                  value={form.breakMinutes}
+                  onChange={(v: string) => updateField("breakMinutes", v)}
+                  placeholder="0"
+                />
+              </Field>
+            </div>
+          </section>
+
+          <section className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
+            <div className="text-sm font-bold text-slate-800">備考</div>
+
+            <div className="mt-4">
+              <textarea
+                value={form.note}
+                onChange={(e) => updateField("note", e.target.value)}
+                rows={5}
+                placeholder="作業内容や補足を入力"
+                className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none resize-none"
               />
-            </Field>
-
-            <Field label="作業種別" required>
-              <select
-                value={form.workType}
-                onChange={(e) => updateField("workType", e.target.value)}
-                className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none focus:border-slate-500"
-              >
-                <option value="">選択してください</option>
-                <option value="cleaning">清掃</option>
-                <option value="inspection">点検</option>
-                <option value="linen">リネン対応</option>
-                <option value="support">補助作業</option>
-              </select>
-            </Field>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Field label="物件名" required>
-              <input
-                type="text"
-                value={form.propertyName}
-                onChange={(e) => updateField("propertyName", e.target.value)}
-                placeholder="例: FFFホテル"
-                className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none focus:border-slate-500"
-              />
-            </Field>
-
-            <Field label="部屋名">
-              <input
-                type="text"
-                value={form.roomName}
-                onChange={(e) => updateField("roomName", e.target.value)}
-                placeholder="例: 1001"
-                className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none focus:border-slate-500"
-              />
-            </Field>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Field label="開始時刻" required>
-              <input
-                type="time"
-                value={form.startTime}
-                onChange={(e) => updateField("startTime", e.target.value)}
-                className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none focus:border-slate-500"
-              />
-            </Field>
-
-            <Field label="終了時刻" required>
-              <input
-                type="time"
-                value={form.endTime}
-                onChange={(e) => updateField("endTime", e.target.value)}
-                className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none focus:border-slate-500"
-              />
-            </Field>
-
-            <Field label="休憩(分)">
-              <input
-                type="number"
-                min="0"
-                value={form.breakMinutes}
-                onChange={(e) => updateField("breakMinutes", e.target.value)}
-                placeholder="0"
-                className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none focus:border-slate-500"
-              />
-            </Field>
-          </div>
-
-          <Field label="備考">
-            <textarea
-              value={form.note}
-              onChange={(e) => updateField("note", e.target.value)}
-              rows={5}
-              placeholder="作業内容や補足を入力"
-              className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none focus:border-slate-500 resize-none"
-            />
-          </Field>
+            </div>
+          </section>
 
           {successMessage && (
-            <div className="rounded-xl bg-emerald-50 border border-emerald-200 px-4 py-3 text-sm text-emerald-700">
+            <div className="rounded-3xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-700 shadow-sm">
               {successMessage}
             </div>
           )}
 
           {errorMessage && (
-            <div className="rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-600">
+            <div className="rounded-3xl border border-red-200 bg-red-50 p-4 text-sm text-red-600 shadow-sm">
               {errorMessage}
             </div>
           )}
 
-          <div className="flex justify-end">
-            <button
-              type="submit"
-              disabled={loading}
-              className="rounded-xl bg-slate-900 text-white px-6 py-3 text-sm font-medium hover:bg-slate-800 disabled:opacity-50"
-            >
-              {loading ? "登録中..." : "実働を登録"}
-            </button>
-          </div>
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full rounded-3xl bg-slate-900 px-4 py-4 text-sm font-bold text-white shadow-sm transition hover:bg-black disabled:opacity-50"
+          >
+            {loading ? "登録中..." : "実働を登録"}
+          </button>
         </form>
       </main>
+
+      <BottomNav />
     </div>
   );
 }
@@ -230,11 +229,91 @@ function Field({
 }) {
   return (
     <div>
-      <label className="block text-sm font-medium text-slate-700 mb-2">
+      <div className="mb-2 text-xs font-semibold text-slate-500">
         {label}
         {required ? <span className="ml-1 text-red-500">*</span> : null}
-      </label>
+      </div>
       {children}
     </div>
+  );
+}
+
+function TextInput({
+  value,
+  onChange,
+  placeholder = "",
+  type = "text",
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+  type?: string;
+}) {
+  return (
+    <input
+      type={type}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      placeholder={placeholder}
+      className="h-11 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm outline-none"
+    />
+  );
+}
+
+function Select({
+  value,
+  onChange,
+  options,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  options: { value: string; label: string }[];
+}) {
+  return (
+    <select
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      className="h-11 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm outline-none"
+    >
+      {options.map((option) => (
+        <option key={option.value} value={option.value}>
+          {option.label}
+        </option>
+      ))}
+    </select>
+  );
+}
+
+function BottomNav() {
+  const location = useLocation();
+
+  const items = [
+    { to: "/employee/home", label: "ホーム" },
+    { to: "/employee/tasks", label: "タスク" },
+    { to: "/employee/schedule", label: "予定" },
+    { to: "/employee/worklog", label: "実働" },
+    { to: "/employee/settings", label: "設定" },
+  ];
+
+  return (
+    <nav className="fixed bottom-0 left-0 right-0 z-30 border-t border-slate-200 bg-white/95 backdrop-blur">
+      <div className="mx-auto flex w-full max-w-md items-center justify-between px-2 py-2">
+        {items.map((item) => {
+          const active = location.pathname === item.to;
+
+          return (
+            <Link
+              key={item.to}
+              to={item.to}
+              className={`flex min-w-0 flex-1 flex-col items-center justify-center rounded-2xl px-2 py-2 text-xs font-semibold transition ${
+                active ? "bg-slate-900 text-white" : "text-slate-500 hover:bg-slate-50"
+              }`}
+            >
+              <span className="truncate">{item.label}</span>
+            </Link>
+          );
+        })}
+      </div>
+    </nav>
   );
 }
