@@ -1,13 +1,19 @@
 import { Navigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
-export default function EmployeeProtectedRoute({ children }) {
+export default function EmployeeProtectedRoute({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   const { loading, isLoggedIn } = useAuth();
 
   if (loading) {
     return (
-      <div style={styles.loadingWrap}>
-        <div style={styles.loadingBox}>読み込み中...</div>
+      <div className="min-h-screen flex items-center justify-center bg-slate-100">
+        <div className="rounded-xl bg-white border border-slate-200 px-6 py-4 text-sm text-slate-600 shadow-sm">
+          読み込み中...
+        </div>
       </div>
     );
   }
@@ -16,22 +22,5 @@ export default function EmployeeProtectedRoute({ children }) {
     return <Navigate to="/employee/login" replace />;
   }
 
-  return children;
+  return <>{children}</>;
 }
-
-const styles = {
-  loadingWrap: {
-    minHeight: "100vh",
-    display: "flex",
-    justifyContent: "center",
-    alignItems: "center",
-    background: "#f7f8fc",
-  },
-  loadingBox: {
-    background: "#fff",
-    padding: "16px 24px",
-    borderRadius: "12px",
-    boxShadow: "0 8px 24px rgba(0,0,0,0.08)",
-    fontSize: "14px",
-  },
-};
