@@ -342,6 +342,7 @@ type CleaningTask = {
   status: string;
   property: string;
   room: string;
+  gapNights?: number;
   assigneeIds: string[];
   assigneeNames?: string[];
   date: string;
