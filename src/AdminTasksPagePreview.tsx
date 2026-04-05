@@ -1140,6 +1140,7 @@ const commitNonCleaning = async () => {
                       <Th className="w-[110px]">部屋</Th>
                       <Th className="w-[200px]">担当</Th>
                       <Th className="w-[170px]">日付</Th>
+                      <Th className="w-[90px]">タオル</Th>
                       <Th className="w-[140px]">期限</Th>
                       <Th className="w-[140px]">荷物預かり</Th>
                       <Th className="w-[200px]">チェッカー</Th>
@@ -1193,6 +1194,9 @@ const commitNonCleaning = async () => {
                           <Td>{t.property}</Td>
 
                           <Td>{t.room || "-"}</Td>
+                          <Td>
+  {getTowelCount(t.guestCount, t.gapNights)}
+</Td>
 
                           <Td>
                             {tableEditMode ? (
