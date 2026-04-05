@@ -61,7 +61,6 @@ export default function App() {
       <Routes>
         <Route path="/" element={<Navigate to="/admin/tasks" replace />} />
 
-        {/* 管理画面 */}
         <Route path="/admin" element={<AdminLayout />}>
           <Route index element={<Navigate to="/admin/tasks" replace />} />
           <Route path="tasks" element={<AdminTasksPagePreview />} />
@@ -72,7 +71,6 @@ export default function App() {
           <Route path="shiftboard" element={<ShiftBoardPage />} />
         </Route>
 
-        {/* 一般画面 */}
         <Route path="/employee/login" element={<EmployeeLoginPage />} />
 
         <Route
