@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { api } from "../../lib/api";
+import { useAuth } from "../../context/AuthContext";
 
 type EmployeeTask = {
   id: string;
@@ -10,18 +11,28 @@ type EmployeeTask = {
   dueDate: string;
   status: string;
   note?: string;
+
+  assigneeName?: string;
+  checkerName?: string;
+  date?: string;
+  deadline?: string;
+  rateCi?: number | string;
+  rateCo?: number | string;
+  towelCount?: number | string;
 };
 
 type FilterType = "all" | "pending" | "in_progress" | "completed";
 
 export default function EmployeeTasksPage() {
+  const { user } = useAuth();
+
   const [tasks, setTasks] = useState<EmployeeTask[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedFilter, setSelectedFilter] = useState<FilterType>("all");
   const [keyword, setKeyword] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [selectedTask, setSelectedTask] = useState<EmployeeTask | null>(null);
-  const [savingStatus, setSavingStatus] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     fetchTasks();
@@ -43,27 +54,30 @@ export default function EmployeeTasksPage() {
     }
   }
 
-  async function updateTaskStatus(status: "pending" | "in_progress" | "completed") {
-    if (!selectedTask) return;
-
+  async function saveTask(taskId: string, status: string, note: string) {
     try {
-      setSavingStatus(true);
+      setSaving(true);
 
       await api.post("/tasks/update", {
-        task_id: selectedTask.id,
+        task_id: taskId,
         status,
+        note,
       });
 
-      const nextTasks = tasks.map((task) =>
-        task.id === selectedTask.id ? { ...task, status } : task
+      setTasks((prev) =>
+        prev.map((task) =>
+          task.id === taskId ? { ...task, status, note } : task
+        )
       );
-      setTasks(nextTasks);
-      setSelectedTask((prev) => (prev ? { ...prev, status } : prev));
+
+      setSelectedTask((prev) =>
+        prev ? { ...prev, status, note } : prev
+      );
     } catch (error) {
-      console.error("ステータス更新エラー:", error);
-      alert(error instanceof Error ? error.message : "ステータス更新に失敗しました。");
+      console.error("タスク保存エラー:", error);
+      alert(error instanceof Error ? error.message : "保存に失敗しました。");
     } finally {
-      setSavingStatus(false);
+      setSaving(false);
     }
   }
 
@@ -84,23 +98,14 @@ export default function EmployeeTasksPage() {
     });
   }, [tasks, selectedFilter, keyword]);
 
-  const counts = useMemo(() => {
-    return {
-      all: tasks.length,
-      pending: tasks.filter((x) => x.status === "pending").length,
-      in_progress: tasks.filter((x) => x.status === "in_progress").length,
-      completed: tasks.filter((x) => x.status === "completed").length,
-    };
-  }, [tasks]);
-
   return (
     <div className="min-h-screen bg-slate-50 pb-24">
       <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/95 backdrop-blur">
         <div className="mx-auto w-full max-w-md px-4 pt-5 pb-4">
           <div className="flex items-center justify-between">
             <div>
-              <div className="text-xs font-medium text-slate-500">一般画面</div>
-              <h1 className="mt-1 text-2xl font-bold text-slate-900">タスク一覧</h1>
+              <div className="text-xs font-medium text-slate-500">従業員ページ</div>
+              <h1 className="mt-1 text-2xl font-bold text-slate-900">タスク</h1>
             </div>
 
             <button
@@ -116,54 +121,52 @@ export default function EmployeeTasksPage() {
               type="text"
               value={keyword}
               onChange={(e) => setKeyword(e.target.value)}
-              placeholder="物件名・部屋名・メモで検索"
-              className="h-11 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm outline-none placeholder:text-slate-400 focus:border-slate-300"
+              placeholder="物件名・部屋名・備考で検索"
+              className="h-11 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm outline-none"
             />
           </div>
         </div>
       </header>
 
       <main className="mx-auto w-full max-w-md px-4 pt-4">
-        <section className="grid grid-cols-2 gap-3">
-          <SummaryCard title="全タスク" value={counts.all} />
-          <SummaryCard title="未着手" value={counts.pending} />
-          <SummaryCard title="対応中" value={counts.in_progress} />
-          <SummaryCard title="完了" value={counts.completed} />
-        </section>
-
-        <section className="mt-4 flex gap-2 overflow-x-auto pb-1">
+        <section className="mb-4 flex gap-2 overflow-x-auto pb-1">
           <FilterChip
             active={selectedFilter === "all"}
             onClick={() => setSelectedFilter("all")}
-            label={`すべて (${counts.all})`}
+            label="すべて"
           />
           <FilterChip
             active={selectedFilter === "pending"}
             onClick={() => setSelectedFilter("pending")}
-            label={`未着手 (${counts.pending})`}
+            label="未着手"
           />
           <FilterChip
             active={selectedFilter === "in_progress"}
             onClick={() => setSelectedFilter("in_progress")}
-            label={`対応中 (${counts.in_progress})`}
+            label="清掃中"
           />
           <FilterChip
             active={selectedFilter === "completed"}
             onClick={() => setSelectedFilter("completed")}
-            label={`完了 (${counts.completed})`}
+            label="完了"
           />
         </section>
 
-        <section className="mt-5 space-y-3">
+        <section className="space-y-3">
           {loading ? (
-            <LoadingBlock />
+            <BlockMessage text="読み込み中..." />
           ) : errorMessage ? (
-            <ErrorBlock message={errorMessage} />
+            <BlockMessage text={errorMessage} danger />
           ) : filteredTasks.length === 0 ? (
-            <EmptyBlock />
+            <BlockMessage text="表示できるタスクはありません。" />
           ) : (
             filteredTasks.map((task) => (
-              <TaskCard key={task.id} task={task} onClick={() => setSelectedTask(task)} />
+              <TaskCard
+                key={task.id}
+                task={task}
+                assigneeName={user?.name || ""}
+                onClick={() => setSelectedTask(task)}
+              />
             ))
           )}
         </section>
@@ -172,22 +175,186 @@ export default function EmployeeTasksPage() {
       <BottomNav />
 
       {selectedTask ? (
-        <TaskModal
+        <TaskDetailModal
           task={selectedTask}
-          saving={savingStatus}
+          defaultAssigneeName={user?.name || ""}
+          saving={saving}
           onClose={() => setSelectedTask(null)}
-          onUpdateStatus={updateTaskStatus}
+          onSave={saveTask}
         />
       ) : null}
     </div>
   );
 }
 
-function SummaryCard({ title, value }: { title: string; value: number }) {
+function TaskCard({
+  task,
+  assigneeName,
+  onClick,
+}: {
+  task: EmployeeTask;
+  assigneeName: string;
+  onClick: () => void;
+}) {
+  const status = getStatusLabel(task.status);
+
   return (
-    <div className="rounded-3xl border border-slate-200 bg-white px-4 py-4 shadow-sm">
-      <div className="text-xs font-medium text-slate-500">{title}</div>
-      <div className="mt-2 text-2xl font-bold text-slate-900">{value}</div>
+    <button
+      type="button"
+      onClick={onClick}
+      className="block w-full rounded-3xl border border-slate-200 bg-white p-4 text-left shadow-sm transition hover:bg-slate-50"
+    >
+      <div className="text-sm text-slate-500">{task.propertyName || "-"}</div>
+      <div className="mt-1 text-3xl font-bold text-slate-900">
+        {task.roomName || "-"}
+      </div>
+      <div className="mt-1 text-base font-semibold text-slate-800">
+        {task.title || "清掃タスク"}
+      </div>
+
+      <div className="mt-3 space-y-1 text-sm text-slate-600">
+        <div>担当：{task.assigneeName || assigneeName || "-"}</div>
+        <div>日付：{formatDate(task.date || task.dueDate)}</div>
+        <div>期限：{formatDate(task.deadline || task.dueDate)}</div>
+        <div>タオル：{task.towelCount ?? "-"}</div>
+      </div>
+
+      <div className="mt-3">
+        <span className={`rounded-full px-3 py-1 text-xs font-bold ${status.className}`}>
+          {status.label}
+        </span>
+      </div>
+    </button>
+  );
+}
+
+function TaskDetailModal({
+  task,
+  defaultAssigneeName,
+  saving,
+  onClose,
+  onSave,
+}: {
+  task: EmployeeTask;
+  defaultAssigneeName: string;
+  saving: boolean;
+  onClose: () => void;
+  onSave: (taskId: string, status: string, note: string) => Promise<void>;
+}) {
+  const [status, setStatus] = useState(normalizeStatus(task.status));
+  const [note, setNote] = useState(task.note || "");
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 px-4"
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      <div className="w-full max-w-lg rounded-[28px] border border-slate-200 bg-white shadow-2xl">
+        <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
+          <div className="text-xl font-bold text-slate-900">タスク詳細</div>
+          <button
+            onClick={onClose}
+            className="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+          >
+            閉じる
+          </button>
+        </div>
+
+        <div className="space-y-3 px-5 py-4">
+          <InfoRow label="物件名" value={task.propertyName || "-"} />
+          <InfoRow label="部屋名" value={task.roomName || "-"} />
+          <InfoRow label="担当者" value={task.assigneeName || defaultAssigneeName || "-"} />
+          <InfoRow label="チェッカー" value={task.checkerName || "-"} />
+          <InfoRow label="日付" value={formatDate(task.date || task.dueDate)} />
+          <InfoRow label="期限" value={formatDate(task.deadline || task.dueDate)} />
+
+          <RateBox
+            title="レイトCO / アーリーCI（部屋別）"
+            rateCi={task.rateCi}
+            rateCo={task.rateCo}
+          />
+
+          <InfoRow label="タオル数" value={String(task.towelCount ?? "-")} />
+
+          <div>
+            <div className="mb-2 text-sm font-semibold text-slate-700">ステータス</div>
+            <select
+              value={status}
+              onChange={(e) => setStatus(e.target.value)}
+              className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm outline-none"
+            >
+              <option value="pending">未着手</option>
+              <option value="in_progress">清掃中</option>
+              <option value="completed">完了</option>
+            </select>
+          </div>
+
+          <div>
+            <div className="mb-2 text-sm font-semibold text-slate-700">備考</div>
+            <textarea
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder="備考を入力"
+              rows={4}
+              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none resize-none"
+            />
+          </div>
+        </div>
+
+        <div className="flex gap-3 px-5 pb-5">
+          <button
+            onClick={onClose}
+            className="flex-1 rounded-2xl border border-slate-200 bg-white px-4 py-4 text-sm font-bold text-slate-700 hover:bg-slate-50"
+          >
+            キャンセル
+          </button>
+
+          <button
+            onClick={() => onSave(task.id, status, note)}
+            disabled={saving}
+            className="flex-1 rounded-2xl bg-slate-900 px-4 py-4 text-sm font-bold text-white hover:bg-black disabled:opacity-50"
+          >
+            {saving ? "保存中..." : "保存"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function InfoRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-4 py-4">
+      <div className="text-sm text-slate-500">{label}</div>
+      <div className="text-sm font-bold text-slate-900">{value}</div>
+    </div>
+  );
+}
+
+function RateBox({
+  title,
+  rateCi,
+  rateCo,
+}: {
+  title: string;
+  rateCi?: number | string;
+  rateCo?: number | string;
+}) {
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
+      <div className="text-sm font-bold text-slate-900">{title}</div>
+      <div className="mt-3 space-y-2 text-sm">
+        <div className="flex items-center justify-between">
+          <span className="text-slate-600">アーリーCI</span>
+          <span className="font-bold text-slate-900">{formatMoney(rateCi)}</span>
+        </div>
+        <div className="flex items-center justify-between">
+          <span className="text-slate-600">レイトCO</span>
+          <span className="font-bold text-slate-900">{formatMoney(rateCo)}</span>
+        </div>
+      </div>
     </div>
   );
 }
@@ -215,208 +382,22 @@ function FilterChip({
   );
 }
 
-function TaskCard({
-  task,
-  onClick,
+function BlockMessage({
+  text,
+  danger = false,
 }: {
-  task: EmployeeTask;
-  onClick: () => void;
+  text: string;
+  danger?: boolean;
 }) {
-  const status = getStatusView(task.status);
-
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="block w-full rounded-3xl border border-slate-200 bg-white p-4 text-left shadow-sm transition hover:bg-slate-50"
-    >
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <div className="text-xs font-medium text-slate-500">担当タスク</div>
-          <h2 className="mt-1 text-base font-bold text-slate-900 break-words">
-            {task.propertyName || "物件未設定"}
-            {task.roomName ? ` / ${task.roomName}` : ""}
-          </h2>
-        </div>
-
-        <span
-          className={`shrink-0 rounded-full border px-3 py-1 text-xs font-bold ${status.badgeClass}`}
-        >
-          {status.label}
-        </span>
-      </div>
-
-      <div className="mt-4 rounded-2xl bg-slate-50 px-4 py-3">
-        <div className="text-sm font-semibold text-slate-800">
-          {task.title || "清掃タスク"}
-        </div>
-        <div className="mt-1 text-xs text-slate-500">
-          期限: {formatDate(task.dueDate)}
-        </div>
-      </div>
-
-      {task.note ? (
-        <div className="mt-3 rounded-2xl border border-slate-200 bg-white px-4 py-3">
-          <div className="text-xs font-medium text-slate-500">メモ</div>
-          <div className="mt-1 text-sm text-slate-700 break-words line-clamp-2">
-            {task.note}
-          </div>
-        </div>
-      ) : null}
-
-      <div className="mt-4 h-2 overflow-hidden rounded-full bg-slate-100">
-        <div className={`h-full rounded-full ${status.barClass}`} />
-      </div>
-    </button>
-  );
-}
-
-function TaskModal({
-  task,
-  saving,
-  onClose,
-  onUpdateStatus,
-}: {
-  task: EmployeeTask;
-  saving: boolean;
-  onClose: () => void;
-  onUpdateStatus: (status: "pending" | "in_progress" | "completed") => void;
-}) {
-  const status = getStatusView(task.status);
-
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/40"
-      onMouseDown={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
-    >
-      <div className="w-full max-w-md rounded-t-3xl bg-white p-5 shadow-2xl">
-        <div className="mb-4 flex items-start justify-between gap-3">
-          <div>
-            <div className="text-xs font-medium text-slate-500">タスク詳細</div>
-            <div className="mt-1 text-lg font-bold text-slate-900">
-              {task.propertyName || "物件未設定"}
-              {task.roomName ? ` / ${task.roomName}` : ""}
-            </div>
-          </div>
-
-          <button
-            onClick={onClose}
-            className="rounded-full border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50"
-          >
-            ×
-          </button>
-        </div>
-
-        <div className="space-y-3">
-          <InfoBlock label="内容" value={task.title || "清掃タスク"} />
-          <InfoBlock label="期限" value={formatDate(task.dueDate)} />
-          <InfoBlock label="状態" value={status.label} />
-
-          {task.note ? <InfoBlock label="メモ" value={task.note} multiline /> : null}
-        </div>
-
-        <div className="mt-5 grid grid-cols-3 gap-2">
-          <StatusButton
-            active={task.status === "pending"}
-            label="未着手"
-            onClick={() => onUpdateStatus("pending")}
-            disabled={saving}
-          />
-          <StatusButton
-            active={task.status === "in_progress"}
-            label="対応中"
-            onClick={() => onUpdateStatus("in_progress")}
-            disabled={saving}
-          />
-          <StatusButton
-            active={task.status === "completed"}
-            label="完了"
-            onClick={() => onUpdateStatus("completed")}
-            disabled={saving}
-          />
-        </div>
-
-        <button
-          onClick={onClose}
-          className="mt-4 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-        >
-          閉じる
-        </button>
-      </div>
-    </div>
-  );
-}
-
-function StatusButton({
-  active,
-  label,
-  onClick,
-  disabled,
-}: {
-  active: boolean;
-  label: string;
-  onClick: () => void;
-  disabled?: boolean;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      disabled={disabled}
-      className={`rounded-2xl px-3 py-3 text-sm font-bold transition disabled:opacity-50 ${
-        active
-          ? "bg-slate-900 text-white"
-          : "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+      className={`rounded-3xl border p-5 text-sm shadow-sm ${
+        danger
+          ? "border-red-200 bg-red-50 text-red-600"
+          : "border-slate-200 bg-white text-slate-500"
       }`}
     >
-      {label}
-    </button>
-  );
-}
-
-function InfoBlock({
-  label,
-  value,
-  multiline = false,
-}: {
-  label: string;
-  value: string;
-  multiline?: boolean;
-}) {
-  return (
-    <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-      <div className="text-xs font-medium text-slate-500">{label}</div>
-      <div className={`mt-1 text-sm font-semibold text-slate-900 ${multiline ? "whitespace-pre-wrap" : ""}`}>
-        {value || "-"}
-      </div>
-    </div>
-  );
-}
-
-function LoadingBlock() {
-  return (
-    <div className="rounded-3xl border border-slate-200 bg-white p-5 text-sm text-slate-500 shadow-sm">
-      読み込み中...
-    </div>
-  );
-}
-
-function ErrorBlock({ message }: { message: string }) {
-  return (
-    <div className="rounded-3xl border border-red-200 bg-red-50 p-5 text-sm text-red-600 shadow-sm">
-      {message}
-    </div>
-  );
-}
-
-function EmptyBlock() {
-  return (
-    <div className="rounded-3xl border border-slate-200 bg-white p-8 text-center shadow-sm">
-      <div className="text-sm font-semibold text-slate-700">表示できるタスクはありません</div>
-      <div className="mt-1 text-xs text-slate-500">
-        条件を変更するか、更新ボタンを押してください
-      </div>
+      {text}
     </div>
   );
 }
@@ -455,35 +436,46 @@ function BottomNav() {
   );
 }
 
-function getStatusView(status: string) {
+function getStatusLabel(status: string) {
   if (status === "completed") {
     return {
       label: "完了",
-      badgeClass: "border-emerald-200 bg-emerald-50 text-emerald-700",
-      barClass: "w-full bg-emerald-500",
+      className: "bg-emerald-50 text-emerald-700",
     };
   }
-
   if (status === "in_progress") {
     return {
-      label: "対応中",
-      badgeClass: "border-amber-200 bg-amber-50 text-amber-700",
-      barClass: "w-2/3 bg-amber-500",
+      label: "清掃中",
+      className: "bg-sky-50 text-sky-700",
     };
   }
-
   return {
     label: "未着手",
-    badgeClass: "border-slate-200 bg-slate-100 text-slate-700",
-    barClass: "w-1/3 bg-slate-400",
+    className: "bg-slate-100 text-slate-700",
   };
 }
 
-function formatDate(value: string) {
+function normalizeStatus(status: string) {
+  if (status === "completed") return "completed";
+  if (status === "in_progress") return "in_progress";
+  return "pending";
+}
+
+function formatDate(value?: string) {
   if (!value) return "-";
 
   const d = new Date(value);
   if (Number.isNaN(d.getTime())) return value;
 
   return `${d.getMonth() + 1}/${d.getDate()}`;
+}
+
+function formatMoney(value?: number | string) {
+  if (value === undefined || value === null || value === "") return "-";
+  if (typeof value === "string" && value.startsWith("¥")) return value;
+
+  const n = Number(value);
+  if (Number.isNaN(n)) return String(value);
+
+  return `¥${n.toLocaleString()}`;
 }
