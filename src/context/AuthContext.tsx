@@ -1,10 +1,27 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { api } from "../lib/api";
 
-const AuthContext = createContext(null);
+type User = {
+  id?: string;
+  name?: string;
+  login_id?: string;
+  loginId?: string;
+  role?: string;
+};
 
-export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null);
+type AuthContextType = {
+  user: User | null;
+  loading: boolean;
+  isLoggedIn: boolean;
+  login: (loginId: string, password: string) => Promise<void>;
+  logout: () => void;
+  fetchMe: () => Promise<void>;
+};
+
+const AuthContext = createContext<AuthContextType | null>(null);
+
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
   const isLoggedIn = !!user;
@@ -22,7 +39,7 @@ export function AuthProvider({ children }) {
   async function fetchMe() {
     try {
       const data = await api.get("/api/employee/me");
-      setUser(data.user);
+      setUser(data.user ?? null);
     } catch (error) {
       console.error("fetchMe error:", error);
       logout();
@@ -31,7 +48,7 @@ export function AuthProvider({ children }) {
     }
   }
 
-  async function login(loginId, password) {
+  async function login(loginId: string, password: string) {
     const data = await api.post("/api/auth/login", {
       login_id: loginId,
       password,
@@ -39,8 +56,7 @@ export function AuthProvider({ children }) {
     });
 
     localStorage.setItem("employee_access_token", data.access_token);
-    setUser(data.user);
-    return data;
+    setUser(data.user ?? null);
   }
 
   function logout() {
@@ -64,5 +80,11 @@ export function AuthProvider({ children }) {
 }
 
 export function useAuth() {
-  return useContext(AuthContext);
+  const context = useContext(AuthContext);
+
+  if (!context) {
+    throw new Error("useAuth must be used within an AuthProvider");
+  }
+
+  return context;
 }
