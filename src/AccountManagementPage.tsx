@@ -17,7 +17,7 @@ type Staff = {
 function Button({ children, className = "", ...props }: any) {
   return (
     <button
-      className={`inline-flex items-center justify-center rounded-full border px-4 py-2 text-sm font-bold transition hover:bg-slate-50 ${className}`}
+      className={`inline-flex items-center justify-center rounded-full border px-4 py-2 text-sm font-bold transition hover:bg-slate-50 disabled:opacity-50 ${className}`}
       {...props}
     >
       {children}
@@ -27,6 +27,7 @@ function Button({ children, className = "", ...props }: any) {
 
 function Drawer({ open, title, subtitle, children, onClose, footer }: any) {
   if (!open) return null;
+
   return (
     <div
       className="fixed inset-0 z-[999] flex justify-end bg-black/40"
@@ -45,6 +46,7 @@ function Drawer({ open, title, subtitle, children, onClose, footer }: any) {
             ×
           </button>
         </div>
+
         <div className="p-4 overflow-auto flex-1">{children}</div>
         <div className="p-4 border-t border-slate-200">{footer}</div>
       </div>
@@ -111,8 +113,12 @@ export default function AccountManagementPage() {
   const loadStaffs = async () => {
     try {
       const res = await fetch(`${API_BASE}/staffs`);
-      if (!res.ok) throw new Error("スタッフ取得に失敗しました。");
       const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data?.detail || "スタッフ取得に失敗しました。");
+      }
+
       setStaffs(data || []);
     } catch (error) {
       console.error(error);
@@ -126,10 +132,12 @@ export default function AccountManagementPage() {
 
   const filtered = useMemo(() => {
     const qq = q.trim().toLowerCase();
+
     return staffs
       .filter((s) => (showInactive ? true : s.is_active))
       .filter((s) => {
         if (!qq) return true;
+
         return `${s.staff_name} ${s.staff_code ?? ""} ${s.role ?? ""} ${s.note ?? ""}`
           .toLowerCase()
           .includes(qq);
@@ -182,7 +190,8 @@ export default function AccountManagementPage() {
     try {
       setSaving(true);
 
-      const body = {
+      const payload = {
+        staff_id: form.id || null,
         staff_code: form.staff_code.trim(),
         staff_name: form.staff_name.trim(),
         role: form.role,
@@ -192,10 +201,7 @@ export default function AccountManagementPage() {
         password: form.password || null,
       };
 
-      const url = selected ? `${API_BASE}/staffs/update` : `${API_BASE}/staffs/create`;
-      const payload = selected ? { staff_id: form.id, ...body } : body;
-
-      const res = await fetch(url, {
+      const res = await fetch(`${API_BASE}/staffs/upsert`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
