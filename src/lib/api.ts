@@ -1,4 +1,5 @@
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL || "https://cleaning-task-api.onrender.com";
 
 type RequestOptions = RequestInit & {
   headers?: Record<string, string>;
@@ -30,7 +31,7 @@ async function request(path: string, options: RequestOptions = {}) {
   }
 
   if (!response.ok) {
-    throw new Error(data?.detail || data?.message || "通信に失敗しました");
+    throw new Error(data?.detail || data?.message || "通信に失敗しました。");
   }
 
   return data;
