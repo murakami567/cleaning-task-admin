@@ -1,9 +1,13 @@
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
 
-async function request(path, options = {}) {
+type RequestOptions = RequestInit & {
+  headers?: Record<string, string>;
+};
+
+async function request(path: string, options: RequestOptions = {}) {
   const token = localStorage.getItem("employee_access_token");
 
-  const headers = {
+  const headers: Record<string, string> = {
     "Content-Type": "application/json",
     ...(options.headers || {}),
   };
@@ -17,7 +21,8 @@ async function request(path, options = {}) {
     headers,
   });
 
-  let data = null;
+  let data: any = null;
+
   try {
     data = await response.json();
   } catch {
@@ -32,18 +37,18 @@ async function request(path, options = {}) {
 }
 
 export const api = {
-  post: (path, body) =>
+  get: (path: string) =>
+    request(path, {
+      method: "GET",
+    }),
+
+  post: (path: string, body: unknown) =>
     request(path, {
       method: "POST",
       body: JSON.stringify(body),
     }),
 
-  get: (path) =>
-    request(path, {
-      method: "GET",
-    }),
-
-  put: (path, body) =>
+  put: (path: string, body: unknown) =>
     request(path, {
       method: "PUT",
       body: JSON.stringify(body),
