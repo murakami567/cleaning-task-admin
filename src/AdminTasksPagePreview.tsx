@@ -666,7 +666,7 @@ function assigneeLabels(userIds: string[], attendees: Attendee[]) {
 
 function assigneeLabel(userId: string, attendees: Attendee[]) {
   if (!userId || userId === "UNASSIGNED") return "未割当";
-  const found = attendees?.find((u) => u.userId === id);
+  const found = attendees?.find((u) => u.userId === userId);
   return found?.name ?? userId;
 }
 
