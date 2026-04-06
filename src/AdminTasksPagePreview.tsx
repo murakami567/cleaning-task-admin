@@ -78,18 +78,15 @@ function computeDueLabel(checkoutDate: string, nextCheckinDate: string) {
   return "DUE_LATER";
 }
 
-function getTowelCount(guestCount?: number, nights?: number) {
-  const g = guestCount ?? 0;
-  const n = nights ?? 0;
+function getTowelCount(guestCount?: number, gapNights?: number) {
+  const guests = Number(guestCount ?? 0);
+  const nights = Number(gapNights ?? 0);
 
-  if (g === 0 || n === 0) return 0;
-
-  if (n >= 8) return g * 3;
-  if (n >= 3) return g * 2;
-  return g * 1;
+  if (guests <= 0 || nights <= 0) return 0;
+  if (nights >= 8) return guests * 3;
+  if (nights >= 3) return guests * 2;
+  return guests;
 }
-
-
 
 /* =========================
  * UI parts
@@ -284,7 +281,7 @@ function CardBody({ children }: { children: React.ReactNode }) {
 function Table({ children }: { children: React.ReactNode }) {
   return (
     <div className="overflow-auto rounded-2xl border bg-white shadow-sm">
-      <table className="min-w-[1120px] w-full text-sm">{children}</table>
+      <table className="min-w-[1210px] w-full text-sm">{children}</table>
     </div>
   );
 }
@@ -342,7 +339,6 @@ type CleaningTask = {
   status: string;
   property: string;
   room: string;
-  gapNights?: number;
   assigneeIds: string[];
   assigneeNames?: string[];
   date: string;
@@ -352,6 +348,7 @@ type CleaningTask = {
   note: string;
   loadScore?: number;
   guestCount?: number;
+  gapNights?: number;
   nextCheckinDate?: string;
 };
 
@@ -420,7 +417,6 @@ const API_BASE =
  * API helpers
  * ========================= */
 
-
 function mapApiTaskToUi(task: ApiCleaningTask): CleaningTask {
   const assigneeIds =
     task.assigned_staff_ids && task.assigned_staff_ids.length > 0
@@ -437,22 +433,22 @@ function mapApiTaskToUi(task: ApiCleaningTask): CleaningTask {
       : [];
 
   return {
-  id: task.id,
-  status: task.status || "未着手",
-  property: task.property_name,
-  room: task.room_name,
-  assigneeIds,
-  assigneeNames,
-  date: task.task_date,
-  due: computeDueLabel(task.checkout_date, task.next_checkin_date ?? ""),
-  baggageTime: "",
-  checkerId: "",
-  note: task.note ?? "",
-  loadScore: task.load_score ?? 0,
-  guestCount: task.guest_count ?? 0,
-  gapNights: task.gap_nights ?? 0,
-  nextCheckinDate: task.next_checkin_date ?? "",
-};
+    id: task.id,
+    status: task.status || "未着手",
+    property: task.property_name,
+    room: task.room_name,
+    assigneeIds,
+    assigneeNames,
+    date: task.task_date,
+    due: computeDueLabel(task.checkout_date, task.next_checkin_date ?? ""),
+    baggageTime: "",
+    checkerId: "",
+    note: task.note ?? "",
+    loadScore: task.load_score ?? 0,
+    guestCount: task.guest_count ?? 0,
+    gapNights: task.gap_nights ?? 0,
+    nextCheckinDate: task.next_checkin_date ?? "",
+  };
 }
 
 async function fetchCleaningTasks(mode: ViewMode): Promise<CleaningTask[]> {
@@ -466,7 +462,6 @@ async function fetchCleaningTasks(mode: ViewMode): Promise<CleaningTask[]> {
   const list = Array.isArray(data) ? data : [];
   return list.map(mapApiTaskToUi);
 }
-
 
 async function persistCleaningTaskPatch(
   taskId: string,
@@ -519,7 +514,6 @@ async function fetchAvailableStaffByDate(shiftDate: string): Promise<Attendee[]>
 
   const data = await res.json();
 
-  // APIが object / array どちらでも動くようにする
   const day = Array.isArray(data) ? data[0] : data;
   if (!day) return [];
 
@@ -654,7 +648,7 @@ function assigneeLabels(userIds: string[], attendees: Attendee[]) {
 
 function assigneeLabel(userId: string, attendees: Attendee[]) {
   if (!userId || userId === "UNASSIGNED") return "未割当";
-  const found = attendees?.find((u) => u.userId === userId);
+  const found = attendees?.find((u) => u.userId === id);
   return found?.name ?? userId;
 }
 
@@ -820,55 +814,55 @@ export default function AdminTasksPagePreview() {
   };
 
   const refresh = async () => {
-  try {
-    setLoadingCleaning(true);
-    setCleaningError("");
+    try {
+      setLoadingCleaning(true);
+      setCleaningError("");
 
-    const [tasksRaw, nonCleaningRaw] = await Promise.all([
-      fetchCleaningTasks(viewMode),
-      fetchNonCleaningTasks(),
-    ]);
+      const [tasksRaw, nonCleaningRaw] = await Promise.all([
+        fetchCleaningTasks(viewMode),
+        fetchNonCleaningTasks(),
+      ]);
 
-    const tasks = Array.isArray(tasksRaw) ? tasksRaw : [];
-    const nonCleaning = Array.isArray(nonCleaningRaw) ? nonCleaningRaw : [];
+      const tasks = Array.isArray(tasksRaw) ? tasksRaw : [];
+      const nonCleaning = Array.isArray(nonCleaningRaw) ? nonCleaningRaw : [];
 
-    setCleaningTasks(tasks);
-    setNonCleaningTasks(nonCleaning);
+      setCleaningTasks(tasks);
+      setNonCleaningTasks(nonCleaning);
 
-    setSelectedCleaningId((prev) =>
-      tasks.some((t) => t.id === prev) ? prev : tasks[0]?.id ?? ""
-    );
+      setSelectedCleaningId((prev) =>
+        tasks.some((t) => t.id === prev) ? prev : tasks[0]?.id ?? ""
+      );
 
-    const uniqueDates = Array.from(
-      new Set(
-        [...tasks.map((t) => t.date), ...nonCleaning.map((t) => t.date)].filter(Boolean)
-      )
-    );
+      const uniqueDates = Array.from(
+        new Set(
+          [...tasks.map((t) => t.date), ...nonCleaning.map((t) => t.date)].filter(Boolean)
+        )
+      );
 
-    const attendeesEntries = await Promise.all(
-      uniqueDates.map(async (d) => {
-        try {
-          const users = await fetchAvailableStaffByDate(d);
-          return [d, Array.isArray(users) ? users : []] as const;
-        } catch (error) {
-          console.error(`shift fetch failed: ${d}`, error);
-          return [d, []] as const;
-        }
-      })
-    );
+      const attendeesEntries = await Promise.all(
+        uniqueDates.map(async (d) => {
+          try {
+            const users = await fetchAvailableStaffByDate(d);
+            return [d, Array.isArray(users) ? users : []] as const;
+          } catch (error) {
+            console.error(`shift fetch failed: ${d}`, error);
+            return [d, []] as const;
+          }
+        })
+      );
 
-    setAttendeesByDate(Object.fromEntries(attendeesEntries));
-    setLastUpdated(new Date());
-  } catch (error) {
-    console.error(error);
-    setCleaningError("タスクの取得に失敗しました");
-    setCleaningTasks([]);
-    setNonCleaningTasks([]);
-    setAttendeesByDate({});
-  } finally {
-    setLoadingCleaning(false);
-  }
-};
+      setAttendeesByDate(Object.fromEntries(attendeesEntries));
+      setLastUpdated(new Date());
+    } catch (error) {
+      console.error(error);
+      setCleaningError("タスクの取得に失敗しました");
+      setCleaningTasks([]);
+      setNonCleaningTasks([]);
+      setAttendeesByDate({});
+    } finally {
+      setLoadingCleaning(false);
+    }
+  };
 
   useEffect(() => {
     void loadProperties();
@@ -887,25 +881,25 @@ export default function AdminTasksPagePreview() {
   }, [autoRefresh, viewMode]);
 
   const visibleCleaningTasks = useMemo(() => {
-  const list = Array.isArray(cleaningTasks) ? cleaningTasks : [];
+    const list = Array.isArray(cleaningTasks) ? cleaningTasks : [];
 
-  const tasks =
-    viewMode === "TODAY"
-      ? list.filter((t) => t.date === baseDate)
-      : list.filter((t) => isFutureDate(t.date));
+    const tasks =
+      viewMode === "TODAY"
+        ? list.filter((t) => t.date === baseDate)
+        : list.filter((t) => isFutureDate(t.date));
 
-  return sortTasksByPropertyOrder(tasks, viewMode);
-}, [cleaningTasks, viewMode]);
+    return sortTasksByPropertyOrder(tasks, viewMode);
+  }, [cleaningTasks, viewMode]);
 
-const visibleNonCleaningTasks = useMemo(() => {
-  const list = Array.isArray(nonCleaningTasks) ? nonCleaningTasks : [];
+  const visibleNonCleaningTasks = useMemo(() => {
+    const list = Array.isArray(nonCleaningTasks) ? nonCleaningTasks : [];
 
-  if (viewMode === "TODAY") {
-    return list.filter((t) => t.date === baseDate);
-  }
+    if (viewMode === "TODAY") {
+      return list.filter((t) => t.date === baseDate);
+    }
 
-  return list.filter((t) => isFutureDate(t.date));
-}, [nonCleaningTasks, viewMode]);
+    return list.filter((t) => isFutureDate(t.date));
+  }, [nonCleaningTasks, viewMode]);
 
   const addCleaningTask = () => {
     setDraftCleaningTask({
@@ -973,22 +967,22 @@ const visibleNonCleaningTasks = useMemo(() => {
   };
 
   const updateCleaningTask = async (id: string, patch: Partial<CleaningTask>) => {
-  const currentTask = cleaningTasks.find((t) => t.id === id);
+    const currentTask = cleaningTasks.find((t) => t.id === id);
 
-  setCleaningTasks((prev) => prev.map((t) => (t.id === id ? { ...t, ...patch } : t)));
-  setLastUpdated(new Date());
+    setCleaningTasks((prev) => prev.map((t) => (t.id === id ? { ...t, ...patch } : t)));
+    setLastUpdated(new Date());
 
-  const persistableKeys = ["status", "note", "assigneeIds", "checkerId"];
-  const shouldPersist = Object.keys(patch).some((k) => persistableKeys.includes(k));
-  if (!shouldPersist) return;
+    const persistableKeys = ["status", "note", "assigneeIds", "checkerId"];
+    const shouldPersist = Object.keys(patch).some((k) => persistableKeys.includes(k));
+    if (!shouldPersist) return;
 
-  try {
-    await persistCleaningTaskPatch(id, patch, attendeesByDate, currentTask?.date);
-  } catch (error) {
-    console.error(error);
-    setCleaningError("更新に失敗しました。保存内容を確認してください。");
-  }
-};
+    try {
+      await persistCleaningTaskPatch(id, patch, attendeesByDate, currentTask?.date);
+    } catch (error) {
+      console.error(error);
+      setCleaningError("更新に失敗しました。保存内容を確認してください。");
+    }
+  };
 
   const removeCleaningTask = (id: string) => {
     setCleaningTasks((prev) => {
@@ -1000,66 +994,66 @@ const visibleNonCleaningTasks = useMemo(() => {
     setCleaningDrawerOpen(false);
   };
 
+  const openAddNonCleaning = () => {
+    const id = `nct_${Math.random().toString(16).slice(2, 8)}`;
 
-const openAddNonCleaning = () => {
-  const id = `nct_${Math.random().toString(16).slice(2, 8)}`;
-
-  setEditingNonCleaningId("");
-
-  setDraftNonCleaning({
-    id,
-    status: "未着手",
-    category: "TRANSPORT",
-    title: "",
-    date: viewMode === "TODAY" ? baseDate : addDaysIso(baseDate, 1),
-    deadline: "",
-    assigneeIds: [],
-    assigneeNames: [],
-    checkerId: "",
-    checkerName: "",
-    note: "",
-  });
-
-  setNonCleaningDrawerOpen(true);
-};
-
-const commitNonCleaning = async () => {
-  if (!draftNonCleaning) return;
-  if (draftNonCleaning.title.trim().length === 0) return;
-
-  try {
-    const attendees = attendeesByDate[draftNonCleaning.date] ?? [];
-
-    const payload: NonCleaningTask = {
-      ...draftNonCleaning,
-      title: draftNonCleaning.title.trim(),
-    };
-
-    if (editingNonCleaningId) {
-      await updateNonCleaningTask(payload, attendees);
-    } else {
-      await createNonCleaningTask(payload, attendees);
-    }
-
-    setNonCleaningDrawerOpen(false);
-    setDraftNonCleaning(null);
     setEditingNonCleaningId("");
-    await refresh();
-  } catch (error) {
-    console.error(error);
-    window.alert("清掃外タスクの保存に失敗しました。");
-  }
-};
+
+    setDraftNonCleaning({
+      id,
+      status: "未着手",
+      category: "TRANSPORT",
+      title: "",
+      date: viewMode === "TODAY" ? baseDate : addDaysIso(baseDate, 1),
+      deadline: "",
+      assigneeIds: [],
+      assigneeNames: [],
+      checkerId: "",
+      checkerName: "",
+      note: "",
+    });
+
+    setNonCleaningDrawerOpen(true);
+  };
+
+  const commitNonCleaning = async () => {
+    if (!draftNonCleaning) return;
+    if (draftNonCleaning.title.trim().length === 0) return;
+
+    try {
+      const attendees = attendeesByDate[draftNonCleaning.date] ?? [];
+
+      const payload: NonCleaningTask = {
+        ...draftNonCleaning,
+        title: draftNonCleaning.title.trim(),
+      };
+
+      if (editingNonCleaningId) {
+        await updateNonCleaningTask(payload, attendees);
+      } else {
+        await createNonCleaningTask(payload, attendees);
+      }
+
+      setNonCleaningDrawerOpen(false);
+      setDraftNonCleaning(null);
+      setEditingNonCleaningId("");
+      await refresh();
+    } catch (error) {
+      console.error(error);
+      window.alert("清掃外タスクの保存に失敗しました。");
+    }
+  };
 
   const removeNonCleaning = async (id: string) => {
-  try {
-    await deleteNonCleaningTaskApi(id);
-    await refresh();
-  } catch (error) {
-    console.error(error);
-    window.alert("清掃外タスクの削除に失敗しました。");
-  }
-};
+    try {
+      await deleteNonCleaningTaskApi(id);
+      await refresh();
+    } catch (error) {
+      console.error(error);
+      window.alert("清掃外タスクの削除に失敗しました。");
+    }
+  };
+
   return (
     <div className="min-h-screen bg-neutral-50 p-6">
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
@@ -1140,8 +1134,8 @@ const commitNonCleaning = async () => {
                       <Th className="w-[110px]">部屋</Th>
                       <Th className="w-[200px]">担当</Th>
                       <Th className="w-[170px]">日付</Th>
-                      <Th className="w-[90px]">タオル</Th>
                       <Th className="w-[140px]">期限</Th>
+                      <Th className="w-[90px]">タオル</Th>
                       <Th className="w-[140px]">荷物預かり</Th>
                       <Th className="w-[200px]">チェッカー</Th>
                       <Th>備考</Th>
@@ -1153,7 +1147,6 @@ const commitNonCleaning = async () => {
                       const attendees = attendeesByDate[t.date] ?? [];
                       const isSelected = t.id === selectedCleaningId;
 
-                      const assigneeOptions = buildAssigneeOptions(attendees);
                       const checkerOptions = [{ value: "", label: "未設定" }].concat(
                         attendees.map((u) => ({ value: u.userId, label: u.name }))
                       );
@@ -1192,19 +1185,15 @@ const commitNonCleaning = async () => {
                           </Td>
 
                           <Td>{t.property}</Td>
-
                           <Td>{t.room || "-"}</Td>
-                          <Td>
-  {getTowelCount(t.guestCount, t.gapNights)}
-</Td>
 
                           <Td>
                             {tableEditMode ? (
                               <MultiAssignSelect
-  value={t.assigneeIds ?? []}
-  attendees={attendees}
-  onChange={(ids) => updateCleaningTask(t.id, { assigneeIds: ids })}
-/>
+                                value={t.assigneeIds ?? []}
+                                attendees={attendees}
+                                onChange={(ids) => updateCleaningTask(t.id, { assigneeIds: ids })}
+                              />
                             ) : (
                               assigneeLabels(t.assigneeIds ?? [], attendees)
                             )}
@@ -1221,7 +1210,7 @@ const commitNonCleaning = async () => {
                                   await ensureAttendeesLoaded(nextDate);
                                   updateCleaningTask(t.id, {
                                     date: nextDate,
-                                    assigneeId: [],
+                                    assigneeIds: [],
                                     checkerId: "",
                                   });
                                 }}
@@ -1232,17 +1221,19 @@ const commitNonCleaning = async () => {
                           </Td>
 
                           <Td>
-  {tableEditMode ? (
-    <Select
-  value={computeDueLabel(t.date, t.nextCheckinDate ?? "")}
-  onChange={() => {}}
-  options={DUE_OPTIONS}
-  disabled
-/>
-  ) : (
-    dueLabel(computeDueLabel(t.date, t.nextCheckinDate ?? ""))
-  )}
-</Td>
+                            {tableEditMode ? (
+                              <Select
+                                value={computeDueLabel(t.date, t.nextCheckinDate ?? "")}
+                                onChange={() => {}}
+                                options={DUE_OPTIONS}
+                                disabled
+                              />
+                            ) : (
+                              dueLabel(computeDueLabel(t.date, t.nextCheckinDate ?? ""))
+                            )}
+                          </Td>
+
+                          <Td>{getTowelCount(t.guestCount, t.gapNights)}</Td>
 
                           <Td>
                             {tableEditMode ? (
@@ -1258,17 +1249,17 @@ const commitNonCleaning = async () => {
                           </Td>
 
                           <Td>
-  {tableEditMode ? (
-    <Select
-      value={t.checkerId}
-      onChange={(v) => updateCleaningTask(t.id, { checkerId: v })}
-      options={checkerOptions}
-      disabled={attendees.length === 0}
-    />
-  ) : (
-    assigneeLabel(t.checkerId, attendees)
-  )}
-</Td>
+                            {tableEditMode ? (
+                              <Select
+                                value={t.checkerId}
+                                onChange={(v) => updateCleaningTask(t.id, { checkerId: v })}
+                                options={checkerOptions}
+                                disabled={attendees.length === 0}
+                              />
+                            ) : (
+                              assigneeLabel(t.checkerId, attendees)
+                            )}
+                          </Td>
 
                           <Td>
                             {tableEditMode ? (
@@ -1289,7 +1280,7 @@ const commitNonCleaning = async () => {
 
                     {visibleCleaningTasks.length === 0 ? (
                       <tr>
-                        <Td colSpan={10} className="py-10">
+                        <Td colSpan={11} className="py-10">
                           <div className="text-center text-sm text-black/60">
                             {viewMode === "TODAY" ? "当日の清掃タスクがありません。" : "翌日以降の清掃タスクがありません。"}
                           </div>
@@ -1355,31 +1346,31 @@ const commitNonCleaning = async () => {
                           <td className="border-b px-3 py-2">{t.deadline || "-"}</td>
                           <td className="border-b px-3 py-2">{assigneeLabels(t.assigneeIds ?? [], attendees)}</td>
                           <td className="border-b px-3 py-2">
-  <div className="flex gap-2">
-    <Button
-  variant="outline"
-  size="sm"
-  onClick={() => {
-    setEditingNonCleaningId(t.id);
-    setDraftNonCleaning({
-      ...t,
-      assigneeIds: t.assigneeIds ?? [],
-      assigneeNames: t.assigneeNames ?? [],
-      checkerId: t.checkerId ?? "",
-      checkerName: t.checkerName ?? "",
-      note: t.note ?? "",
-    });
-    setNonCleaningDrawerOpen(true);
-  }}
->
-  編集
-</Button>
+                            <div className="flex gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  setEditingNonCleaningId(t.id);
+                                  setDraftNonCleaning({
+                                    ...t,
+                                    assigneeIds: t.assigneeIds ?? [],
+                                    assigneeNames: t.assigneeNames ?? [],
+                                    checkerId: t.checkerId ?? "",
+                                    checkerName: t.checkerName ?? "",
+                                    note: t.note ?? "",
+                                  });
+                                  setNonCleaningDrawerOpen(true);
+                                }}
+                              >
+                                編集
+                              </Button>
 
-    <Button variant="danger" size="sm" onClick={() => removeNonCleaning(t.id)}>
-      削除
-    </Button>
-  </div>
-</td>
+                              <Button variant="danger" size="sm" onClick={() => removeNonCleaning(t.id)}>
+                                削除
+                              </Button>
+                            </div>
+                          </td>
                         </tr>
                       );
                     })}
@@ -1455,7 +1446,7 @@ const commitNonCleaning = async () => {
                   await ensureAttendeesLoaded(nextDate);
                   updateCleaningTask(selectedCleaningTask.id, {
                     date: nextDate,
-                    assigneeId: [],
+                    assigneeIds: [],
                     checkerId: "",
                   });
                 }}
@@ -1464,21 +1455,34 @@ const commitNonCleaning = async () => {
                 {formatMd(selectedCleaningTask.date)} / 出勤者: {selectedCleaningAttendees.map((u) => u.name).join(" / ") || "なし"}
               </div>
             </div>
-  <div>
-  <div className="mb-1 text-xs text-black/60">期限</div>
-  <Select
-  value={computeDueLabel(
-    selectedCleaningTask.date,
-    selectedCleaningTask.nextCheckinDate ?? ""
-  )}
-  onChange={() => {}}
-  options={DUE_OPTIONS}
-  disabled
-/>
-  <div className="mt-1 text-xs text-black/50">
-    日付から自動判定されます
-  </div>
-</div>
+
+            <div>
+              <div className="mb-1 text-xs text-black/60">期限</div>
+              <Select
+                value={computeDueLabel(
+                  selectedCleaningTask.date,
+                  selectedCleaningTask.nextCheckinDate ?? ""
+                )}
+                onChange={() => {}}
+                options={DUE_OPTIONS}
+                disabled
+              />
+              <div className="mt-1 text-xs text-black/50">
+                日付から自動判定されます
+              </div>
+            </div>
+
+            <div>
+              <div className="mb-1 text-xs text-black/60">タオル数</div>
+              <TextInput
+                value={String(getTowelCount(selectedCleaningTask.guestCount, selectedCleaningTask.gapNights))}
+                onChange={() => {}}
+                placeholder=""
+              />
+              <div className="mt-1 text-xs text-black/50">
+                人数 {selectedCleaningTask.guestCount ?? 0} / 泊数 {selectedCleaningTask.gapNights ?? 0}
+              </div>
+            </div>
 
             <div>
               <div className="mb-1 text-xs text-black/60">荷物預かり（時間）</div>
@@ -1493,12 +1497,12 @@ const commitNonCleaning = async () => {
             <div>
               <div className="mb-1 text-xs text-black/60">担当（その日付の出勤者のみ）</div>
               <MultiAssignSelect
-  value={selectedCleaningTask.assigneeIds ?? []}
-  attendees={selectedCleaningAttendees}
-  onChange={(ids) =>
-    updateCleaningTask(selectedCleaningTask.id, { assigneeIds: ids })
-  }
-/>
+                value={selectedCleaningTask.assigneeIds ?? []}
+                attendees={selectedCleaningAttendees}
+                onChange={(ids) =>
+                  updateCleaningTask(selectedCleaningTask.id, { assigneeIds: ids })
+                }
+              />
               {selectedCleaningAttendees.length === 0 ? <div className="mt-1 text-xs text-black/50">出勤者なし</div> : null}
             </div>
 
@@ -1532,10 +1536,10 @@ const commitNonCleaning = async () => {
         open={nonCleaningDrawerOpen}
         title={editingNonCleaningId ? "清掃外タスク編集" : "清掃外タスク追加"}
         onClose={() => {
-  setNonCleaningDrawerOpen(false);
-  setDraftNonCleaning(null);
-  setEditingNonCleaningId("");
-}}
+          setNonCleaningDrawerOpen(false);
+          setDraftNonCleaning(null);
+          setEditingNonCleaningId("");
+        }}
         footer={
           <div className="flex items-center justify-between gap-2">
             <div className="text-xs text-black/50">※追加で右側一覧に表示されます</div>
@@ -1550,13 +1554,13 @@ const commitNonCleaning = async () => {
                 キャンセル
               </Button>
               <Button
-  variant="outline"
-  className="border-sky-200 bg-sky-50 hover:bg-sky-100"
-  disabled={!draftNonCleaning || draftNonCleaning.title.trim().length === 0}
-  onClick={commitNonCleaning}
->
-  {editingNonCleaningId ? "更新" : "追加"}
-</Button>
+                variant="outline"
+                className="border-sky-200 bg-sky-50 hover:bg-sky-100"
+                disabled={!draftNonCleaning || draftNonCleaning.title.trim().length === 0}
+                onClick={commitNonCleaning}
+              >
+                {editingNonCleaningId ? "更新" : "追加"}
+              </Button>
             </div>
           </div>
         }
@@ -1587,17 +1591,17 @@ const commitNonCleaning = async () => {
                   const nextDate = e.target.value;
                   await ensureAttendeesLoaded(nextDate);
                   setDraftNonCleaning((p) =>
-  p
-    ? {
-        ...p,
-        date: nextDate,
-        assigneeIds: [],
-        assigneeNames: [],
-        checkerId: "",
-        checkerName: "",
-      }
-    : p
-);
+                    p
+                      ? {
+                          ...p,
+                          date: nextDate,
+                          assigneeIds: [],
+                          assigneeNames: [],
+                          checkerId: "",
+                          checkerName: "",
+                        }
+                      : p
+                  );
                 }}
               />
               <div className="mt-1 text-xs text-black/50">
@@ -1636,14 +1640,14 @@ const commitNonCleaning = async () => {
             <div>
               <div className="mb-1 text-xs text-black/60">担当（その日付の出勤者のみ）</div>
               <MultiAssignSelect
-  value={draftNonCleaning.assigneeIds ?? []}
-  attendees={draftAttendees}
-  onChange={(ids) =>
-    setDraftNonCleaning((p) =>
-      p ? { ...p, assigneeIds: ids } : p
-    )
-  }
-/>
+                value={draftNonCleaning.assigneeIds ?? []}
+                attendees={draftAttendees}
+                onChange={(ids) =>
+                  setDraftNonCleaning((p) =>
+                    p ? { ...p, assigneeIds: ids } : p
+                  )
+                }
+              />
             </div>
 
             <div>
@@ -1797,6 +1801,9 @@ function __runTests() {
   __assert("formatMd 2025-12-09", formatMd("2025-12-09") === "12/9");
   __assert("categoryLabel TRANSPORT", categoryLabel("TRANSPORT") === "運搬");
   __assert("date string compare", "2025-01-02" > "2025-01-01");
+  __assert("towel 1-2 nights", getTowelCount(3, 2) === 3);
+  __assert("towel 3-7 nights", getTowelCount(4, 5) === 8);
+  __assert("towel 8+ nights", getTowelCount(2, 8) === 6);
 }
 
 try {
