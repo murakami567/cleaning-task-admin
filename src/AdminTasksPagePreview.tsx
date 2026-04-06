@@ -78,9 +78,9 @@ function computeDueLabel(checkoutDate: string, nextCheckinDate: string) {
   return "DUE_LATER";
 }
 
-function getTowelCount(guestCount?: number, gapNights?: number) {
-  const guests = Number(guestCount ?? 0);
-  const nights = Number(gapNights ?? 0);
+function getTowelCount(nextGuestCount?: number, nextStayNights?: number) {
+  const guests = Number(nextGuestCount ?? 0);
+  const nights = Number(nextStayNights ?? 0);
 
   if (guests <= 0 || nights <= 0) return 0;
   if (nights >= 8) return guests * 3;
