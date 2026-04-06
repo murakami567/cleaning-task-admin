@@ -978,22 +978,22 @@ export default function AdminTasksPagePreview() {
   };
 
   const updateCleaningTask = async (id: string, patch: Partial<CleaningTask>) => {
-    const currentTask = cleaningTasks.find((t) => t.id === id);
+  const currentTask = cleaningTasks.find((t) => t.id === id);
 
-    setCleaningTasks((prev) => prev.map((t) => (t.id === id ? { ...t, ...patch } : t)));
-    setLastUpdated(new Date());
+  setCleaningTasks((prev) => prev.map((t) => (t.id === id ? { ...t, ...patch } : t)));
+  setLastUpdated(new Date());
 
-    const persistableKeys = ["status", "note", "assigneeIds", "checkerId"];
-    const shouldPersist = Object.keys(patch).some((k) => persistableKeys.includes(k));
-    if (!shouldPersist) return;
+  const persistableKeys = ["status", "note", "assigneeIds", "checkerId"];
+  const shouldPersist = Object.keys(patch).some((k) => persistableKeys.includes(k));
+  if (!shouldPersist) return;
 
-    try {
-      await persistCleaningTaskPatch(id, patch, attendeesByDate, currentTask?.date);
-    } catch (error) {
-      console.error(error);
-      setCleaningError("更新に失敗しました。保存内容を確認してください。");
-    }
-  };
+  try {
+    await persistCleaningTaskPatch(id, patch, attendeesByDate, currentTask?.date);
+  } catch (error) {
+    console.error(error);
+    setCleaningError("更新に失敗しました。保存内容を確認してください。");
+  }
+};
 
   const removeCleaningTask = (id: string) => {
     setCleaningTasks((prev) => {
