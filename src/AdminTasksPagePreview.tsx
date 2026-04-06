@@ -471,6 +471,18 @@ function mapApiTaskToUi(task: ApiCleaningTask): CleaningTask {
   };
 }
 
+async function fetchCleaningTasks(mode: ViewMode): Promise<CleaningTask[]> {
+  const endpoint = mode === "TODAY" ? "/tasks/today" : "/tasks/future";
+  const res = await fetch(`${API_BASE}${endpoint}`);
+  if (!res.ok) throw new Error(`fetch failed: ${res.status}`);
+
+  const data = await res.json();
+  console.log("cleaning tasks response", data);
+
+  const list = Array.isArray(data) ? data : [];
+  return list.map(mapApiTaskToUi);
+}
+
 async function persistCleaningTaskPatch(
   taskId: string,
   patch: Partial<CleaningTask>,
@@ -499,7 +511,6 @@ async function persistCleaningTaskPatch(
   if (patch.checkerId !== undefined) {
     const attendees = taskDate ? attendeesByDate[taskDate] ?? [] : [];
     const checker = attendees.find((u) => u.userId === patch.checkerId);
-
     body.checker_name = checker?.name ?? null;
   }
 
