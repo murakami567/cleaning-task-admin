@@ -19,6 +19,9 @@ type EmployeeTask = {
   rateCi?: number | string;
   rateCo?: number | string;
   towelCount?: number | string;
+
+  next_guest_count?: number;
+  next_stay_nights?: number;
 };
 
 type FilterType = "all" | "pending" | "in_progress" | "completed";
