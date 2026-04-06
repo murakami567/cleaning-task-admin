@@ -481,8 +481,8 @@ function getTowelDisplay(task: EmployeeTask) {
     return "";
   }
 
-  const guests = Number((task as any).next_guest_count ?? 0);
-  const nights = Number((task as any).next_stay_nights ?? 0);
+  const guests = Number(task.next_guest_count ?? 0);
+  const nights = Number(task.next_stay_nights ?? 0);
 
   if (guests <= 0 || nights <= 0) return "-";
 
