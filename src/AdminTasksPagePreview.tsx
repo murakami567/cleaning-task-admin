@@ -1211,25 +1211,26 @@ export default function AdminTasksPagePreview() {
                           </Td>
 
                           <Td>
-                            {tableEditMode ? (
-                              <input
-                                type="date"
-                                className="h-9 w-full rounded-lg border px-2 text-sm"
-                                value={t.date}
-                                onChange={async (e) => {
-                                  const nextDate = e.target.value;
-                                  await ensureAttendeesLoaded(nextDate);
-                                  updateCleaningTask(t.id, {
-                                    date: nextDate,
-                                    assigneeIds: [],
-                                    checkerId: "",
-                                  });
-                                }}
-                              />
-                            ) : (
-                              formatMd(t.date)
-                            )}
-                          </Td>
+  {tableEditMode ? (
+    <input
+      type="date"
+      className="h-9 w-full rounded-lg border px-2 text-sm"
+      value={t.date}
+      onChange={async (e) => {
+        const nextDate = e.target.value;
+        await ensureAttendeesLoaded(nextDate);
+        updateCleaningTask(t.id, {
+          date: nextDate,
+          assigneeIds: [],
+          checkerId: "",
+          checkerName: "",
+        });
+      }}
+    />
+  ) : (
+    formatMd(t.date)
+  )}
+</Td>
 
                           <Td>
                             {tableEditMode ? (
