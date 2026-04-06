@@ -78,14 +78,26 @@ function computeDueLabel(checkoutDate: string, nextCheckinDate: string) {
   return "DUE_LATER";
 }
 
-function getTowelCount(nextGuestCount?: number, nextStayNights?: number) {
-  const guests = Number(nextGuestCount ?? 0);
-  const nights = Number(nextStayNights ?? 0);
+function getTowelCount(
+  property?: string,
+  nextGuestCount?: number,
+  nextStayNights?: number
+) {
+  if (!property) return ""
 
-  if (guests <= 0 || nights <= 0) return 0;
-  if (nights >= 8) return guests * 3;
-  if (nights >= 3) return guests * 2;
-  return guests;
+  // 物件ルール
+  if (property === "FFFホテル" || property === "やなぎ橋") {
+    return ""
+  }
+
+  const guests = Number(nextGuestCount ?? 0)
+  const nights = Number(nextStayNights ?? 0)
+
+  if (guests <= 0 || nights <= 0) return ""
+
+  if (nights >= 8) return guests * 3
+  if (nights >= 3) return guests * 2
+  return guests
 }
 
 /* =========================
