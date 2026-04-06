@@ -1251,8 +1251,9 @@ export default function AdminTasksPagePreview() {
                             )}
                           </Td>
 
-                          <Td>{getTowelCount(t.nextGuestCount, t.nextStayNights)}</Td>
-
+                          <Td>
+  {getTowelCount(t.property, t.nextGuestCount, t.nextStayNights)}
+</Td>
                           <Td>
                             {tableEditMode ? (
                               <input
