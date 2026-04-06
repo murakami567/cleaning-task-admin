@@ -82,7 +82,7 @@ export default function EmployeeTasksPage() {
       if (selectedTask.taskKind === "other") {
         await api.post("/non-cleaning-tasks/update", {
           task_id: taskId,
-          status: denormalizeTaskStatus(status),
+          status: denormalizeOtherTaskStatus(status),
           note,
         });
 
@@ -92,7 +92,7 @@ export default function EmployeeTasksPage() {
       } else {
         await api.post("/tasks/update", {
           task_id: taskId,
-          status: denormalizeTaskStatus(status),
+          status: denormalizeCleaningTaskStatus(status),
           note,
         });
 
@@ -123,15 +123,27 @@ export default function EmployeeTasksPage() {
   return (
     <div className="min-h-screen bg-slate-50 pb-24">
       <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/95 backdrop-blur">
-        <div className="mx-auto w-full max-w-4xl px-4 pt-5 pb-4">
-          <div className="text-xs font-medium text-slate-500">従業員ページ</div>
-          <h1 className="mt-1 text-2xl font-bold text-slate-900">タスク</h1>
+        <div className="mx-auto w-full max-w-md px-4 pt-5 pb-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-xs font-medium text-slate-500">従業員ページ</div>
+              <h1 className="mt-1 text-2xl font-bold text-slate-900">タスク</h1>
+            </div>
 
-          <div className="mt-4 flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={fetchTasks}
+              className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+            >
+              更新
+            </button>
+          </div>
+
+          <div className="mt-4 flex gap-2">
             <button
               type="button"
               onClick={() => setMainTab("cleaning")}
-              className={`rounded-2xl px-5 py-3 text-sm font-bold transition ${
+              className={`flex-1 rounded-2xl px-4 py-3 text-sm font-bold transition ${
                 mainTab === "cleaning"
                   ? "bg-slate-900 text-white"
                   : "border border-slate-200 bg-white text-slate-700"
@@ -143,7 +155,7 @@ export default function EmployeeTasksPage() {
             <button
               type="button"
               onClick={() => setMainTab("check")}
-              className={`rounded-2xl px-5 py-3 text-sm font-bold transition ${
+              className={`flex-1 rounded-2xl px-4 py-3 text-sm font-bold transition ${
                 mainTab === "check"
                   ? "bg-slate-900 text-white"
                   : "border border-slate-200 bg-white text-slate-700"
@@ -151,34 +163,26 @@ export default function EmployeeTasksPage() {
             >
               チェックタスク
             </button>
-
-            <button
-              type="button"
-              onClick={fetchTasks}
-              className="ml-auto rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-            >
-              更新
-            </button>
           </div>
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-4xl px-4 pt-4 space-y-4">
+      <main className="mx-auto w-full max-w-md px-4 pt-4 space-y-4">
         {loading ? (
           <BlockMessage text="読み込み中..." />
         ) : errorMessage ? (
           <BlockMessage text={errorMessage} danger />
         ) : (
           <>
-            <section className="rounded-[28px] border border-slate-200 bg-white p-4 shadow-sm md:p-6">
-              <div className="text-[30px] font-bold text-slate-900">その他タスク（常設）</div>
+            <section className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
+              <div className="text-xl font-bold text-slate-900">その他タスク（当日）</div>
               <div className="mt-1 text-sm text-slate-500">
-                部屋に紐づくタスク（例：手配品など）
+                本日割り当てられている清掃外タスク
               </div>
 
               <div className="mt-4 space-y-3">
                 {otherTasks.length === 0 ? (
-                  <EmptyTaskMessage text="割り当てられているその他タスクはありません。" />
+                  <EmptyTaskMessage text="本日のその他タスクはありません。" />
                 ) : (
                   otherTasks.map((task) => (
                     <TaskRowCard
@@ -192,15 +196,12 @@ export default function EmployeeTasksPage() {
               </div>
             </section>
 
-            <section className="rounded-[28px] border border-slate-200 bg-white p-4 shadow-sm md:p-6">
-              <div className="text-[30px] font-bold text-slate-900">
+            <section className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
+              <div className="text-xl font-bold text-slate-900">
                 {mainTab === "cleaning" ? "清掃タスク" : "チェックタスク"}
               </div>
-
               <div className="mt-1 text-sm text-slate-500">
-                本日：
-                清掃 {summary.cleaningTodayCount}件 / チェック {summary.checkTodayCount}件
-                {user?.name ? `（担当：${user.name}）` : ""}
+                本日 清掃 {summary.cleaningTodayCount}件 / チェック {summary.checkTodayCount}件
               </div>
 
               <div className="mt-4 space-y-3">
@@ -253,26 +254,27 @@ function TaskRowCard({
   onClick: () => void;
 }) {
   const status = getStatusLabel(task.status);
-  const titleLabel = buildTaskCardTitle(task);
 
   return (
     <button
       type="button"
       onClick={onClick}
-      className="block w-full rounded-[24px] border border-slate-200 bg-white px-4 py-4 text-left shadow-sm transition hover:bg-slate-50"
+      className="block w-full rounded-3xl border border-slate-200 bg-white p-4 text-left shadow-sm transition hover:bg-slate-50"
     >
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <div className="text-[30px] font-bold text-slate-900">{titleLabel}</div>
+          <div className="text-sm text-slate-500">
+            {task.taskKind === "other" ? "その他タスク" : task.propertyName || "-"}
+          </div>
+
+          <div className="mt-1 text-2xl font-bold text-slate-900 break-words">
+            {buildTaskCardTitle(task)}
+          </div>
 
           <div className="mt-2 space-y-1 text-sm text-slate-600">
-            <div>
-              担当：{task.assigneeName || assigneeName || "-"}
-              {task.taskKind !== "other" ? ` / チェッカー：${task.checkerName || "-"}` : ""}
-            </div>
-            <div>
-              日付：{formatDate(task.date || task.dueDate)} / 期限：{formatDate(task.deadline || task.dueDate)}
-            </div>
+            <div>担当：{task.assigneeName || assigneeName || "-"}</div>
+            <div>日付：{formatDate(task.date || task.dueDate)}</div>
+            <div>期限：{formatDate(task.deadline || task.dueDate)}</div>
             {task.taskKind !== "other" ? <div>タオル：{task.towelCount ?? "-"}</div> : null}
           </div>
         </div>
@@ -311,7 +313,11 @@ function TaskDetailModal({
       <div className="flex w-full max-w-md flex-col overflow-hidden rounded-[26px] border border-slate-200 bg-white shadow-2xl">
         <div className="flex items-center justify-between border-b border-slate-200 px-4 py-4 sm:px-5">
           <div className="text-xl font-bold text-slate-900">
-            {task.taskKind === "other" ? "その他タスク詳細" : task.taskKind === "check" ? "チェックタスク詳細" : "清掃タスク詳細"}
+            {task.taskKind === "other"
+              ? "その他タスク詳細"
+              : task.taskKind === "check"
+              ? "チェックタスク詳細"
+              : "清掃タスク詳細"}
           </div>
           <button
             onClick={onClose}
@@ -332,7 +338,11 @@ function TaskDetailModal({
 
             {task.taskKind !== "other" ? (
               <>
-                <RateBox title="レイトCO / アーリーCI（部屋別）" rateCi={task.rateCi} rateCo={task.rateCo} />
+                <RateBox
+                  title="レイトCO / アーリーCI（部屋別）"
+                  rateCi={task.rateCi}
+                  rateCo={task.rateCo}
+                />
                 <InfoRow label="タオル数" value={String(task.towelCount ?? "-")} />
               </>
             ) : null}
@@ -345,7 +355,7 @@ function TaskDetailModal({
                 className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm outline-none"
               >
                 <option value="pending">未着手</option>
-                <option value="in_progress">清掃中</option>
+                <option value="in_progress">対応中</option>
                 <option value="completed">完了</option>
               </select>
             </div>
@@ -388,7 +398,7 @@ function TaskDetailModal({
 
 function EmptyTaskMessage({ text }: { text: string }) {
   return (
-    <div className="rounded-[24px] border border-slate-200 bg-slate-50 px-4 py-5 text-sm text-slate-500">
+    <div className="rounded-3xl border border-slate-200 bg-slate-50 px-4 py-5 text-sm text-slate-500">
       {text}
     </div>
   );
@@ -455,14 +465,14 @@ function BottomNav() {
   const items = [
     { to: "/employee/home", label: "ホーム" },
     { to: "/employee/tasks", label: "タスク" },
-    { to: "/employee/schedule", label: "スケジュール" },
-    { to: "/employee/worklog", label: "実働記入" },
+    { to: "/employee/schedule", label: "予定" },
+    { to: "/employee/worklog", label: "実働" },
     { to: "/employee/settings", label: "設定" },
   ];
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-30 border-t border-slate-200 bg-white/95 backdrop-blur">
-      <div className="mx-auto flex w-full max-w-4xl items-center justify-center gap-2 px-2 py-2">
+      <div className="mx-auto flex w-full max-w-md items-center justify-between px-2 py-2">
         {items.map((item) => {
           const active = location.pathname === item.to;
 
@@ -470,11 +480,11 @@ function BottomNav() {
             <Link
               key={item.to}
               to={item.to}
-              className={`rounded-2xl px-5 py-3 text-sm font-semibold transition ${
-                active ? "bg-slate-900 text-white" : "text-slate-600 hover:bg-slate-50"
+              className={`flex min-w-0 flex-1 flex-col items-center justify-center rounded-2xl px-2 py-2 text-xs font-semibold transition ${
+                active ? "bg-slate-900 text-white" : "text-slate-500 hover:bg-slate-50"
               }`}
             >
-              {item.label}
+              <span className="truncate">{item.label}</span>
             </Link>
           );
         })}
@@ -502,12 +512,12 @@ function getStatusLabel(status: string) {
   }
   if (status === "in_progress") {
     return {
-      label: "清掃中",
+      label: "対応中",
       className: "bg-sky-50 text-sky-700",
     };
   }
   return {
-    label: "未対応",
+    label: "未着手",
     className: "bg-slate-100 text-slate-700",
   };
 }
@@ -518,9 +528,15 @@ function normalizeStatus(status: string) {
   return "pending";
 }
 
-function denormalizeTaskStatus(status: string) {
+function denormalizeCleaningTaskStatus(status: string) {
   if (status === "completed") return "完了";
   if (status === "in_progress") return "清掃中";
+  return "未着手";
+}
+
+function denormalizeOtherTaskStatus(status: string) {
+  if (status === "completed") return "完了";
+  if (status === "in_progress") return "対応中";
   return "未着手";
 }
 
