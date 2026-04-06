@@ -1260,24 +1260,24 @@ export default function AdminTasksPagePreview() {
                             )}
                           </Td>
 
-                          <Td>
-                            {tableEditMode ? (
-                              <Select
-                                value={t.checkerId}
-                                onChange={(v) => {
-  const checker = attendees.find((u) => u.userId === v);
-  updateCleaningTask(t.id, {
-    checkerId: v,
-    checkerName: checker?.name ?? "",
-  });
-}}
-                                options={checkerOptions}
-                                disabled={attendees.length === 0}
-                              />
-                            ) : (
-                              t.checkerName || "-"
-                            )}
-                          </Td>
+                         <Td>
+  {tableEditMode ? (
+    <Select
+      value={t.checkerId}
+      onChange={(v) => {
+        const checker = attendees.find((u) => u.userId === v);
+        updateCleaningTask(t.id, {
+          checkerId: v,
+          checkerName: checker?.name ?? "",
+        });
+      }}
+      options={checkerOptions}
+      disabled={attendees.length === 0}
+    />
+  ) : (
+    t.checkerName || "-"
+  )}
+</Td>
 
                           <Td>
                             {tableEditMode ? (
