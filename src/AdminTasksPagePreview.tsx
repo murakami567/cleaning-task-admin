@@ -1546,7 +1546,13 @@ export default function AdminTasksPagePreview() {
               <div className="mb-1 text-xs text-black/60">チェッカー（その日付の出勤者のみ）</div>
               <Select
                 value={selectedCleaningTask.checkerId}
-                onChange={(v) => updateCleaningTask(selectedCleaningTask.id, { checkerId: v })}
+                onChange={(v) => {
+  const checker = selectedCleaningAttendees.find((u) => u.userId === v);
+  updateCleaningTask(selectedCleaningTask.id, {
+    checkerId: v,
+    checkerName: checker?.name ?? "",
+  });
+}}
                 options={selectedCheckerOptions}
                 disabled={selectedCleaningAttendees.length === 0}
               />
