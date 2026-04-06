@@ -1281,7 +1281,7 @@ export default function AdminTasksPagePreview() {
                                 disabled={attendees.length === 0}
                               />
                             ) : (
-                              assigneeLabel(t.checkerId, attendees)
+                              t.checkerName || "-"
                             )}
                           </Td>
 
