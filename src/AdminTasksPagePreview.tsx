@@ -350,6 +350,8 @@ type CleaningTask = {
   guestCount?: number;
   gapNights?: number;
   nextCheckinDate?: string;
+  nextGuestCount?: number;
+  nextStayNights?: number;
 };
 
 type ApiCleaningTask = {
@@ -371,6 +373,9 @@ type ApiCleaningTask = {
 
   assigned_staff_ids?: string[] | null;
   assigned_staff_names?: string[] | null;
+
+  next_guest_count?: number;
+  next_stay_nights?: number;
 };
 
 type PropertyMaster = {
@@ -446,8 +451,9 @@ function mapApiTaskToUi(task: ApiCleaningTask): CleaningTask {
     note: task.note ?? "",
     loadScore: task.load_score ?? 0,
     guestCount: task.guest_count ?? 0,
-    gapNights: task.gap_nights ?? 0,
     nextCheckinDate: task.next_checkin_date ?? "",
+    nextGuestCount: task.next_guest_count ?? 0,
+    nextStayNights: task.next_stay_nights ?? 0,
   };
 }
 
