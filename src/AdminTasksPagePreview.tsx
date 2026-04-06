@@ -1494,7 +1494,13 @@ export default function AdminTasksPagePreview() {
             <div>
   <div className="mb-1 text-xs text-black/60">タオル数</div>
   <TextInput
-    value={String(getTowelCount(selectedCleaningTask.nextGuestCount, selectedCleaningTask.nextStayNights))}
+    value={String(
+  getTowelCount(
+    selectedCleaningTask.property,
+    selectedCleaningTask.nextGuestCount,
+    selectedCleaningTask.nextStayNights
+  )
+)}
     onChange={() => {}}
     placeholder=""
   />
