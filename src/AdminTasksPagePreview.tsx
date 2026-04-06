@@ -1532,22 +1532,23 @@ export default function AdminTasksPagePreview() {
             </div>
 
             <div>
-              <div className="mb-1 text-xs text-black/60">チェッカー（その日付の出勤者のみ）</div>
-              <Select
-                value={selectedCleaningTask.checkerId}
-                onChange={(v) => {
-  const checker = selectedCleaningAttendees.find((u) => u.userId === v);
-  updateCleaningTask(selectedCleaningTask.id, {
-    checkerId: v,
-    checkerName: checker?.name ?? "",
-  });
-}}
-                options={selectedCheckerOptions}
-                disabled={selectedCleaningAttendees.length === 0}
-              />
-              {selectedCleaningAttendees.length === 0 ? <div className="mt-1 text-xs text-black/50">出勤者なし</div> : null}
-            </div>
-
+  <div className="mb-1 text-xs text-black/60">チェッカー（その日付の出勤者のみ）</div>
+  <Select
+    value={selectedCleaningTask.checkerId}
+    onChange={(v) => {
+      const checker = selectedCleaningAttendees.find((u) => u.userId === v);
+      updateCleaningTask(selectedCleaningTask.id, {
+        checkerId: v,
+        checkerName: checker?.name ?? "",
+      });
+    }}
+    options={selectedCheckerOptions}
+    disabled={selectedCleaningAttendees.length === 0}
+  />
+  {selectedCleaningAttendees.length === 0 ? (
+    <div className="mt-1 text-xs text-black/50">出勤者なし</div>
+  ) : null}
+</div>
             <div>
               <div className="mb-1 text-xs text-black/60">備考</div>
               <textarea
@@ -1613,32 +1614,27 @@ export default function AdminTasksPagePreview() {
             </div>
 
             <div>
-              <div className="mb-1 text-xs text-black/60">日付</div>
-              <input
-                type="date"
-                className="h-9 w-full rounded-lg border px-2 text-sm"
-                value={draftNonCleaning.date}
-                onChange={async (e) => {
-                  const nextDate = e.target.value;
-                  await ensureAttendeesLoaded(nextDate);
-                  setDraftNonCleaning((p) =>
-                    p
-                      ? {
-                          ...p,
-                          date: nextDate,
-                          assigneeIds: [],
-                          assigneeNames: [],
-                          checkerId: "",
-                          checkerName: "",
-                        }
-                      : p
-                  );
-                }}
-              />
-              <div className="mt-1 text-xs text-black/50">
-                {formatMd(draftNonCleaning.date)} / 出勤者: {draftAttendees.map((u) => u.name).join(" / ") || "なし"}
-              </div>
-            </div>
+  <div className="mb-1 text-xs text-black/60">日付</div>
+  <input
+    type="date"
+    className="h-9 w-full rounded-lg border px-2 text-sm"
+    value={selectedCleaningTask.date}
+    onChange={async (e) => {
+      const nextDate = e.target.value;
+      await ensureAttendeesLoaded(nextDate);
+      updateCleaningTask(selectedCleaningTask.id, {
+        date: nextDate,
+        assigneeIds: [],
+        checkerId: "",
+        checkerName: "",
+      });
+    }}
+  />
+  <div className="mt-1 text-xs text-black/50">
+    {formatMd(selectedCleaningTask.date)} / 出勤者:{" "}
+    {selectedCleaningAttendees.map((u) => u.name).join(" / ") || "なし"}
+  </div>
+</div>
 
             <div>
               <div className="mb-1 text-xs text-black/60">業務種別</div>
