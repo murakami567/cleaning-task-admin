@@ -473,11 +473,20 @@ function formatDate(value?: string) {
 }
 
 function getTowelDisplay(task: EmployeeTask) {
+
   if (task.propertyName === "FFFホテル" || task.propertyName === "やなぎ橋") {
     return "";
   }
 
-  return task.towelCount ?? "-";
+  const guests = Number((task as any).nextGuestCount ?? 0);
+  const nights = Number((task as any).nextStayNights ?? 0);
+
+  if (guests <= 0 || nights <= 0) return "-";
+
+  if (nights >= 8) return guests * 3;
+  if (nights >= 3) return guests * 2;
+
+  return guests;
 }
 
 function formatMoney(value?: number | string) {
