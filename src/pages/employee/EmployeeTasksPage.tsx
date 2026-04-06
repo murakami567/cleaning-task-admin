@@ -214,7 +214,7 @@ function TaskCard({
         <div>担当：{task.assigneeName || assigneeName || "-"}</div>
         <div>日付：{formatDate(task.date || task.dueDate)}</div>
         <div>期限：{formatDate(task.deadline || task.dueDate)}</div>
-        <div>タオル：{task.towelCount ?? "-"}</div>
+        <div>タオル：{getTowelDisplay(task)}</div>
       </div>
 
       <div className="mt-3">
@@ -275,7 +275,7 @@ function TaskDetailModal({
               rateCo={task.rateCo}
             />
 
-            <InfoRow label="タオル数" value={String(task.towelCount ?? "-")} />
+            <InfoRow label="タオル数" value={String(getTowelDisplay(task))} />
 
             <div>
               <div className="mb-2 text-sm font-semibold text-slate-700">ステータス</div>
