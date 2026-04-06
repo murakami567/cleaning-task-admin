@@ -357,6 +357,7 @@ type CleaningTask = {
   due: string;
   baggageTime: string;
   checkerId: string;
+  checkerName?: string;
   note: string;
   loadScore?: number;
   guestCount?: number;
@@ -460,6 +461,7 @@ function mapApiTaskToUi(task: ApiCleaningTask): CleaningTask {
     due: computeDueLabel(task.checkout_date, task.next_checkin_date ?? ""),
     baggageTime: "",
     checkerId: "",
+    checkerName: (task as any).checker_name ?? "",
     note: task.note ?? "",
     loadScore: task.load_score ?? 0,
     guestCount: task.guest_count ?? 0,
@@ -507,7 +509,10 @@ async function persistCleaningTaskPatch(
   }
 
   if (patch.checkerId !== undefined) {
-    body.checker_id = patch.checkerId || null;
+    const attendees = taskDate ? attendeesByDate[taskDate] ?? [] : [];
+    const checker = attendees.find((u) => u.userId === patch.checkerId);
+
+    body.checker_name = checker?.name ?? null;
   }
 
   const res = await fetch(`${API_BASE}/tasks/update`, {
