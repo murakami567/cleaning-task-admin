@@ -1479,16 +1479,16 @@ export default function AdminTasksPagePreview() {
             </div>
 
             <div>
-              <div className="mb-1 text-xs text-black/60">タオル数</div>
-              <TextInput
-                value={String(getTowelCount(selectedCleaningTask.guestCount, selectedCleaningTask.gapNights))}
-                onChange={() => {}}
-                placeholder=""
-              />
-              <div className="mt-1 text-xs text-black/50">
-                人数 {selectedCleaningTask.guestCount ?? 0} / 泊数 {selectedCleaningTask.gapNights ?? 0}
-              </div>
-            </div>
+  <div className="mb-1 text-xs text-black/60">タオル数</div>
+  <TextInput
+    value={String(getTowelCount(selectedCleaningTask.nextGuestCount, selectedCleaningTask.nextStayNights))}
+    onChange={() => {}}
+    placeholder=""
+  />
+  <div className="mt-1 text-xs text-black/50">
+    次予約人数 {selectedCleaningTask.nextGuestCount ?? 0} / 次予約泊数 {selectedCleaningTask.nextStayNights ?? 0}
+  </div>
+</div>
 
             <div>
               <div className="mb-1 text-xs text-black/60">荷物預かり（時間）</div>
