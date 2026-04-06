@@ -472,6 +472,14 @@ function formatDate(value?: string) {
   return `${d.getMonth() + 1}/${d.getDate()}`;
 }
 
+function getTowelDisplay(task: EmployeeTask) {
+  if (task.propertyName === "FFFホテル" || task.propertyName === "やなぎ橋") {
+    return "";
+  }
+
+  return task.towelCount ?? "-";
+}
+
 function formatMoney(value?: number | string) {
   if (value === undefined || value === null || value === "") return "-";
   if (typeof value === "string" && value.startsWith("¥")) return value;
