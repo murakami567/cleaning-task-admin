@@ -79,29 +79,31 @@ export default function AdminHomePage() {
   }
 
   async function saveMessage() {
-    try {
-      setSaving(true);
+  try {
+    setSaving(true);
 
-      const res = await fetch(`${API_BASE}/api/admin-portal/today-message`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(message),
-      });
+    const res = await fetch(`${API_BASE}/api/admin-portal/today-message`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        message: message
+      }),
+    });
 
-      if (!res.ok) {
-        throw new Error("保存に失敗しました。");
-      }
-
-      alert("保存しました。");
-    } catch (error) {
-      alert(error instanceof Error ? error.message : "保存に失敗しました。");
-    } finally {
-      setSaving(false);
+    if (!res.ok) {
+      throw new Error("保存に失敗しました。");
     }
+
+    alert("保存しました。");
+  } catch (error) {
+    alert(error instanceof Error ? error.message : "保存に失敗しました。");
+  } finally {
+    setSaving(false);
   }
+}
 
   const user = useMemo(() => {
     try {
