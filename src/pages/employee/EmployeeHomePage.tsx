@@ -3,13 +3,20 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { api } from "../../lib/api";
 import { useAuth } from "../../context/AuthContext";
 
+type TodayMessage = {
+  id: string;
+  message: string;
+  target_date: string;
+  updated_at?: string;
+};
+
 type HomeSummary = {
   todayTaskCount: number;
   upcomingTaskCount: number;
   todayScheduleCount: number;
   unreadNoticeCount: number;
   assignedProperties: string[];
-  todayMessage: string;
+  todayMessages: TodayMessage[];
 };
 
 export default function EmployeeHomePage() {
@@ -17,13 +24,13 @@ export default function EmployeeHomePage() {
   const { user, logout } = useAuth();
 
   const [summary, setSummary] = useState<HomeSummary>({
-    todayTaskCount: 0,
-    upcomingTaskCount: 0,
-    todayScheduleCount: 0,
-    unreadNoticeCount: 0,
-    assignedProperties: [],
-    todayMessage: "",
-  });
+  todayTaskCount: 0,
+  upcomingTaskCount: 0,
+  todayScheduleCount: 0,
+  unreadNoticeCount: 0,
+  assignedProperties: [],
+  todayMessages: [],
+});
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -37,13 +44,13 @@ export default function EmployeeHomePage() {
       const data = await api.get("/api/employee/home");
 
       setSummary({
-        todayTaskCount: data?.todayTaskCount ?? 0,
-        upcomingTaskCount: data?.upcomingTaskCount ?? 0,
-        todayScheduleCount: data?.todayScheduleCount ?? 0,
-        unreadNoticeCount: data?.unreadNoticeCount ?? 0,
-        assignedProperties: data?.assignedProperties ?? [],
-        todayMessage: data?.todayMessage ?? "",
-      });
+  todayTaskCount: data?.todayTaskCount ?? 0,
+  upcomingTaskCount: data?.upcomingTaskCount ?? 0,
+  todayScheduleCount: data?.todayScheduleCount ?? 0,
+  unreadNoticeCount: data?.unreadNoticeCount ?? 0,
+  assignedProperties: data?.assignedProperties ?? [],
+  todayMessages: data?.todayMessages ?? [],
+});
     } catch (error) {
       console.error("ホームデータ取得エラー:", error);
       setSummary({
@@ -148,11 +155,25 @@ export default function EmployeeHomePage() {
             </section>
 
             <section className="mt-5 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
-              <div className="text-sm font-bold text-slate-800">今日のひとこと</div>
-              <div className="mt-3 rounded-2xl bg-slate-50 px-4 py-4 text-sm text-slate-600 whitespace-pre-wrap">
-                {summary.todayMessage || "本日の連絡事項はありません。"}
-              </div>
-            </section>
+  <div className="text-sm font-bold text-slate-800">連絡事項</div>
+
+  {summary.todayMessages.length === 0 ? (
+    <div className="mt-3 rounded-2xl bg-slate-50 px-4 py-4 text-sm text-slate-600">
+      本日の連絡事項はありません。
+    </div>
+  ) : (
+    <div className="mt-3 space-y-3">
+      {summary.todayMessages.map((item) => (
+        <div
+          key={item.id}
+          className="rounded-2xl bg-slate-50 px-4 py-4 text-sm text-slate-600 whitespace-pre-wrap"
+        >
+          {item.message}
+        </div>
+      ))}
+    </div>
+  )}
+</section>
           </>
         )}
       </main>
