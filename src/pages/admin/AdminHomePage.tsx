@@ -166,7 +166,7 @@ setTodayShift(data?.todayShift || null);
           <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
   <div className="flex items-start justify-between gap-4">
     <div>
-      <h2 className="text-xl font-bold text-slate-900">今日のひとこと</h2>
+      <h2 className="text-xl font-bold text-slate-900">連絡事項</h2>
       <p className="mt-2 text-sm text-slate-500">
         一般画面ホームに表示されます
       </p>
