@@ -17,10 +17,15 @@ import EmployeeSchedulePage from "./pages/employee/EmployeeSchedulePage";
 import EmployeeWorklogPage from "./pages/employee/EmployeeWorklogPage";
 import EmployeeSettingsPage from "./pages/employee/EmployeeSettingsPage";
 
+import AdminLoginPage from "./pages/admin/AdminLoginPage";
+import AdminHomePage from "./pages/admin/AdminHomePage";
+import AdminRoute from "./routes/AdminRoute";
+
 function AdminLayout() {
   return (
     <div className="min-h-screen bg-neutral-50">
       <div className="border-b bg-white px-6 py-3 flex gap-2 flex-wrap">
+        <AdminNavButton to="/admin/home">ホーム</AdminNavButton>
         <AdminNavButton to="/admin/tasks">タスク管理</AdminNavButton>
         <AdminNavButton to="/admin/properties">物件管理</AdminNavButton>
         <AdminNavButton to="/admin/openings">新規オープン進捗</AdminNavButton>
@@ -59,10 +64,20 @@ export default function App() {
   return (
     <AuthProvider>
       <Routes>
-        <Route path="/" element={<Navigate to="/admin/tasks" replace />} />
+        <Route path="/" element={<Navigate to="/admin/login" replace />} />
 
-        <Route path="/admin" element={<AdminLayout />}>
-          <Route index element={<Navigate to="/admin/tasks" replace />} />
+        <Route path="/admin/login" element={<AdminLoginPage />} />
+
+        <Route
+          path="/admin"
+          element={
+            <AdminRoute>
+              <AdminLayout />
+            </AdminRoute>
+          }
+        >
+          <Route index element={<Navigate to="/admin/home" replace />} />
+          <Route path="home" element={<AdminHomePage />} />
           <Route path="tasks" element={<AdminTasksPagePreview />} />
           <Route path="properties" element={<PropertyManagementPage />} />
           <Route path="openings" element={<OpeningManagementPage />} />
@@ -114,7 +129,7 @@ export default function App() {
           }
         />
 
-        <Route path="*" element={<Navigate to="/admin/tasks" replace />} />
+        <Route path="*" element={<Navigate to="/admin/login" replace />} />
       </Routes>
     </AuthProvider>
   );
