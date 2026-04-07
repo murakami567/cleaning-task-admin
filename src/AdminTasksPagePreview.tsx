@@ -19,10 +19,10 @@ const DUE_OPTIONS = [
 ];
 
 const CATEGORY_OPTIONS = [
-  { value: "WAREHOUSE", label: "倉庫" },
+  { value: "WAREHOUSE", label: "倉庫作業" },
   { value: "TRANSPORT", label: "運搬" },
-  { value: "LINEN", label: "リネン" },
-  { value: "INSPECTION", label: "点検" },
+  { value: "LINEN", label: "荷受け" },
+  { value: "INSPECTION", label: "設備対応" },
   { value: "PURCHASE", label: "買い出し" },
   { value: "OTHER", label: "その他" },
 ];
