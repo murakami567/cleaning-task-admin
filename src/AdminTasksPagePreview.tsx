@@ -509,10 +509,11 @@ async function persistCleaningTaskPatch(
   }
 
   if (patch.checkerId !== undefined) {
-    const attendees = taskDate ? attendeesByDate[taskDate] ?? [] : [];
-    const checker = attendees.find((u) => u.userId === patch.checkerId);
-    body.checker_name = checker?.name ?? null;
-  }
+  const attendees = taskDate ? attendeesByDate[taskDate] ?? [] : [];
+  const checker = attendees.find((u) => u.userId === patch.checkerId);
+
+  body.checker_name = checker?.name ?? "";
+}
 
   const res = await fetch(`${API_BASE}/tasks/update`, {
     method: "POST",
