@@ -21,15 +21,27 @@ type ShiftDay = {
   shift_entries?: ShiftEntry[];
 };
 
+type PortalMessage = {
+  id: string;
+  target_date: string;
+  message: string;
+  updated_at?: string;
+};
+
 export default function AdminHomePage() {
   const navigate = useNavigate();
   const token = localStorage.getItem("admin_access_token") || "";
   const userRaw = localStorage.getItem("admin_user");
 
-  const [message, setMessage] = useState("");
+  const [todayDate, setTodayDate] = useState("");
+  const [todayMessages, setTodayMessages] = useState<PortalMessage[]>([]);
   const [todayShift, setTodayShift] = useState<ShiftDay | null>(null);
   const [calendarDays, setCalendarDays] = useState<ShiftDay[]>([]);
   const [saving, setSaving] = useState(false);
+
+  const [messageModalOpen, setMessageModalOpen] = useState(false);
+  const [draftDate, setDraftDate] = useState("");
+  const [draftMessage, setDraftMessage] = useState("");
 
   const now = new Date();
   const year = now.getFullYear();
@@ -43,7 +55,7 @@ export default function AdminHomePage() {
 
     void fetchHome();
     void fetchCalendar();
-  }, []);
+  }, [token, userRaw, navigate]);
 
   async function fetchHome() {
     const res = await fetch(`${API_BASE}/api/admin-portal/home`, {
@@ -60,8 +72,9 @@ export default function AdminHomePage() {
     }
 
     const data = await res.json();
-    setMessage(data?.todayMessage || "");
-    setTodayShift(data?.todayShift || null);
+setTodayDate(data?.todayDate || "");
+setTodayMessages(data?.todayMessages || []);
+setTodayShift(data?.todayShift || null);
   }
 
   async function fetchCalendar() {
@@ -78,32 +91,42 @@ export default function AdminHomePage() {
     setCalendarDays(data?.days || []);
   }
 
-  async function saveMessage() {
-  try {
-    setSaving(true);
-
-    const res = await fetch(`${API_BASE}/api/admin-portal/today-message`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({
-        message: message
-      }),
-    });
-
-    if (!res.ok) {
-      throw new Error("保存に失敗しました。");
-    }
-
-    alert("保存しました。");
-  } catch (error) {
-    alert(error instanceof Error ? error.message : "保存に失敗しました。");
-  } finally {
-    setSaving(false);
-  }
+  function openMessageModal() {
+  setDraftDate(todayDate || new Date().toISOString().slice(0, 10));
+  setDraftMessage("");
+  setMessageModalOpen(true);
 }
+  async function saveMessage() {
+    try {
+      setSaving(true);
+
+      const res = await fetch(`${API_BASE}/api/admin-portal/today-message`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          target_date: draftDate,
+          message: draftMessage,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data?.detail || "保存に失敗しました。");
+      }
+
+      setMessageModalOpen(false);
+      await fetchHome();
+      alert("保存しました。");
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "保存に失敗しました。");
+    } finally {
+      setSaving(false);
+    }
+  }
 
   const user = useMemo(() => {
     try {
@@ -141,26 +164,45 @@ export default function AdminHomePage() {
 
         <div className="grid gap-6 lg:grid-cols-2">
           <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-            <h2 className="text-xl font-bold text-slate-900">今日のひとこと</h2>
-            <p className="mt-2 text-sm text-slate-500">
-              一般画面ホームに表示されます
-            </p>
+  <div className="flex items-start justify-between gap-4">
+    <div>
+      <h2 className="text-xl font-bold text-slate-900">今日のひとこと</h2>
+      <p className="mt-2 text-sm text-slate-500">
+        一般画面ホームに表示されます
+      </p>
+    </div>
 
-            <textarea
-              className="mt-4 h-56 w-full rounded-2xl border border-slate-200 p-4 text-sm outline-none"
-              value={message}
-              onChange={(e) => setMessage(e.target.value)}
-              placeholder="本日の連絡事項を入力"
-            />
+    <button
+      onClick={openMessageModal}
+      className="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+    >
+      追加
+    </button>
+  </div>
 
-            <button
-              onClick={saveMessage}
-              disabled={saving}
-              className="mt-4 h-11 rounded-2xl bg-slate-900 px-5 text-sm font-bold text-white disabled:opacity-50"
-            >
-              {saving ? "保存中..." : "保存"}
-            </button>
-          </section>
+  <div className="mt-4 rounded-2xl bg-slate-50 px-4 py-4">
+    <div className="text-sm font-semibold text-slate-800">
+      {todayDate || "本日"}
+    </div>
+
+    {todayMessages.length === 0 ? (
+      <div className="mt-3 text-sm text-slate-600">
+        本日の連絡事項はありません。
+      </div>
+    ) : (
+      <div className="mt-3 space-y-3">
+        {todayMessages.map((item) => (
+          <div
+            key={item.id}
+            className="rounded-2xl bg-white px-4 py-4 text-sm text-slate-600 whitespace-pre-wrap"
+          >
+            {item.message}
+          </div>
+        ))}
+      </div>
+    )}
+  </div>
+</section>
 
           <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
             <h2 className="text-xl font-bold text-slate-900">本日の社内スケジュール</h2>
@@ -226,6 +268,60 @@ export default function AdminHomePage() {
           </div>
         </section>
       </div>
+
+      {messageModalOpen ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 px-4"
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) {
+              setMessageModalOpen(false);
+            }
+          }}
+        >
+          <div className="w-full max-w-lg rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl">
+            <h3 className="text-xl font-bold text-slate-900">今日のひとこと追加</h3>
+
+            <div className="mt-4 space-y-4">
+              <div>
+                <div className="mb-2 text-sm font-semibold text-slate-700">日付</div>
+                <input
+                  type="date"
+                  value={draftDate}
+                  onChange={(e) => setDraftDate(e.target.value)}
+                  className="h-11 w-full rounded-2xl border border-slate-200 px-4"
+                />
+              </div>
+
+              <div>
+                <div className="mb-2 text-sm font-semibold text-slate-700">内容</div>
+                <textarea
+                  value={draftMessage}
+                  onChange={(e) => setDraftMessage(e.target.value)}
+                  rows={8}
+                  className="w-full rounded-2xl border border-slate-200 p-4 text-sm outline-none"
+                  placeholder="表示する内容を入力"
+                />
+              </div>
+            </div>
+
+            <div className="mt-5 flex gap-3">
+              <button
+                onClick={() => setMessageModalOpen(false)}
+                className="flex-1 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-700 hover:bg-slate-50"
+              >
+                キャンセル
+              </button>
+              <button
+                onClick={saveMessage}
+                disabled={saving}
+                className="flex-1 rounded-2xl bg-slate-900 px-4 py-3 text-sm font-bold text-white disabled:opacity-50"
+              >
+                {saving ? "保存中..." : "保存"}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
