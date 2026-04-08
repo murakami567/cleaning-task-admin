@@ -158,21 +158,23 @@ export default function ShiftBoardPage() {
   const [staffs, setStaffs] = useState<Staff[]>([]);
   const [days, setDays] = useState<ShiftDay[]>([]);
   const [cleanCounts, setCleanCounts] = useState<Record<string, number>>({});
+  const [attendanceCounts, setAttendanceCounts] = useState<Record<string, number>>({});
+  const [workloadMap, setWorkloadMap] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(false);
   const [savingKey, setSavingKey] = useState("");
 
   const loadBoard = async (targetYear = year, targetMonth = month) => {
     try {
       setLoading(true);
-
       const res = await fetch(`${API_BASE}/shift-board?year=${targetYear}&month=${targetMonth}`);
       if (!res.ok) throw new Error(`shift-board failed: ${res.status}`);
-
       const data = await res.json();
 
       setStaffs(Array.isArray(data.staffs) ? data.staffs : []);
       setDays(Array.isArray(data.days) ? data.days : []);
       setCleanCounts(data.cleaning_counts || {});
+      setAttendanceCounts(data.attendance_counts || {});
+      setWorkloadMap(data.workload || {});
     } catch (e) {
       console.error(e);
       alert("シフト表の取得に失敗しました。");
@@ -208,7 +210,6 @@ export default function ShiftBoardPage() {
 
   const getShiftMark = (date: string, staffId: string): ShiftMark => {
     const day = dayMap.get(date);
-
     if (!day) return "休み";
 
     const entries = Array.isArray(day.shift_entries) ? day.shift_entries : [];
@@ -218,9 +219,9 @@ export default function ShiftBoardPage() {
     return status || "休み";
   };
 
-  const getCleanCount = (date: string) => {
-    return cleanCounts?.[date] || 0;
-  };
+  const getCleanCount = (date: string) => cleanCounts?.[date] || 0;
+  const getAttendanceCount = (date: string) => attendanceCounts?.[date] || 0;
+  const getWorkload = (date: string) => workloadMap?.[date] || 0;
 
   const getOrCreateDay = async (date: string) => {
     const existing = dayMap.get(date);
@@ -242,7 +243,6 @@ export default function ShiftBoardPage() {
       setSavingKey(key);
 
       const day = await getOrCreateDay(date);
-
       const isOff = nextStatus === "休み" || nextStatus === "定休" || nextStatus === "欠勤";
 
       const saveRes = await fetch(`${API_BASE}/shifts/upsert_entry`, {
@@ -260,7 +260,6 @@ export default function ShiftBoardPage() {
       });
 
       if (!saveRes.ok) throw new Error(`upsert_entry failed: ${saveRes.status}`);
-
       await loadBoard(year, month);
     } catch (e) {
       console.error(e);
@@ -272,7 +271,7 @@ export default function ShiftBoardPage() {
 
   return (
     <div className="min-h-screen bg-slate-50 p-6">
-      <div className="mx-auto max-w-[1150px] space-y-4">
+      <div className="mx-auto max-w-[1250px] space-y-4">
         <div className="rounded-[22px] border border-slate-200 bg-white shadow-sm">
           <div className="flex items-start justify-between gap-4 p-4">
             <div>
@@ -306,7 +305,7 @@ export default function ShiftBoardPage() {
               <div>
                 <div className="text-[18px] font-extrabold">シフト</div>
                 <div className="mt-1 text-sm text-slate-500">
-                  プルダウンで 出勤 / 定休 / 休み / 欠勤 / 遅刻 を選択して保存
+                  出勤状況に加えて、総清掃数・出勤人数・1人当たり清掃数を表示
                 </div>
               </div>
 
@@ -377,12 +376,14 @@ export default function ShiftBoardPage() {
               )}
 
               <div className="overflow-auto rounded-[18px] border border-slate-200">
-                <table className="min-w-[980px] w-full text-sm">
+                <table className="min-w-[1180px] w-full text-sm">
                   <thead className="bg-slate-50">
                     <tr className="border-b border-slate-200">
                       <th className="px-4 py-3 text-left font-extrabold">日付</th>
                       <th className="px-4 py-3 text-left font-extrabold">曜日</th>
                       <th className="px-4 py-3 text-left font-extrabold">総清掃数</th>
+                      <th className="px-4 py-3 text-left font-extrabold">出勤人数</th>
+                      <th className="px-4 py-3 text-left font-extrabold">1人当たり清掃数</th>
                       {staffs.map((staff) => (
                         <th key={staff.id} className="px-4 py-3 text-left font-extrabold">
                           {staff.staff_name}
@@ -395,7 +396,9 @@ export default function ShiftBoardPage() {
                       <tr key={date} className="border-b border-slate-100 last:border-b-0">
                         <td className="px-4 py-3">{formatDateLabel(date)}</td>
                         <td className="px-4 py-3">{weekdayLabel(date)}</td>
-                        <td className="px-4 py-3">{getCleanCount(date)}</td>
+                        <td className="px-4 py-3 font-semibold">{getCleanCount(date)}</td>
+                        <td className="px-4 py-3">{getAttendanceCount(date)}</td>
+                        <td className="px-4 py-3">{getWorkload(date)}</td>
 
                         {staffs.map((staff) => {
                           const current = getShiftMark(date, staff.id);
@@ -407,7 +410,9 @@ export default function ShiftBoardPage() {
                               <select
                                 value={current}
                                 disabled={saving}
-                                onChange={(e) => void saveCell(date, staff.id, e.target.value as ShiftMark)}
+                                onChange={(e) =>
+                                  void saveCell(date, staff.id, e.target.value as ShiftMark)
+                                }
                                 className={`h-10 min-w-[96px] rounded-xl border px-3 text-sm font-medium outline-none bg-white ${markClass(
                                   current
                                 )} ${saving ? "opacity-50" : ""}`}
