@@ -1,5 +1,4 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { sortTasksByPropertyOrder, sortByPropertyOrder } from "./utils/propertyOrder";
 
 const API_BASE =
   (import.meta as any).env?.VITE_API_BASE_URL || "https://cleaning-task-api.onrender.com";
@@ -248,6 +247,14 @@ export default function PropertyManagementPage() {
     room_sort_order: "999",
   });
 
+  const [roomBulkMode, setRoomBulkMode] = useState(false);
+  const [roomBulkForm, setRoomBulkForm] = useState({
+    property_id: "",
+    room_names_text: "",
+    default_capacity: "1",
+    start_sort_order: "1",
+  });
+
   const loadAll = async () => {
     try {
       setLoading(true);
@@ -419,6 +426,55 @@ export default function PropertyManagementPage() {
     }
   };
 
+  const createRoomsBulk = async () => {
+    try {
+      if (!roomBulkForm.property_id) {
+        alert("物件を選択してください。");
+        return;
+      }
+
+      const roomNames = roomBulkForm.room_names_text
+        .split(/\r?\n/)
+        .map((v) => v.trim())
+        .filter(Boolean);
+
+      if (roomNames.length === 0) {
+        alert("部屋名を1件以上入力してください。");
+        return;
+      }
+
+      const res = await fetch(`${API_BASE}/rooms/bulk-create`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          property_id: roomBulkForm.property_id,
+          room_names: roomNames,
+          default_capacity: Number(roomBulkForm.default_capacity || 1),
+          start_sort_order: Number(roomBulkForm.start_sort_order || 1),
+        }),
+      });
+
+      if (!res.ok) throw new Error(`rooms bulk create failed: ${res.status}`);
+
+      await res.json();
+
+      setRoomDrawerOpen(false);
+      setRoomBulkMode(false);
+      setRoomBulkForm({
+        property_id: "",
+        room_names_text: "",
+        default_capacity: "1",
+        start_sort_order: "1",
+      });
+
+      await loadAll();
+      alert("部屋を一括追加しました。");
+    } catch (e) {
+      console.error(e);
+      alert("部屋の一括追加に失敗しました。");
+    }
+  };
+
   const openEditProperty = (property: PropertyMaster) => {
     setEditingProperty(property);
     setPropertyEditForm({
@@ -531,6 +587,31 @@ export default function PropertyManagementPage() {
     }
   };
 
+  const deleteRoom = async () => {
+    try {
+      if (!roomEditForm.id) return;
+      if (!window.confirm("この部屋を削除しますか？")) return;
+
+      const res = await fetch(`${API_BASE}/rooms/delete`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          room_id: roomEditForm.id,
+        }),
+      });
+
+      if (!res.ok) throw new Error(`room delete failed: ${res.status}`);
+
+      await res.json();
+      setEditRoomDrawerOpen(false);
+      setEditingRoom(null);
+      await loadAll();
+    } catch (e) {
+      console.error(e);
+      alert("部屋削除に失敗しました。");
+    }
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 p-6">
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
@@ -550,6 +631,7 @@ export default function PropertyManagementPage() {
             className="border-orange-200 bg-orange-50 text-orange-800 hover:bg-orange-100"
             onClick={() => {
               setRoomForm((p) => ({ ...p, property_id: selectedPropertyId || "" }));
+              setRoomBulkForm((p) => ({ ...p, property_id: selectedPropertyId || "" }));
               setRoomDrawerOpen(true);
             }}
           >
@@ -786,16 +868,27 @@ export default function PropertyManagementPage() {
       <Drawer
         open={roomDrawerOpen}
         title="部屋追加"
-        subtitle="選択した物件、または指定した物件に部屋を追加します。"
-        onClose={() => setRoomDrawerOpen(false)}
+        subtitle="単体追加または一括追加ができます。"
+        onClose={() => {
+          setRoomDrawerOpen(false);
+          setRoomBulkMode(false);
+        }}
         footer={
           <div className="flex items-center justify-between gap-3">
             <div className="text-xs text-slate-500">保存後、部屋一覧に反映されます。</div>
             <div className="flex gap-2">
-              <Button onClick={() => setRoomDrawerOpen(false)}>キャンセル</Button>
+              <Button
+                onClick={() => {
+                  setRoomDrawerOpen(false);
+                  setRoomBulkMode(false);
+                }}
+              >
+                キャンセル
+              </Button>
+
               <Button
                 className="bg-slate-900 text-white border-slate-900 hover:bg-black"
-                onClick={createRoom}
+                onClick={roomBulkMode ? createRoomsBulk : createRoom}
               >
                 保存
               </Button>
@@ -804,48 +897,111 @@ export default function PropertyManagementPage() {
         }
       >
         <div className="space-y-4">
-          <Field label="物件">
-            <Select
-              value={roomForm.property_id}
-              onChange={(v) => setRoomForm((p) => ({ ...p, property_id: v }))}
-              options={propertyOptions}
-              placeholder="物件を選択"
-            />
-          </Field>
+          <div className="flex gap-2">
+            <ChipButton active={!roomBulkMode} onClick={() => setRoomBulkMode(false)}>
+              単体追加
+            </ChipButton>
+            <ChipButton active={roomBulkMode} onClick={() => setRoomBulkMode(true)}>
+              一括追加
+            </ChipButton>
+          </div>
 
-          <Field label="部屋名">
-            <TextInput
-              value={roomForm.room_name}
-              onChange={(v) => setRoomForm((p) => ({ ...p, room_name: v }))}
-              placeholder="例）101"
-            />
-          </Field>
+          {!roomBulkMode ? (
+            <>
+              <Field label="物件">
+                <Select
+                  value={roomForm.property_id}
+                  onChange={(v) => setRoomForm((p) => ({ ...p, property_id: v }))}
+                  options={propertyOptions}
+                  placeholder="物件を選択"
+                />
+              </Field>
 
-          <Field label="部屋コード">
-            <TextInput
-              value={roomForm.room_code}
-              onChange={(v) => setRoomForm((p) => ({ ...p, room_code: v }))}
-              placeholder="例）101"
-            />
-          </Field>
+              <Field label="部屋名">
+                <TextInput
+                  value={roomForm.room_name}
+                  onChange={(v) => setRoomForm((p) => ({ ...p, room_name: v }))}
+                  placeholder="例）101"
+                />
+              </Field>
 
-          <Field label="定員">
-            <TextInput
-              type="number"
-              value={roomForm.capacity}
-              onChange={(v) => setRoomForm((p) => ({ ...p, capacity: v }))}
-              placeholder="1"
-            />
-          </Field>
+              <Field label="部屋コード">
+                <TextInput
+                  value={roomForm.room_code}
+                  onChange={(v) => setRoomForm((p) => ({ ...p, room_code: v }))}
+                  placeholder="例）101"
+                />
+              </Field>
 
-          <Field label="並び順">
-            <TextInput
-              type="number"
-              value={roomForm.room_sort_order}
-              onChange={(v) => setRoomForm((p) => ({ ...p, room_sort_order: v }))}
-              placeholder="999"
-            />
-          </Field>
+              <Field label="定員">
+                <TextInput
+                  type="number"
+                  value={roomForm.capacity}
+                  onChange={(v) => setRoomForm((p) => ({ ...p, capacity: v }))}
+                  placeholder="1"
+                />
+              </Field>
+
+              <Field label="並び順">
+                <TextInput
+                  type="number"
+                  value={roomForm.room_sort_order}
+                  onChange={(v) => setRoomForm((p) => ({ ...p, room_sort_order: v }))}
+                  placeholder="999"
+                />
+              </Field>
+            </>
+          ) : (
+            <>
+              <Field label="物件">
+                <Select
+                  value={roomBulkForm.property_id}
+                  onChange={(v) => setRoomBulkForm((p) => ({ ...p, property_id: v }))}
+                  options={propertyOptions}
+                  placeholder="物件を選択"
+                />
+              </Field>
+
+              <Field label="部屋名一覧（改行区切り）">
+                <textarea
+                  className="min-h-[220px] w-full rounded-2xl border border-slate-200 bg-white p-3 text-sm outline-none focus:ring-2 focus:ring-slate-300"
+                  value={roomBulkForm.room_names_text}
+                  onChange={(e) =>
+                    setRoomBulkForm((p) => ({ ...p, room_names_text: e.target.value }))
+                  }
+                  placeholder={`101
+102
+103
+201
+202`}
+                />
+              </Field>
+
+              <div className="grid grid-cols-2 gap-4">
+                <Field label="デフォルト定員">
+                  <TextInput
+                    type="number"
+                    value={roomBulkForm.default_capacity}
+                    onChange={(v) =>
+                      setRoomBulkForm((p) => ({ ...p, default_capacity: v }))
+                    }
+                    placeholder="1"
+                  />
+                </Field>
+
+                <Field label="開始並び順">
+                  <TextInput
+                    type="number"
+                    value={roomBulkForm.start_sort_order}
+                    onChange={(v) =>
+                      setRoomBulkForm((p) => ({ ...p, start_sort_order: v }))
+                    }
+                    placeholder="1"
+                  />
+                </Field>
+              </div>
+            </>
+          )}
         </div>
       </Drawer>
 
@@ -914,6 +1070,12 @@ export default function PropertyManagementPage() {
           <div className="flex items-center justify-between gap-3">
             <div className="text-xs text-slate-500">保存後、一覧に反映されます。</div>
             <div className="flex gap-2">
+              <Button
+                className="border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100"
+                onClick={deleteRoom}
+              >
+                削除
+              </Button>
               <Button onClick={() => setEditRoomDrawerOpen(false)}>キャンセル</Button>
               <Button
                 className="bg-slate-900 text-white border-slate-900 hover:bg-black"
