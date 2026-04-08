@@ -157,17 +157,22 @@ export default function ShiftBoardPage() {
 
   const [staffs, setStaffs] = useState<Staff[]>([]);
   const [days, setDays] = useState<ShiftDay[]>([]);
+  const [cleanCounts, setCleanCounts] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(false);
   const [savingKey, setSavingKey] = useState("");
 
   const loadBoard = async (targetYear = year, targetMonth = month) => {
     try {
       setLoading(true);
+
       const res = await fetch(`${API_BASE}/shift-board?year=${targetYear}&month=${targetMonth}`);
       if (!res.ok) throw new Error(`shift-board failed: ${res.status}`);
+
       const data = await res.json();
-      setStaffs(data.staffs || []);
-      setDays(data.days || []);
+
+      setStaffs(Array.isArray(data.staffs) ? data.staffs : []);
+      setDays(Array.isArray(data.days) ? data.days : []);
+      setCleanCounts(data.cleaning_counts || {});
     } catch (e) {
       console.error(e);
       alert("シフト表の取得に失敗しました。");
@@ -189,38 +194,32 @@ export default function ShiftBoardPage() {
   const visibleDates = viewMode === "month" ? allDates : weekDates;
 
   const dayMap = useMemo(() => {
-  const map = new Map<string, ShiftDay>();
+    const map = new Map<string, ShiftDay>();
 
-  (Array.isArray(days) ? days : []).forEach((d) => {
-    map.set(d.shift_date, {
-      ...d,
-      shift_entries: Array.isArray(d.shift_entries) ? d.shift_entries : [],
+    (Array.isArray(days) ? days : []).forEach((d) => {
+      map.set(d.shift_date, {
+        ...d,
+        shift_entries: Array.isArray(d.shift_entries) ? d.shift_entries : [],
+      });
     });
-  });
 
-  return map;
-}, [days]);
+    return map;
+  }, [days]);
 
   const getShiftMark = (date: string, staffId: string): ShiftMark => {
-  const day = dayMap.get(date);
+    const day = dayMap.get(date);
 
-  if (!day) return "休み";
+    if (!day) return "休み";
 
-  const entries = Array.isArray(day.shift_entries)
-    ? day.shift_entries
-    : [];
+    const entries = Array.isArray(day.shift_entries) ? day.shift_entries : [];
+    const entry = entries.find((x) => x.staff_id === staffId);
+    const status = entry?.status as ShiftMark | undefined;
 
-  const entry = entries.find((x) => x.staff_id === staffId);
-
-  const status = entry?.status as ShiftMark | undefined;
-
-  return status || "休み";
-};
+    return status || "休み";
+  };
 
   const getCleanCount = (date: string) => {
-    const dt = new Date(date);
-    const day = dt.getDate();
-    return 30 + ((day * 4) % 23);
+    return cleanCounts?.[date] || 0;
   };
 
   const getOrCreateDay = async (date: string) => {
@@ -431,9 +430,7 @@ export default function ShiftBoardPage() {
           </div>
         )}
 
-        {mainTab === "account" && (
-  <AccountManagementPage />
-)}
+        {mainTab === "account" && <AccountManagementPage />}
 
         {mainTab === "mate" && (
           <div className="rounded-[22px] border border-slate-200 bg-white shadow-sm p-6">
