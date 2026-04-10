@@ -20,6 +20,8 @@ import EmployeeSettingsPage from "./pages/employee/EmployeeSettingsPage";
 import AdminLoginPage from "./pages/admin/AdminLoginPage";
 import AdminHomePage from "./pages/admin/AdminHomePage";
 import AdminRoute from "./routes/AdminRoute";
+import AdminWorklogReportPage from "./pages/admin/AdminWorklogReportPage";
+
 
 function AdminLayout() {
   return (
@@ -32,6 +34,7 @@ function AdminLayout() {
         <AdminNavButton to="/admin/facilities">設備管理</AdminNavButton>
         <AdminNavButton to="/admin/shifts">シフト管理</AdminNavButton>
         <AdminNavButton to="/admin/shiftboard">シフト表</AdminNavButton>
+        <AdminNavButton to="/admin/worklogs">実働報告</AdminNavButton>
       </div>
 
       <Outlet />
@@ -84,6 +87,7 @@ export default function App() {
           <Route path="facilities" element={<FacilityManagementPage />} />
           <Route path="shifts" element={<ShiftManagementPage />} />
           <Route path="shiftboard" element={<ShiftBoardPage />} />
+          <Route path="worklogs" element={<AdminWorklogReportPage />} />
         </Route>
 
         <Route path="/employee/login" element={<EmployeeLoginPage />} />
@@ -128,6 +132,7 @@ export default function App() {
             </EmployeeProtectedRoute>
           }
         />
+        
 
         <Route path="*" element={<Navigate to="/admin/login" replace />} />
       </Routes>
