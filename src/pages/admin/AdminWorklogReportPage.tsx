@@ -16,8 +16,28 @@ type Worklog = {
   break_minutes: number;
   work_type: string;
   note: string;
+  created_at: string;
   work_minutes: number;
 };
+
+function Card({ children }: { children: React.ReactNode }) {
+  return <div className="rounded-[22px] border border-slate-200 bg-white shadow-sm">{children}</div>;
+}
+
+function SummaryCard({
+  label,
+  value,
+}: {
+  label: string;
+  value: string | number;
+}) {
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+      <div className="text-xs font-semibold text-slate-500">{label}</div>
+      <div className="mt-2 text-2xl font-black text-slate-900">{value}</div>
+    </div>
+  );
+}
 
 function formatMinutes(minutes: number) {
   const h = Math.floor(minutes / 60);
@@ -47,7 +67,7 @@ export default function AdminWorklogReportPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  async function fetchTodayWorklogs() {
+  const loadTodayWorklogs = async () => {
     try {
       setLoading(true);
       setError("");
@@ -70,16 +90,16 @@ export default function AdminWorklogReportPage() {
 
       setDate(data?.date || "");
       setWorklogs(Array.isArray(data?.worklogs) ? data.worklogs : []);
-    } catch (err) {
-      console.error("実働報告取得エラー:", err);
-      setError(err instanceof Error ? err.message : "実働報告の取得に失敗しました。");
+    } catch (e) {
+      console.error(e);
+      setError("実働報告の取得に失敗しました。");
     } finally {
       setLoading(false);
     }
-  }
+  };
 
   useEffect(() => {
-    void fetchTodayWorklogs();
+    void loadTodayWorklogs();
   }, []);
 
   const totalMinutes = useMemo(
@@ -87,97 +107,98 @@ export default function AdminWorklogReportPage() {
     [worklogs]
   );
 
+  const totalCount = worklogs.length;
+
   const uniqueStaffCount = useMemo(() => {
     const set = new Set(worklogs.map((w) => w.user_id).filter(Boolean));
     return set.size;
   }, [worklogs]);
 
-  if (loading) {
-    return <div className="p-6">読み込み中...</div>;
-  }
-
   return (
-    <div className="p-6">
-      <div className="mb-6 flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold">本日の実働報告</h1>
-          <div className="mt-1 text-sm text-slate-500">対象日: {date || "本日"}</div>
-        </div>
+    <div className="min-h-screen bg-slate-50 p-6">
+      <div className="mx-auto max-w-[1200px] space-y-4">
+        <Card>
+          <div className="flex items-start justify-between gap-4 p-4">
+            <div>
+              <div className="text-[18px] font-extrabold">管理ページ | 実働報告</div>
+              <div className="mt-1 text-sm text-slate-500">
+                一般画面から今日登録された実働内容を確認します。
+              </div>
+              <div className="mt-2 text-sm text-slate-500">
+                対象日: {date || "本日"}
+              </div>
+            </div>
 
-        <button
-          type="button"
-          onClick={() => void fetchTodayWorklogs()}
-          className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-bold hover:bg-slate-50"
-        >
-          更新
-        </button>
-      </div>
-
-      <div className="mb-4 grid grid-cols-1 gap-4 md:grid-cols-3">
-        <div className="rounded-2xl border border-slate-200 bg-white p-4">
-          <div className="text-xs font-semibold text-slate-500">報告件数</div>
-          <div className="mt-2 text-2xl font-black text-slate-900">{worklogs.length}</div>
-        </div>
-
-        <div className="rounded-2xl border border-slate-200 bg-white p-4">
-          <div className="text-xs font-semibold text-slate-500">報告スタッフ数</div>
-          <div className="mt-2 text-2xl font-black text-slate-900">{uniqueStaffCount}</div>
-        </div>
-
-        <div className="rounded-2xl border border-slate-200 bg-white p-4">
-          <div className="text-xs font-semibold text-slate-500">総実働時間</div>
-          <div className="mt-2 text-2xl font-black text-slate-900">
-            {formatMinutes(totalMinutes)}
+            <button
+              type="button"
+              onClick={() => void loadTodayWorklogs()}
+              className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-bold hover:bg-slate-50"
+            >
+              更新
+            </button>
           </div>
+        </Card>
+
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+          <SummaryCard label="報告件数" value={totalCount} />
+          <SummaryCard label="報告スタッフ数" value={uniqueStaffCount} />
+          <SummaryCard label="総実働時間" value={formatMinutes(totalMinutes)} />
         </div>
-      </div>
 
-      {error ? (
-        <div className="mb-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
-          {error}
-        </div>
-      ) : null}
-
-      <div className="bg-white rounded-xl border overflow-hidden">
-        <table className="w-full text-sm min-w-[1100px]">
-          <thead className="bg-neutral-100">
-            <tr>
-              <th className="p-3 text-left">名前</th>
-              <th className="p-3 text-left">物件</th>
-              <th className="p-3 text-left">部屋</th>
-              <th className="p-3 text-left">開始</th>
-              <th className="p-3 text-left">終了</th>
-              <th className="p-3 text-left">休憩</th>
-              <th className="p-3 text-left">実働</th>
-              <th className="p-3 text-left">作業種別</th>
-              <th className="p-3 text-left">備考</th>
-            </tr>
-          </thead>
-
-          <tbody>
-            {worklogs.map((w) => (
-              <tr key={w.id} className="border-t">
-                <td className="p-3">
-                  <div className="font-medium">{w.staff_name || "-"}</div>
-                  <div className="text-xs text-slate-500">{w.staff_code || ""}</div>
-                </td>
-                <td className="p-3">{w.property_name || "-"}</td>
-                <td className="p-3">{w.room_name || "-"}</td>
-                <td className="p-3">{w.start_time || "-"}</td>
-                <td className="p-3">{w.end_time || "-"}</td>
-                <td className="p-3">{w.break_minutes || 0}分</td>
-                <td className="p-3">{formatMinutes(Number(w.work_minutes || 0))}</td>
-                <td className="p-3">{workTypeLabel(w.work_type)}</td>
-                <td className="p-3 whitespace-pre-wrap">{w.note || ""}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-
-        {worklogs.length === 0 && (
-          <div className="p-6 text-center text-neutral-400">
-            本日の報告はまだありません
+        {error ? (
+          <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+            {error}
           </div>
+        ) : null}
+
+        {loading ? (
+          <div className="rounded-2xl border border-slate-200 bg-white px-4 py-6 text-sm text-slate-500">
+            読み込み中...
+          </div>
+        ) : worklogs.length === 0 ? (
+          <div className="rounded-2xl border border-slate-200 bg-white px-4 py-8 text-center text-sm text-slate-500">
+            本日の実働報告はありません。
+          </div>
+        ) : (
+          <Card>
+            <div className="overflow-auto">
+              <table className="w-full min-w-[1180px] text-sm">
+                <thead>
+                  <tr>
+                    <th className="border-b bg-slate-50 px-4 py-3 text-left font-bold">スタッフ</th>
+                    <th className="border-b bg-slate-50 px-4 py-3 text-left font-bold">物件</th>
+                    <th className="border-b bg-slate-50 px-4 py-3 text-left font-bold">部屋</th>
+                    <th className="border-b bg-slate-50 px-4 py-3 text-left font-bold">開始</th>
+                    <th className="border-b bg-slate-50 px-4 py-3 text-left font-bold">終了</th>
+                    <th className="border-b bg-slate-50 px-4 py-3 text-left font-bold">休憩</th>
+                    <th className="border-b bg-slate-50 px-4 py-3 text-left font-bold">実働</th>
+                    <th className="border-b bg-slate-50 px-4 py-3 text-left font-bold">作業種別</th>
+                    <th className="border-b bg-slate-50 px-4 py-3 text-left font-bold">備考</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {worklogs.map((row) => (
+                    <tr key={row.id} className="hover:bg-slate-50">
+                      <td className="border-b px-4 py-3">
+                        <div className="font-medium">{row.staff_name || "-"}</div>
+                        <div className="text-xs text-slate-500">{row.staff_code || ""}</div>
+                      </td>
+                      <td className="border-b px-4 py-3">{row.property_name || "-"}</td>
+                      <td className="border-b px-4 py-3">{row.room_name || "-"}</td>
+                      <td className="border-b px-4 py-3">{row.start_time || "-"}</td>
+                      <td className="border-b px-4 py-3">{row.end_time || "-"}</td>
+                      <td className="border-b px-4 py-3">{row.break_minutes || 0}分</td>
+                      <td className="border-b px-4 py-3 font-medium">
+                        {formatMinutes(Number(row.work_minutes || 0))}
+                      </td>
+                      <td className="border-b px-4 py-3">{workTypeLabel(row.work_type)}</td>
+                      <td className="border-b px-4 py-3 whitespace-pre-wrap">{row.note || ""}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </Card>
         )}
       </div>
     </div>
