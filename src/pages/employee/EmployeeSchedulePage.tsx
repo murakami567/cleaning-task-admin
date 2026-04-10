@@ -1,200 +1,328 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { api } from "../../lib/api";
 
-type EmployeeSchedule = {
-  id: string;
+const API_BASE =
+  (import.meta as any).env?.VITE_API_BASE_URL || "https://cleaning-task-api.onrender.com";
+
+type CalendarDay = {
   date: string;
-  startTime: string;
-  endTime: string;
-  propertyName: string;
-  roomName?: string;
-  title: string;
-  status?: string;
-  note?: string;
+  cleaningCount: number;
+  inspectionCount: number;
+  propertyCounts: Record<string, number>;
+  totalCount: number;
 };
 
+type CalendarResponse = {
+  month: string;
+  days: CalendarDay[];
+};
+
+const WEEK_LABELS = ["日", "月", "火", "水", "木", "金", "土"];
+
+function pad2(n: number) {
+  return String(n).padStart(2, "0");
+}
+
+function formatMonthKey(year: number, month: number) {
+  return `${year}-${pad2(month)}`;
+}
+
+function buildCalendarCells(year: number, month: number) {
+  const firstDate = new Date(year, month - 1, 1);
+  const startWeekday = firstDate.getDay();
+  const lastDate = new Date(year, month, 0).getDate();
+
+  const cells: Array<{
+    date: string;
+    day: number;
+    inMonth: boolean;
+  }> = [];
+
+  for (let i = 0; i < startWeekday; i++) {
+    const d = new Date(year, month - 1, 1 - (startWeekday - i));
+    cells.push({
+      date: `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`,
+      day: d.getDate(),
+      inMonth: false,
+    });
+  }
+
+  for (let day = 1; day <= lastDate; day++) {
+    cells.push({
+      date: `${year}-${pad2(month)}-${pad2(day)}`,
+      day,
+      inMonth: true,
+    });
+  }
+
+  while (cells.length % 7 !== 0) {
+    const offset = cells.length - (startWeekday + lastDate) + 1;
+    const d = new Date(year, month, offset);
+    cells.push({
+      date: `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`,
+      day: d.getDate(),
+      inMonth: false,
+    });
+  }
+
+  return cells;
+}
+
+function formatDateLabel(dateStr: string) {
+  const d = new Date(dateStr);
+  const week = WEEK_LABELS[d.getDay()];
+  return `${d.getMonth() + 1}/${d.getDate()} (${week})`;
+}
+
 export default function EmployeeSchedulePage() {
-  const [schedules, setSchedules] = useState<EmployeeSchedule[]>([]);
+  const now = new Date();
+  const [year, setYear] = useState(now.getFullYear());
+  const [month, setMonth] = useState(now.getMonth() + 1);
+
+  const [calendarDays, setCalendarDays] = useState<CalendarDay[]>([]);
   const [loading, setLoading] = useState(true);
-  const [dateFilter, setDateFilter] = useState("");
-  const [errorMessage, setErrorMessage] = useState("");
+  const [error, setError] = useState("");
 
-  useEffect(() => {
-    fetchSchedules();
-  }, []);
+  const [selectedDay, setSelectedDay] = useState<CalendarDay | null>(null);
 
-  async function fetchSchedules() {
+  const monthKey = useMemo(() => formatMonthKey(year, month), [year, month]);
+  const cells = useMemo(() => buildCalendarCells(year, month), [year, month]);
+
+  const dayMap = useMemo(() => {
+    const map = new Map<string, CalendarDay>();
+    calendarDays.forEach((day) => {
+      map.set(day.date, day);
+    });
+    return map;
+  }, [calendarDays]);
+
+  async function fetchCalendar() {
     try {
       setLoading(true);
-      setErrorMessage("");
+      setError("");
 
-      const data = await api.get("/api/employee/schedule");
-      setSchedules(Array.isArray(data?.schedules) ? data.schedules : []);
-    } catch (error) {
-      console.error("スケジュール取得エラー:", error);
-      setErrorMessage("スケジュールの取得に失敗しました。");
-      setSchedules([]);
+      const token = localStorage.getItem("employee_access_token") || "";
+
+      const res = await fetch(`${API_BASE}/api/employee/schedule-calendar?month=${monthKey}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      const text = await res.text();
+
+      if (!res.ok) {
+        throw new Error(`schedule-calendar failed: ${res.status} / ${text}`);
+      }
+
+      const data: CalendarResponse = JSON.parse(text);
+      setCalendarDays(Array.isArray(data?.days) ? data.days : []);
+    } catch (e) {
+      console.error(e);
+      setError("スケジュールの取得に失敗しました。");
+      setCalendarDays([]);
     } finally {
       setLoading(false);
     }
   }
 
-  const filteredSchedules = useMemo(() => {
-    return schedules
-      .filter((item) => (dateFilter ? item.date === dateFilter : true))
-      .sort((a, b) => {
-        const aKey = `${a.date || ""} ${a.startTime || ""}`;
-        const bKey = `${b.date || ""} ${b.startTime || ""}`;
-        return aKey.localeCompare(bKey);
-      });
-  }, [schedules, dateFilter]);
+  useEffect(() => {
+    void fetchCalendar();
+  }, [monthKey]);
 
-  const groupedSchedules = useMemo(() => {
-    const map = new Map<string, EmployeeSchedule[]>();
+  function moveMonth(diff: number) {
+    const next = new Date(year, month - 1 + diff, 1);
+    setYear(next.getFullYear());
+    setMonth(next.getMonth() + 1);
+  }
 
-    filteredSchedules.forEach((item) => {
-      const key = item.date || "日付未設定";
-      if (!map.has(key)) {
-        map.set(key, []);
-      }
-      map.get(key)!.push(item);
-    });
-
-    return Array.from(map.entries());
-  }, [filteredSchedules]);
+  function openDayDetail(dateStr: string) {
+    const day = dayMap.get(dateStr);
+    if (!day || day.totalCount <= 0) return;
+    setSelectedDay(day);
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 pb-24">
       <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/95 backdrop-blur">
-        <div className="mx-auto w-full max-w-md px-4 pt-5 pb-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="text-xs font-medium text-slate-500">一般画面</div>
-              <h1 className="mt-1 text-2xl font-bold text-slate-900">スケジュール</h1>
-            </div>
-
-            <button
-              onClick={fetchSchedules}
-              className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-            >
-              更新
-            </button>
-          </div>
-
-          <div className="mt-4">
-            <input
-              type="date"
-              value={dateFilter}
-              onChange={(e) => setDateFilter(e.target.value)}
-              className="h-11 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm outline-none focus:border-slate-300"
-            />
+        <div className="mx-auto w-full max-w-4xl px-4 pt-5 pb-4">
+          <div>
+            <div className="text-xs font-medium text-slate-500">一般画面</div>
+            <h1 className="mt-1 text-2xl font-bold text-slate-900">スケジュール</h1>
+            <p className="mt-2 text-sm text-slate-500">
+              カレンダーで割り当てられている物件と件数（清掃＋インスペクション）を表示
+            </p>
           </div>
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-md px-4 pt-4">
-        {loading ? (
-          <LoadingBlock />
-        ) : errorMessage ? (
-          <ErrorBlock message={errorMessage} />
-        ) : groupedSchedules.length === 0 ? (
-          <EmptyBlock />
-        ) : (
-          <div className="space-y-4">
-            {groupedSchedules.map(([date, items]) => (
-              <section key={date}>
-                <div className="mb-2 px-1 text-sm font-bold text-slate-700">
-                  {formatDate(date)}
-                </div>
+      <main className="mx-auto w-full max-w-4xl px-4 pt-6">
+        <section className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm md:p-6">
+          <div className="mb-5 flex items-center justify-between gap-3">
+            <button
+              type="button"
+              onClick={() => moveMonth(-1)}
+              className="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700 hover:bg-slate-50"
+            >
+              前月
+            </button>
 
-                <div className="space-y-3">
-                  {items.map((item) => (
-                    <ScheduleCard key={item.id} item={item} />
-                  ))}
-                </div>
-              </section>
-            ))}
+            <div className="text-xl font-bold text-slate-900">
+              {year}年 {month}月
+            </div>
+
+            <button
+              type="button"
+              onClick={() => moveMonth(1)}
+              className="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700 hover:bg-slate-50"
+            >
+              次月
+            </button>
           </div>
-        )}
+
+          <div className="grid grid-cols-7 gap-2">
+            {WEEK_LABELS.map((label) => (
+              <div
+                key={label}
+                className="px-2 py-2 text-center text-sm font-semibold text-slate-500"
+              >
+                {label}
+              </div>
+            ))}
+
+            {cells.map((cell) => {
+              const info = dayMap.get(cell.date);
+              const totalCount = info?.totalCount ?? 0;
+              const cleaningCount = info?.cleaningCount ?? 0;
+              const inspectionCount = info?.inspectionCount ?? 0;
+              const clickable = totalCount > 0;
+
+              return (
+                <button
+                  key={cell.date}
+                  type="button"
+                  onClick={() => openDayDetail(cell.date)}
+                  disabled={!clickable}
+                  className={[
+                    "relative min-h-[88px] rounded-3xl border p-3 text-left transition",
+                    cell.inMonth
+                      ? "border-slate-200 bg-white"
+                      : "border-slate-200 bg-slate-50 text-slate-300",
+                    clickable
+                      ? "hover:border-indigo-400 hover:shadow-sm cursor-pointer"
+                      : "cursor-default",
+                    selectedDay?.date === cell.date ? "border-indigo-500 ring-2 ring-indigo-200" : "",
+                  ].join(" ")}
+                >
+                  <div className="text-base font-semibold">{cell.day}</div>
+
+                  {clickable ? (
+                    <>
+                      <div className="absolute right-3 top-3 flex h-6 min-w-[24px] items-center justify-center rounded-full bg-slate-100 px-2 text-xs font-bold text-slate-500">
+                        {totalCount}
+                      </div>
+
+                      <div className="mt-4 text-sm text-slate-700">
+                        清{cleaningCount} / 検{inspectionCount}
+                      </div>
+                    </>
+                  ) : (
+                    <div className="mt-4 text-sm text-slate-300">—</div>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          {loading ? (
+            <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-500">
+              読み込み中...
+            </div>
+          ) : null}
+
+          {error ? (
+            <div className="mt-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+              {error}
+            </div>
+          ) : null}
+        </section>
       </main>
 
-      <BottomNav />
-    </div>
-  );
-}
-
-function ScheduleCard({ item }: { item: EmployeeSchedule }) {
-  const status = getStatusView(item.status || "scheduled");
-
-  return (
-    <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <div className="text-xs font-medium text-slate-500">予定</div>
-          <div className="mt-1 text-base font-bold text-slate-900 break-words">
-            {item.title || "勤務予定"}
-          </div>
-          <div className="mt-1 text-sm text-slate-500 break-words">
-            {item.propertyName || "未設定"}
-            {item.roomName ? ` / ${item.roomName}` : ""}
-          </div>
-        </div>
-
-        <span
-          className={`shrink-0 rounded-full border px-3 py-1 text-xs font-bold ${status.badgeClass}`}
+      {selectedDay ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 px-4"
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) {
+              setSelectedDay(null);
+            }
+          }}
         >
-          {status.label}
-        </span>
-      </div>
+          <div className="w-full max-w-2xl rounded-3xl border border-slate-200 bg-white shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
+              <div className="text-xl font-bold text-slate-900">
+                日別内訳：{formatDateLabel(selectedDay.date)}
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedDay(null)}
+                className="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700 hover:bg-slate-50"
+              >
+                閉じる
+              </button>
+            </div>
 
-      <div className="mt-4 grid grid-cols-2 gap-3">
-        <InfoCard label="開始" value={item.startTime || "--:--"} />
-        <InfoCard label="終了" value={item.endTime || "--:--"} />
-      </div>
+            <div className="space-y-4 p-5">
+              <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
+                <div className="mb-3 text-lg font-bold text-slate-900">件数</div>
 
-      {item.note ? (
-        <div className="mt-3 rounded-2xl bg-slate-50 px-4 py-3">
-          <div className="text-xs font-medium text-slate-500">備考</div>
-          <div className="mt-1 text-sm text-slate-700 break-words">{item.note}</div>
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                  <div className="rounded-3xl border border-slate-200 bg-white p-4">
+                    <div className="text-sm text-slate-500">清掃</div>
+                    <div className="mt-2 text-4xl font-black text-slate-900">
+                      {selectedDay.cleaningCount}
+                    </div>
+                  </div>
+
+                  <div className="rounded-3xl border border-slate-200 bg-white p-4">
+                    <div className="text-sm text-slate-500">インスペクション</div>
+                    <div className="mt-2 text-4xl font-black text-slate-900">
+                      {selectedDay.inspectionCount}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
+                <div className="mb-3 text-lg font-bold text-slate-900">物件別</div>
+
+                <div className="space-y-3">
+                  {Object.entries(selectedDay.propertyCounts || {}).length === 0 ? (
+                    <div className="rounded-2xl border border-slate-200 bg-white px-4 py-4 text-sm text-slate-500">
+                      物件データがありません。
+                    </div>
+                  ) : (
+                    Object.entries(selectedDay.propertyCounts)
+                      .sort((a, b) => b[1] - a[1])
+                      .map(([propertyName, count]) => (
+                        <div
+                          key={propertyName}
+                          className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-4 py-4"
+                        >
+                          <div className="text-lg font-semibold text-slate-900">
+                            {propertyName}
+                          </div>
+                          <div className="text-2xl font-black text-slate-900">{count}</div>
+                        </div>
+                      ))
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       ) : null}
-    </div>
-  );
-}
 
-function InfoCard({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-      <div className="text-xs font-medium text-slate-500">{label}</div>
-      <div className="mt-1 text-sm font-bold text-slate-900">{value}</div>
-    </div>
-  );
-}
-
-function LoadingBlock() {
-  return (
-    <div className="rounded-3xl border border-slate-200 bg-white p-5 text-sm text-slate-500 shadow-sm">
-      読み込み中...
-    </div>
-  );
-}
-
-function ErrorBlock({ message }: { message: string }) {
-  return (
-    <div className="rounded-3xl border border-red-200 bg-red-50 p-5 text-sm text-red-600 shadow-sm">
-      {message}
-    </div>
-  );
-}
-
-function EmptyBlock() {
-  return (
-    <div className="rounded-3xl border border-slate-200 bg-white p-8 text-center shadow-sm">
-      <div className="text-sm font-semibold text-slate-700">表示できる予定はありません</div>
-      <div className="mt-1 text-xs text-slate-500">
-        日付を変更するか、更新ボタンを押してください
-      </div>
+      <BottomNav />
     </div>
   );
 }
@@ -231,34 +359,4 @@ function BottomNav() {
       </div>
     </nav>
   );
-}
-
-function getStatusView(status: string) {
-  if (status === "completed") {
-    return {
-      label: "完了",
-      badgeClass: "border-emerald-200 bg-emerald-50 text-emerald-700",
-    };
-  }
-
-  if (status === "in_progress") {
-    return {
-      label: "進行中",
-      badgeClass: "border-amber-200 bg-amber-50 text-amber-700",
-    };
-  }
-
-  return {
-    label: "予定",
-    badgeClass: "border-sky-200 bg-sky-50 text-sky-700",
-  };
-}
-
-function formatDate(value: string) {
-  if (!value) return "日付未設定";
-
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return value;
-
-  return `${d.getMonth() + 1}/${d.getDate()}`;
 }
