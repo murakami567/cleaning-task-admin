@@ -1226,6 +1226,8 @@ export default function AdminTasksPagePreview() {
                       const attendees = attendeesByDate[t.date] ?? [];
                       const isSelected = t.id === selectedCleaningId;
 
+                      const propertyColor = getPropertyColor(t.property);
+                      const normalizedPropertyName = extractPropertyName(t.property);
                       const checkerOptions = [{ value: "", label: "未設定" }].concat(
                         attendees.map((u) => ({ value: u.userId, label: u.name }))
                       );
@@ -1238,16 +1240,21 @@ export default function AdminTasksPagePreview() {
 
                       return (
                         <tr
-                          key={t.id}
-                          className={`${tableEditMode ? "bg-white" : isSelected ? "bg-black/5" : "bg-white hover:bg-black/5"} ${
-                            tableEditMode ? "" : "cursor-pointer"
-                          }`}
-                          onClick={() => {
-                            if (tableEditMode) return;
-                            setSelectedCleaningId(t.id);
-                            setCleaningDrawerOpen(true);
-                          }}
-                        >
+  key={t.id}
+  className={`${tableEditMode ? "" : "cursor-pointer"}`}
+  style={{
+    backgroundColor: tableEditMode
+      ? propertyColor
+      : isSelected
+      ? "#f5f5f5"
+      : propertyColor,
+  }}
+  onClick={() => {
+    if (tableEditMode) return;
+    setSelectedCleaningId(t.id);
+    setCleaningDrawerOpen(true);
+  }}
+>
                           <Td>
                             {tableEditMode ? (
                               <Select
@@ -1263,7 +1270,12 @@ export default function AdminTasksPagePreview() {
                             )}
                           </Td>
 
-                          <Td>{t.property}</Td>
+                          <Td>
+  <div className="font-medium">{normalizedPropertyName}</div>
+  {normalizedPropertyName !== t.property ? (
+    <div className="text-xs text-black/50">{t.property}</div>
+  ) : null}
+</Td>
                           <Td>{t.room || "-"}</Td>
 
                           <Td>
