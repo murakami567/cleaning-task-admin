@@ -56,8 +56,12 @@ export default function EmployeeWorklogPage() {
   const [rooms, setRooms] = useState<RoomMaster[]>([]);
 
   const [workDate, setWorkDate] = useState(todayString());
-  const [startTime, setStartTime] = useState("10:00");
-  const [endTime, setEndTime] = useState("18:00");
+
+  // ここを分離
+  const [workStartTime, setWorkStartTime] = useState("10:00");
+  const [clockInTime, setClockInTime] = useState("10:00");
+  const [clockOutTime, setClockOutTime] = useState("18:00");
+
   const [breakMinutes, setBreakMinutes] = useState("60");
   const [selectedWorkTypes, setSelectedWorkTypes] = useState<string[]>(["cleaning"]);
   const [rows, setRows] = useState<WorkPlaceRow[]>([makeRow()]);
@@ -97,15 +101,16 @@ export default function EmployeeWorklogPage() {
     }
   }
 
+  // 実働は出勤〜退勤で計算
   const actualMinutes = useMemo(() => {
-    const start = timeToMinutes(startTime);
-    const end = timeToMinutes(endTime);
+    const start = timeToMinutes(clockInTime);
+    const end = timeToMinutes(clockOutTime);
     const rest = Number(breakMinutes || 0);
 
-    if (!startTime || !endTime || end <= start) return 0;
+    if (!clockInTime || !clockOutTime || end <= start) return 0;
 
     return Math.max(end - start - rest, 0);
-  }, [startTime, endTime, breakMinutes]);
+  }, [clockInTime, clockOutTime, breakMinutes]);
 
   function toggleWorkType(value: string) {
     setSelectedWorkTypes((prev) =>
@@ -134,8 +139,9 @@ export default function EmployeeWorklogPage() {
 
   function clearForm() {
     setWorkDate(todayString());
-    setStartTime("10:00");
-    setEndTime("18:00");
+    setWorkStartTime("10:00");
+    setClockInTime("10:00");
+    setClockOutTime("18:00");
     setBreakMinutes("60");
     setSelectedWorkTypes(["cleaning"]);
     setRows([makeRow()]);
@@ -153,7 +159,7 @@ export default function EmployeeWorklogPage() {
     setSuccessMessage("");
     setErrorMessage("");
 
-    if (!workDate || !startTime || !endTime) {
+    if (!workDate || !clockInTime || !clockOutTime) {
       setErrorMessage("日付・出勤時刻・退勤時刻を入力してください。");
       return;
     }
@@ -192,11 +198,15 @@ export default function EmployeeWorklogPage() {
             work_date: workDate,
             property_name: property.property_name,
             room_name: room.room_name,
-            start_time: startTime,
-            end_time: endTime,
+            // 現APIには start_time / end_time しか無いので
+            // 作業開始時間は note に含めるか、別列追加が必要
+            start_time: clockInTime,
+            end_time: clockOutTime,
             break_minutes: Number(breakMinutes || 0),
             work_type: workTypeValue,
-            note,
+            note: workStartTime
+              ? `作業開始:${workStartTime}\n${note || ""}`.trim()
+              : note,
           }),
         });
 
@@ -247,15 +257,15 @@ export default function EmployeeWorklogPage() {
               </Field>
 
               <Field label="作業開始時間">
-                <TextInput type="time" value={startTime} onChange={setStartTime} />
+                <TextInput type="time" value={workStartTime} onChange={setWorkStartTime} />
               </Field>
 
               <Field label="出勤時刻">
-                <TextInput type="time" value={startTime} onChange={setStartTime} />
+                <TextInput type="time" value={clockInTime} onChange={setClockInTime} />
               </Field>
 
               <Field label="退勤時刻">
-                <TextInput type="time" value={endTime} onChange={setEndTime} />
+                <TextInput type="time" value={clockOutTime} onChange={setClockOutTime} />
               </Field>
 
               <Field label="休憩（分）">
