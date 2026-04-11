@@ -21,6 +21,24 @@ type Worklog = {
   work_minutes: number;
 };
 
+type GroupedWorklog = {
+  groupKey: string;
+  user_id: string;
+  staff_name: string;
+  staff_code: string;
+  work_date: string;
+  property_names: string[];
+  room_names: string[];
+  work_start_time: string;
+  start_time: string;
+  end_time: string;
+  break_minutes: number;
+  work_types: string[];
+  notes: string[];
+  total_work_minutes: number;
+  row_count: number;
+};
+
 function Card({ children }: { children: React.ReactNode }) {
   return <div className="rounded-[22px] border border-slate-200 bg-white shadow-sm">{children}</div>;
 }
@@ -85,6 +103,18 @@ function matchesWorkTypeFilter(workType: string, filter: string) {
   return values.includes(filter);
 }
 
+function minTime(a: string, b: string) {
+  if (!a) return b;
+  if (!b) return a;
+  return a <= b ? a : b;
+}
+
+function maxTime(a: string, b: string) {
+  if (!a) return b;
+  if (!b) return a;
+  return a >= b ? a : b;
+}
+
 export default function AdminWorklogReportPage() {
   const [selectedDate, setSelectedDate] = useState(todayString());
   const [worklogs, setWorklogs] = useState<Worklog[]>([]);
@@ -136,30 +166,97 @@ export default function AdminWorklogReportPage() {
     return worklogs.filter((row) => matchesWorkTypeFilter(row.work_type, workTypeFilter));
   }, [worklogs, workTypeFilter]);
 
+  const groupedWorklogs = useMemo<GroupedWorklog[]>(() => {
+    const map = new Map<string, GroupedWorklog>();
+
+    for (const row of filteredWorklogs) {
+      const key = `${row.user_id}_${row.work_date}`;
+
+      if (!map.has(key)) {
+        map.set(key, {
+          groupKey: key,
+          user_id: row.user_id,
+          staff_name: row.staff_name || "-",
+          staff_code: row.staff_code || "",
+          work_date: row.work_date || "",
+          property_names: row.property_name ? [row.property_name] : [],
+          room_names: row.room_name ? [row.room_name] : [],
+          work_start_time: row.work_start_time || "",
+          start_time: row.start_time || "",
+          end_time: row.end_time || "",
+          break_minutes: Number(row.break_minutes || 0),
+          work_types: row.work_type ? row.work_type.split(",").map((v) => v.trim()).filter(Boolean) : [],
+          notes: row.note ? [row.note] : [],
+          total_work_minutes: Number(row.work_minutes || 0),
+          row_count: 1,
+        });
+        continue;
+      }
+
+      const current = map.get(key)!;
+
+      if (row.property_name && !current.property_names.includes(row.property_name)) {
+        current.property_names.push(row.property_name);
+      }
+
+      if (row.room_name && !current.room_names.includes(row.room_name)) {
+        current.room_names.push(row.room_name);
+      }
+
+      const rowTypes = row.work_type
+        ? row.work_type.split(",").map((v) => v.trim()).filter(Boolean)
+        : [];
+
+      for (const t of rowTypes) {
+        if (!current.work_types.includes(t)) {
+          current.work_types.push(t);
+        }
+      }
+
+      if (row.note && !current.notes.includes(row.note)) {
+        current.notes.push(row.note);
+      }
+
+      current.work_start_time = minTime(current.work_start_time, row.work_start_time || "");
+      current.start_time = minTime(current.start_time, row.start_time || "");
+      current.end_time = maxTime(current.end_time, row.end_time || "");
+      current.break_minutes += Number(row.break_minutes || 0);
+      current.total_work_minutes += Number(row.work_minutes || 0);
+      current.row_count += 1;
+    }
+
+    return Array.from(map.values()).sort((a, b) => {
+      if (a.work_date !== b.work_date) return a.work_date.localeCompare(b.work_date);
+      return a.staff_name.localeCompare(b.staff_name);
+    });
+  }, [filteredWorklogs]);
+
   const totalMinutes = useMemo(
-    () => filteredWorklogs.reduce((sum, row) => sum + Number(row.work_minutes || 0), 0),
-    [filteredWorklogs]
+    () => groupedWorklogs.reduce((sum, row) => sum + Number(row.total_work_minutes || 0), 0),
+    [groupedWorklogs]
   );
 
-  const totalCount = filteredWorklogs.length;
+  const totalCount = groupedWorklogs.length;
 
   const uniqueStaffCount = useMemo(() => {
-    const set = new Set(filteredWorklogs.map((w) => w.user_id).filter(Boolean));
+    const set = new Set(groupedWorklogs.map((w) => w.user_id).filter(Boolean));
     return set.size;
-  }, [filteredWorklogs]);
+  }, [groupedWorklogs]);
 
   const propertySummary = useMemo(() => {
     const map = new Map<string, number>();
 
-    filteredWorklogs.forEach((row) => {
-      const key = row.property_name || "未設定";
-      map.set(key, (map.get(key) || 0) + Number(row.work_minutes || 0));
+    groupedWorklogs.forEach((row) => {
+      row.property_names.forEach((propertyName) => {
+        const current = map.get(propertyName) || 0;
+        map.set(propertyName, current + Number(row.total_work_minutes || 0));
+      });
     });
 
     return Array.from(map.entries())
       .map(([propertyName, minutes]) => ({ propertyName, minutes }))
       .sort((a, b) => b.minutes - a.minutes);
-  }, [filteredWorklogs]);
+  }, [groupedWorklogs]);
 
   return (
     <div className="min-h-screen bg-slate-50 p-6">
@@ -169,7 +266,7 @@ export default function AdminWorklogReportPage() {
             <div>
               <div className="text-[18px] font-extrabold">管理ページ | 実働報告</div>
               <div className="mt-1 text-sm text-slate-500">
-                一般画面から登録された実働内容を確認します。
+                一般画面から登録された実働内容をアカウント単位でまとめて表示します。
               </div>
             </div>
 
@@ -251,14 +348,14 @@ export default function AdminWorklogReportPage() {
           <div className="rounded-2xl border border-slate-200 bg-white px-4 py-6 text-sm text-slate-500">
             読み込み中...
           </div>
-        ) : filteredWorklogs.length === 0 ? (
+        ) : groupedWorklogs.length === 0 ? (
           <div className="rounded-2xl border border-slate-200 bg-white px-4 py-8 text-center text-sm text-slate-500">
             対象日の実働報告はありません。
           </div>
         ) : (
           <Card>
             <div className="overflow-auto">
-              <table className="w-full min-w-[1380px] text-sm">
+              <table className="w-full min-w-[1460px] text-sm">
                 <thead>
                   <tr>
                     <th className="border-b bg-slate-50 px-4 py-3 text-left font-bold">スタッフ</th>
@@ -272,27 +369,39 @@ export default function AdminWorklogReportPage() {
                     <th className="border-b bg-slate-50 px-4 py-3 text-left font-bold">作業時間</th>
                     <th className="border-b bg-slate-50 px-4 py-3 text-left font-bold">作業種別</th>
                     <th className="border-b bg-slate-50 px-4 py-3 text-left font-bold">備考</th>
+                    <th className="border-b bg-slate-50 px-4 py-3 text-left font-bold">件数</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredWorklogs.map((row) => (
-                    <tr key={row.id} className="hover:bg-slate-50">
+                  {groupedWorklogs.map((row) => (
+                    <tr key={row.groupKey} className="hover:bg-slate-50">
                       <td className="border-b px-4 py-3">
                         <div className="font-medium">{row.staff_name || "-"}</div>
                         <div className="text-xs text-slate-500">{row.staff_code || ""}</div>
                       </td>
                       <td className="border-b px-4 py-3">{row.work_date || "-"}</td>
-                      <td className="border-b px-4 py-3">{row.property_name || "-"}</td>
-                      <td className="border-b px-4 py-3">{row.room_name || "-"}</td>
+                      <td className="border-b px-4 py-3 whitespace-pre-wrap">
+                        {row.property_names.length > 0 ? row.property_names.join(" / ") : "-"}
+                      </td>
+                      <td className="border-b px-4 py-3 whitespace-pre-wrap">
+                        {row.room_names.length > 0 ? row.room_names.join(" / ") : "-"}
+                      </td>
                       <td className="border-b px-4 py-3">{row.work_start_time || "-"}</td>
                       <td className="border-b px-4 py-3">{row.start_time || "-"}</td>
                       <td className="border-b px-4 py-3">{row.end_time || "-"}</td>
                       <td className="border-b px-4 py-3">{row.break_minutes || 0}分</td>
                       <td className="border-b px-4 py-3 font-medium">
-                        {formatMinutes(Number(row.work_minutes || 0))}
+                        {formatMinutes(Number(row.total_work_minutes || 0))}
                       </td>
-                      <td className="border-b px-4 py-3">{workTypeLabel(row.work_type)}</td>
-                      <td className="border-b px-4 py-3 whitespace-pre-wrap">{row.note || ""}</td>
+                      <td className="border-b px-4 py-3">
+                        {row.work_types.length > 0
+                          ? workTypeLabel(row.work_types.join(","))
+                          : "-"}
+                      </td>
+                      <td className="border-b px-4 py-3 whitespace-pre-wrap">
+                        {row.notes.length > 0 ? row.notes.join("\n---\n") : "-"}
+                      </td>
+                      <td className="border-b px-4 py-3">{row.row_count}</td>
                     </tr>
                   ))}
                 </tbody>
