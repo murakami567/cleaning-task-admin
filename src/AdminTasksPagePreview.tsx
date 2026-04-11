@@ -116,9 +116,10 @@ const PROPERTY_COLORS: Record<string, string> = {
   "やなぎ橋": "#f5f0e6",
   "美野島": "#e6ffe6",
   "いそのビル": "#ffe5e5",
-  "アトラス": "#f3e6ff",
+  "アトラス": "#ffffff",
   "東光": "#f5f0e6",
   "比恵モダン": "#f0f0f0",
+  "浄水":"#e6f0ff",
 };
 
 const PROPERTY_NAME_KEYS = [
@@ -140,6 +141,7 @@ const PROPERTY_NAME_KEYS = [
   "玉井",
   "冷泉",
   "東光",
+  "浄水",
 ];
 
 function extractPropertyName(raw: string) {
