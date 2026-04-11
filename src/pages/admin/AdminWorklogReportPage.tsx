@@ -35,7 +35,7 @@ type GroupedWorklog = {
   break_minutes: number;
   work_types: string[];
   notes: string[];
-  total_work_minutes: number;
+  work_minutes: number;
   row_count: number;
 };
 
@@ -101,18 +101,6 @@ function matchesWorkTypeFilter(workType: string, filter: string) {
     .filter(Boolean);
 
   return values.includes(filter);
-}
-
-function minTime(a: string, b: string) {
-  if (!a) return b;
-  if (!b) return a;
-  return a <= b ? a : b;
-}
-
-function maxTime(a: string, b: string) {
-  if (!a) return b;
-  if (!b) return a;
-  return a >= b ? a : b;
 }
 
 export default function AdminWorklogReportPage() {
@@ -185,9 +173,11 @@ export default function AdminWorklogReportPage() {
           start_time: row.start_time || "",
           end_time: row.end_time || "",
           break_minutes: Number(row.break_minutes || 0),
-          work_types: row.work_type ? row.work_type.split(",").map((v) => v.trim()).filter(Boolean) : [],
+          work_types: row.work_type
+            ? row.work_type.split(",").map((v) => v.trim()).filter(Boolean)
+            : [],
           notes: row.note ? [row.note] : [],
-          total_work_minutes: Number(row.work_minutes || 0),
+          work_minutes: Number(row.work_minutes || 0),
           row_count: 1,
         });
         continue;
@@ -217,11 +207,6 @@ export default function AdminWorklogReportPage() {
         current.notes.push(row.note);
       }
 
-      current.work_start_time = minTime(current.work_start_time, row.work_start_time || "");
-      current.start_time = minTime(current.start_time, row.start_time || "");
-      current.end_time = maxTime(current.end_time, row.end_time || "");
-      current.break_minutes += Number(row.break_minutes || 0);
-      current.total_work_minutes += Number(row.work_minutes || 0);
       current.row_count += 1;
     }
 
@@ -232,7 +217,7 @@ export default function AdminWorklogReportPage() {
   }, [filteredWorklogs]);
 
   const totalMinutes = useMemo(
-    () => groupedWorklogs.reduce((sum, row) => sum + Number(row.total_work_minutes || 0), 0),
+    () => groupedWorklogs.reduce((sum, row) => sum + Number(row.work_minutes || 0), 0),
     [groupedWorklogs]
   );
 
@@ -249,7 +234,7 @@ export default function AdminWorklogReportPage() {
     groupedWorklogs.forEach((row) => {
       row.property_names.forEach((propertyName) => {
         const current = map.get(propertyName) || 0;
-        map.set(propertyName, current + Number(row.total_work_minutes || 0));
+        map.set(propertyName, current + Number(row.work_minutes || 0));
       });
     });
 
@@ -266,7 +251,7 @@ export default function AdminWorklogReportPage() {
             <div>
               <div className="text-[18px] font-extrabold">管理ページ | 実働報告</div>
               <div className="mt-1 text-sm text-slate-500">
-                一般画面から登録された実働内容をアカウント単位でまとめて表示します。
+                一般画面から登録された実働内容を、アカウントごとの1日単位でまとめて表示します。
               </div>
             </div>
 
@@ -369,7 +354,7 @@ export default function AdminWorklogReportPage() {
                     <th className="border-b bg-slate-50 px-4 py-3 text-left font-bold">作業時間</th>
                     <th className="border-b bg-slate-50 px-4 py-3 text-left font-bold">作業種別</th>
                     <th className="border-b bg-slate-50 px-4 py-3 text-left font-bold">備考</th>
-                    <th className="border-b bg-slate-50 px-4 py-3 text-left font-bold">件数</th>
+                    <th className="border-b bg-slate-50 px-4 py-3 text-left font-bold">担当部屋数</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -391,7 +376,7 @@ export default function AdminWorklogReportPage() {
                       <td className="border-b px-4 py-3">{row.end_time || "-"}</td>
                       <td className="border-b px-4 py-3">{row.break_minutes || 0}分</td>
                       <td className="border-b px-4 py-3 font-medium">
-                        {formatMinutes(Number(row.total_work_minutes || 0))}
+                        {formatMinutes(Number(row.work_minutes || 0))}
                       </td>
                       <td className="border-b px-4 py-3">
                         {row.work_types.length > 0
@@ -401,7 +386,7 @@ export default function AdminWorklogReportPage() {
                       <td className="border-b px-4 py-3 whitespace-pre-wrap">
                         {row.notes.length > 0 ? row.notes.join("\n---\n") : "-"}
                       </td>
-                      <td className="border-b px-4 py-3">{row.row_count}</td>
+                      <td className="border-b px-4 py-3">{row.room_names.length}</td>
                     </tr>
                   ))}
                 </tbody>
