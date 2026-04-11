@@ -11,6 +11,7 @@ type Worklog = {
   work_date: string;
   property_name: string;
   room_name: string;
+  work_start_time: string;
   start_time: string;
   end_time: string;
   break_minutes: number;
@@ -75,10 +76,12 @@ function workTypeLabel(workType: string) {
 
 function matchesWorkTypeFilter(workType: string, filter: string) {
   if (filter === "all") return true;
+
   const values = (workType || "")
     .split(",")
     .map((v) => v.trim())
     .filter(Boolean);
+
   return values.includes(filter);
 }
 
@@ -87,7 +90,9 @@ export default function AdminWorklogReportPage() {
   const [worklogs, setWorklogs] = useState<Worklog[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [workTypeFilter, setWorkTypeFilter] = useState<"all" | "cleaning" | "inspection" | "linen" | "support">("all");
+  const [workTypeFilter, setWorkTypeFilter] = useState<
+    "all" | "cleaning" | "inspection" | "linen" | "support"
+  >("all");
 
   const loadWorklogs = async (targetDate = selectedDate) => {
     try {
@@ -158,7 +163,7 @@ export default function AdminWorklogReportPage() {
 
   return (
     <div className="min-h-screen bg-slate-50 p-6">
-      <div className="mx-auto max-w-[1280px] space-y-4">
+      <div className="mx-auto max-w-[1380px] space-y-4">
         <Card>
           <div className="flex flex-col gap-4 p-4 lg:flex-row lg:items-start lg:justify-between">
             <div>
@@ -212,13 +217,13 @@ export default function AdminWorklogReportPage() {
         <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
           <SummaryCard label="報告件数" value={totalCount} />
           <SummaryCard label="報告スタッフ数" value={uniqueStaffCount} />
-          <SummaryCard label="総実働時間" value={formatMinutes(totalMinutes)} />
+          <SummaryCard label="総作業時間" value={formatMinutes(totalMinutes)} />
         </div>
 
         {propertySummary.length > 0 ? (
           <Card>
             <div className="p-4">
-              <div className="mb-3 text-base font-extrabold text-slate-900">物件別実働時間</div>
+              <div className="mb-3 text-base font-extrabold text-slate-900">物件別作業時間</div>
               <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
                 {propertySummary.map((item) => (
                   <div
@@ -253,17 +258,18 @@ export default function AdminWorklogReportPage() {
         ) : (
           <Card>
             <div className="overflow-auto">
-              <table className="w-full min-w-[1280px] text-sm">
+              <table className="w-full min-w-[1380px] text-sm">
                 <thead>
                   <tr>
                     <th className="border-b bg-slate-50 px-4 py-3 text-left font-bold">スタッフ</th>
                     <th className="border-b bg-slate-50 px-4 py-3 text-left font-bold">日付</th>
                     <th className="border-b bg-slate-50 px-4 py-3 text-left font-bold">物件</th>
                     <th className="border-b bg-slate-50 px-4 py-3 text-left font-bold">部屋</th>
-                    <th className="border-b bg-slate-50 px-4 py-3 text-left font-bold">開始</th>
-                    <th className="border-b bg-slate-50 px-4 py-3 text-left font-bold">終了</th>
+                    <th className="border-b bg-slate-50 px-4 py-3 text-left font-bold">作業開始</th>
+                    <th className="border-b bg-slate-50 px-4 py-3 text-left font-bold">出勤</th>
+                    <th className="border-b bg-slate-50 px-4 py-3 text-left font-bold">退勤</th>
                     <th className="border-b bg-slate-50 px-4 py-3 text-left font-bold">休憩</th>
-                    <th className="border-b bg-slate-50 px-4 py-3 text-left font-bold">実働</th>
+                    <th className="border-b bg-slate-50 px-4 py-3 text-left font-bold">作業時間</th>
                     <th className="border-b bg-slate-50 px-4 py-3 text-left font-bold">作業種別</th>
                     <th className="border-b bg-slate-50 px-4 py-3 text-left font-bold">備考</th>
                   </tr>
@@ -278,6 +284,7 @@ export default function AdminWorklogReportPage() {
                       <td className="border-b px-4 py-3">{row.work_date || "-"}</td>
                       <td className="border-b px-4 py-3">{row.property_name || "-"}</td>
                       <td className="border-b px-4 py-3">{row.room_name || "-"}</td>
+                      <td className="border-b px-4 py-3">{row.work_start_time || "-"}</td>
                       <td className="border-b px-4 py-3">{row.start_time || "-"}</td>
                       <td className="border-b px-4 py-3">{row.end_time || "-"}</td>
                       <td className="border-b px-4 py-3">{row.break_minutes || 0}分</td>
