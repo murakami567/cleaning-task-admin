@@ -195,19 +195,16 @@ export default function EmployeeWorklogPage() {
             Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({
-            work_date: workDate,
-            property_name: property.property_name,
-            room_name: room.room_name,
-            // 現APIには start_time / end_time しか無いので
-            // 作業開始時間は note に含めるか、別列追加が必要
-            start_time: clockInTime,
-            end_time: clockOutTime,
-            break_minutes: Number(breakMinutes || 0),
-            work_type: workTypeValue,
-            note: workStartTime
-              ? `作業開始:${workStartTime}\n${note || ""}`.trim()
-              : note,
-          }),
+  work_date: workDate,
+  property_name: property.property_name,
+  room_name: room.room_name,
+  work_start_time: workStartTime,
+  start_time: clockInTime,
+  end_time: clockOutTime,
+  break_minutes: Number(breakMinutes || 0),
+  work_type: workTypeValue,
+  note,
+}),
         });
 
         const text = await res.text();
@@ -272,14 +269,6 @@ export default function EmployeeWorklogPage() {
                 <TextInput type="number" value={breakMinutes} onChange={setBreakMinutes} />
               </Field>
 
-              <Field label="実働（分）">
-                <input
-                  type="text"
-                  value={String(actualMinutes)}
-                  readOnly
-                  className="h-11 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm outline-none"
-                />
-              </Field>
             </div>
 
             <div className="mt-5">
