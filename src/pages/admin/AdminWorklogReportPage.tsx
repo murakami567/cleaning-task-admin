@@ -1,109 +1,105 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useLocation } from "react-router-dom";
 
 const API_BASE =
   (import.meta as any).env?.VITE_API_BASE_URL || "https://cleaning-task-api.onrender.com";
 
-type CalendarDay = {
-  date: string;
-  cleaningCount: number;
-  inspectionCount: number;
-  propertyCounts: Record<string, number>;
-  totalCount: number;
+type Worklog = {
+  id: string;
+  user_id: string;
+  staff_name: string;
+  staff_code: string;
+  work_date: string;
+  property_name: string;
+  room_name: string;
+  start_time: string;
+  end_time: string;
+  break_minutes: number;
+  work_type: string;
+  note: string;
+  created_at: string;
+  work_minutes: number;
 };
 
-type CalendarResponse = {
-  month: string;
-  days: CalendarDay[];
-};
+function Card({ children }: { children: React.ReactNode }) {
+  return <div className="rounded-[22px] border border-slate-200 bg-white shadow-sm">{children}</div>;
+}
 
-const WEEK_LABELS = ["日", "月", "火", "水", "木", "金", "土"];
+function SummaryCard({
+  label,
+  value,
+}: {
+  label: string;
+  value: string | number;
+}) {
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+      <div className="text-xs font-semibold text-slate-500">{label}</div>
+      <div className="mt-2 text-2xl font-black text-slate-900">{value}</div>
+    </div>
+  );
+}
 
 function pad2(n: number) {
   return String(n).padStart(2, "0");
 }
 
-function formatMonthKey(year: number, month: number) {
-  return `${year}-${pad2(month)}`;
-}
-
-function buildCalendarCells(year: number, month: number) {
-  const firstDate = new Date(year, month - 1, 1);
-  const startWeekday = firstDate.getDay();
-  const lastDate = new Date(year, month, 0).getDate();
-
-  const cells: Array<{
-    date: string;
-    day: number;
-    inMonth: boolean;
-  }> = [];
-
-  for (let i = 0; i < startWeekday; i++) {
-    const d = new Date(year, month - 1, 1 - (startWeekday - i));
-    cells.push({
-      date: `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`,
-      day: d.getDate(),
-      inMonth: false,
-    });
-  }
-
-  for (let day = 1; day <= lastDate; day++) {
-    cells.push({
-      date: `${year}-${pad2(month)}-${pad2(day)}`,
-      day,
-      inMonth: true,
-    });
-  }
-
-  while (cells.length % 7 !== 0) {
-    const offset = cells.length - (startWeekday + lastDate) + 1;
-    const d = new Date(year, month, offset);
-    cells.push({
-      date: `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`,
-      day: d.getDate(),
-      inMonth: false,
-    });
-  }
-
-  return cells;
-}
-
-function formatDateLabel(dateStr: string) {
-  const d = new Date(dateStr);
-  const week = WEEK_LABELS[d.getDay()];
-  return `${d.getMonth() + 1}/${d.getDate()} (${week})`;
-}
-
-export default function EmployeeSchedulePage() {
+function todayString() {
   const now = new Date();
-  const [year, setYear] = useState(now.getFullYear());
-  const [month, setMonth] = useState(now.getMonth() + 1);
+  return `${now.getFullYear()}-${pad2(now.getMonth() + 1)}-${pad2(now.getDate())}`;
+}
 
-  const [calendarDays, setCalendarDays] = useState<CalendarDay[]>([]);
+function formatMinutes(minutes: number) {
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  if (h <= 0) return `${m}分`;
+  return `${h}時間${m}分`;
+}
+
+function workTypeLabel(workType: string) {
+  if (!workType) return "-";
+
+  const map: Record<string, string> = {
+    cleaning: "清掃",
+    inspection: "インスペクション",
+    linen: "リネン",
+    support: "補助作業",
+  };
+
+  return workType
+    .split(",")
+    .map((t) => t.trim())
+    .filter(Boolean)
+    .map((t) => map[t] || t)
+    .join(" / ");
+}
+
+function matchesWorkTypeFilter(workType: string, filter: string) {
+  if (filter === "all") return true;
+  const values = (workType || "")
+    .split(",")
+    .map((v) => v.trim())
+    .filter(Boolean);
+  return values.includes(filter);
+}
+
+export default function AdminWorklogReportPage() {
+  const [selectedDate, setSelectedDate] = useState(todayString());
+  const [worklogs, setWorklogs] = useState<Worklog[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [workTypeFilter, setWorkTypeFilter] = useState<"all" | "cleaning" | "inspection" | "linen" | "support">("all");
 
-  const [selectedDay, setSelectedDay] = useState<CalendarDay | null>(null);
-
-  const monthKey = useMemo(() => formatMonthKey(year, month), [year, month]);
-  const cells = useMemo(() => buildCalendarCells(year, month), [year, month]);
-
-  const dayMap = useMemo(() => {
-    const map = new Map<string, CalendarDay>();
-    calendarDays.forEach((day) => {
-      map.set(day.date, day);
-    });
-    return map;
-  }, [calendarDays]);
-
-  async function fetchCalendar() {
+  const loadWorklogs = async (targetDate = selectedDate) => {
     try {
       setLoading(true);
       setError("");
 
-      const token = localStorage.getItem("employee_access_token") || "";
+      const token = localStorage.getItem("admin_access_token") || "";
 
-      const res = await fetch(`${API_BASE}/api/employee/schedule-calendar?month=${monthKey}`, {
+      const url = new URL(`${API_BASE}/api/admin-portal/worklogs/today`);
+      url.searchParams.set("date", targetDate);
+
+      const res = await fetch(url.toString(), {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -112,251 +108,192 @@ export default function EmployeeSchedulePage() {
       const text = await res.text();
 
       if (!res.ok) {
-        throw new Error(`schedule-calendar failed: ${res.status} / ${text}`);
+        throw new Error(`worklogs fetch failed: ${res.status} / ${text}`);
       }
 
-      const data: CalendarResponse = JSON.parse(text);
-      setCalendarDays(Array.isArray(data?.days) ? data.days : []);
+      const data = JSON.parse(text);
+
+      setWorklogs(Array.isArray(data?.worklogs) ? data.worklogs : []);
     } catch (e) {
       console.error(e);
-      setError("スケジュールの取得に失敗しました。");
-      setCalendarDays([]);
+      setError(e instanceof Error ? e.message : "実働報告の取得に失敗しました。");
+      setWorklogs([]);
     } finally {
       setLoading(false);
     }
-  }
+  };
 
   useEffect(() => {
-    void fetchCalendar();
-  }, [monthKey]);
+    void loadWorklogs(selectedDate);
+  }, [selectedDate]);
 
-  function moveMonth(diff: number) {
-    const next = new Date(year, month - 1 + diff, 1);
-    setYear(next.getFullYear());
-    setMonth(next.getMonth() + 1);
-  }
+  const filteredWorklogs = useMemo(() => {
+    return worklogs.filter((row) => matchesWorkTypeFilter(row.work_type, workTypeFilter));
+  }, [worklogs, workTypeFilter]);
 
-  function openDayDetail(dateStr: string) {
-    const day = dayMap.get(dateStr);
-    if (!day || day.totalCount <= 0) return;
-    setSelectedDay(day);
-  }
+  const totalMinutes = useMemo(
+    () => filteredWorklogs.reduce((sum, row) => sum + Number(row.work_minutes || 0), 0),
+    [filteredWorklogs]
+  );
+
+  const totalCount = filteredWorklogs.length;
+
+  const uniqueStaffCount = useMemo(() => {
+    const set = new Set(filteredWorklogs.map((w) => w.user_id).filter(Boolean));
+    return set.size;
+  }, [filteredWorklogs]);
+
+  const propertySummary = useMemo(() => {
+    const map = new Map<string, number>();
+
+    filteredWorklogs.forEach((row) => {
+      const key = row.property_name || "未設定";
+      map.set(key, (map.get(key) || 0) + Number(row.work_minutes || 0));
+    });
+
+    return Array.from(map.entries())
+      .map(([propertyName, minutes]) => ({ propertyName, minutes }))
+      .sort((a, b) => b.minutes - a.minutes);
+  }, [filteredWorklogs]);
 
   return (
-    <div className="min-h-screen bg-slate-50 pb-24">
-      <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/95 backdrop-blur">
-        <div className="mx-auto w-full max-w-4xl px-4 pt-5 pb-4">
-          <div>
-            <div className="text-xs font-medium text-slate-500">一般画面</div>
-            <h1 className="mt-1 text-2xl font-bold text-slate-900">スケジュール</h1>
-            <p className="mt-2 text-sm text-slate-500">
-              カレンダーで割り当てられている物件と件数（清掃＋インスペクション）を表示
-            </p>
-          </div>
-        </div>
-      </header>
-
-      <main className="mx-auto w-full max-w-4xl px-4 pt-6">
-        <section className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm md:p-6">
-          <div className="mb-5 flex items-center justify-between gap-3">
-            <button
-              type="button"
-              onClick={() => moveMonth(-1)}
-              className="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700 hover:bg-slate-50"
-            >
-              前月
-            </button>
-
-            <div className="text-xl font-bold text-slate-900">
-              {year}年 {month}月
+    <div className="min-h-screen bg-slate-50 p-6">
+      <div className="mx-auto max-w-[1280px] space-y-4">
+        <Card>
+          <div className="flex flex-col gap-4 p-4 lg:flex-row lg:items-start lg:justify-between">
+            <div>
+              <div className="text-[18px] font-extrabold">管理ページ | 実働報告</div>
+              <div className="mt-1 text-sm text-slate-500">
+                一般画面から登録された実働内容を確認します。
+              </div>
             </div>
 
-            <button
-              type="button"
-              onClick={() => moveMonth(1)}
-              className="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700 hover:bg-slate-50"
-            >
-              次月
-            </button>
-          </div>
-
-          <div className="grid grid-cols-7 gap-2">
-            {WEEK_LABELS.map((label) => (
-              <div
-                key={label}
-                className="px-2 py-2 text-center text-sm font-semibold text-slate-500"
-              >
-                {label}
+            <div className="flex flex-wrap items-end gap-3">
+              <div>
+                <div className="mb-2 text-xs font-semibold text-slate-500">対象日</div>
+                <input
+                  type="date"
+                  value={selectedDate}
+                  onChange={(e) => setSelectedDate(e.target.value)}
+                  className="h-11 rounded-2xl border border-slate-200 bg-white px-4 text-sm outline-none"
+                />
               </div>
-            ))}
 
-            {cells.map((cell) => {
-              const info = dayMap.get(cell.date);
-              const totalCount = info?.totalCount ?? 0;
-              const cleaningCount = info?.cleaningCount ?? 0;
-              const inspectionCount = info?.inspectionCount ?? 0;
-              const clickable = totalCount > 0;
-
-              return (
-                <button
-                  key={cell.date}
-                  type="button"
-                  onClick={() => openDayDetail(cell.date)}
-                  disabled={!clickable}
-                  className={[
-                    "relative min-h-[88px] rounded-3xl border p-3 text-left transition",
-                    cell.inMonth
-                      ? "border-slate-200 bg-white"
-                      : "border-slate-200 bg-slate-50 text-slate-300",
-                    clickable
-                      ? "hover:border-indigo-400 hover:shadow-sm cursor-pointer"
-                      : "cursor-default",
-                    selectedDay?.date === cell.date ? "border-indigo-500 ring-2 ring-indigo-200" : "",
-                  ].join(" ")}
+              <div>
+                <div className="mb-2 text-xs font-semibold text-slate-500">作業種別</div>
+                <select
+                  value={workTypeFilter}
+                  onChange={(e) =>
+                    setWorkTypeFilter(
+                      e.target.value as "all" | "cleaning" | "inspection" | "linen" | "support"
+                    )
+                  }
+                  className="h-11 rounded-2xl border border-slate-200 bg-white px-4 text-sm outline-none"
                 >
-                  <div className="text-base font-semibold">{cell.day}</div>
-
-                  {clickable ? (
-                    <>
-                      <div className="absolute right-3 top-3 flex h-6 min-w-[24px] items-center justify-center rounded-full bg-slate-100 px-2 text-xs font-bold text-slate-500">
-                        {totalCount}
-                      </div>
-
-                      <div className="mt-4 text-sm text-slate-700">
-                        清{cleaningCount} / 検{inspectionCount}
-                      </div>
-                    </>
-                  ) : (
-                    <div className="mt-4 text-sm text-slate-300">—</div>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-
-          {loading ? (
-            <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-500">
-              読み込み中...
-            </div>
-          ) : null}
-
-          {error ? (
-            <div className="mt-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
-              {error}
-            </div>
-          ) : null}
-        </section>
-      </main>
-
-      {selectedDay ? (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 px-4"
-          onMouseDown={(e) => {
-            if (e.target === e.currentTarget) {
-              setSelectedDay(null);
-            }
-          }}
-        >
-          <div className="w-full max-w-2xl rounded-3xl border border-slate-200 bg-white shadow-2xl">
-            <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
-              <div className="text-xl font-bold text-slate-900">
-                日別内訳：{formatDateLabel(selectedDay.date)}
+                  <option value="all">すべて</option>
+                  <option value="cleaning">清掃</option>
+                  <option value="inspection">インスペクション</option>
+                  <option value="linen">リネン</option>
+                  <option value="support">補助作業</option>
+                </select>
               </div>
+
               <button
                 type="button"
-                onClick={() => setSelectedDay(null)}
-                className="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700 hover:bg-slate-50"
+                onClick={() => void loadWorklogs(selectedDate)}
+                className="h-11 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-bold hover:bg-slate-50"
               >
-                閉じる
+                更新
               </button>
             </div>
+          </div>
+        </Card>
 
-            <div className="space-y-4 p-5">
-              <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
-                <div className="mb-3 text-lg font-bold text-slate-900">件数</div>
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+          <SummaryCard label="報告件数" value={totalCount} />
+          <SummaryCard label="報告スタッフ数" value={uniqueStaffCount} />
+          <SummaryCard label="総実働時間" value={formatMinutes(totalMinutes)} />
+        </div>
 
-                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                  <div className="rounded-3xl border border-slate-200 bg-white p-4">
-                    <div className="text-sm text-slate-500">清掃</div>
-                    <div className="mt-2 text-4xl font-black text-slate-900">
-                      {selectedDay.cleaningCount}
+        {propertySummary.length > 0 ? (
+          <Card>
+            <div className="p-4">
+              <div className="mb-3 text-base font-extrabold text-slate-900">物件別実働時間</div>
+              <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                {propertySummary.map((item) => (
+                  <div
+                    key={item.propertyName}
+                    className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4"
+                  >
+                    <div className="text-sm font-semibold text-slate-500">{item.propertyName}</div>
+                    <div className="mt-2 text-xl font-black text-slate-900">
+                      {formatMinutes(item.minutes)}
                     </div>
                   </div>
-
-                  <div className="rounded-3xl border border-slate-200 bg-white p-4">
-                    <div className="text-sm text-slate-500">インスペクション</div>
-                    <div className="mt-2 text-4xl font-black text-slate-900">
-                      {selectedDay.inspectionCount}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
-                <div className="mb-3 text-lg font-bold text-slate-900">物件別</div>
-
-                <div className="space-y-3">
-                  {Object.entries(selectedDay.propertyCounts || {}).length === 0 ? (
-                    <div className="rounded-2xl border border-slate-200 bg-white px-4 py-4 text-sm text-slate-500">
-                      物件データがありません。
-                    </div>
-                  ) : (
-                    Object.entries(selectedDay.propertyCounts)
-                      .sort((a, b) => b[1] - a[1])
-                      .map(([propertyName, count]) => (
-                        <div
-                          key={propertyName}
-                          className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-4 py-4"
-                        >
-                          <div className="text-lg font-semibold text-slate-900">
-                            {propertyName}
-                          </div>
-                          <div className="text-2xl font-black text-slate-900">{count}</div>
-                        </div>
-                      ))
-                  )}
-                </div>
+                ))}
               </div>
             </div>
+          </Card>
+        ) : null}
+
+        {error ? (
+          <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+            {error}
           </div>
-        </div>
-      ) : null}
+        ) : null}
 
-      <BottomNav />
-    </div>
-  );
-}
-
-function BottomNav() {
-  const location = useLocation();
-
-  const items = [
-    { to: "/employee/home", label: "ホーム" },
-    { to: "/employee/tasks", label: "タスク" },
-    { to: "/employee/schedule", label: "予定" },
-    { to: "/employee/worklog", label: "実働" },
-    { to: "/employee/settings", label: "設定" },
-  ];
-
-  return (
-    <nav className="fixed bottom-0 left-0 right-0 z-30 border-t border-slate-200 bg-white/95 backdrop-blur">
-      <div className="mx-auto flex w-full max-w-md items-center justify-between px-2 py-2">
-        {items.map((item) => {
-          const active = location.pathname === item.to;
-
-          return (
-            <Link
-              key={item.to}
-              to={item.to}
-              className={`flex min-w-0 flex-1 flex-col items-center justify-center rounded-2xl px-2 py-2 text-xs font-semibold transition ${
-                active ? "bg-slate-900 text-white" : "text-slate-500 hover:bg-slate-50"
-              }`}
-            >
-              <span className="truncate">{item.label}</span>
-            </Link>
-          );
-        })}
+        {loading ? (
+          <div className="rounded-2xl border border-slate-200 bg-white px-4 py-6 text-sm text-slate-500">
+            読み込み中...
+          </div>
+        ) : filteredWorklogs.length === 0 ? (
+          <div className="rounded-2xl border border-slate-200 bg-white px-4 py-8 text-center text-sm text-slate-500">
+            対象日の実働報告はありません。
+          </div>
+        ) : (
+          <Card>
+            <div className="overflow-auto">
+              <table className="w-full min-w-[1280px] text-sm">
+                <thead>
+                  <tr>
+                    <th className="border-b bg-slate-50 px-4 py-3 text-left font-bold">スタッフ</th>
+                    <th className="border-b bg-slate-50 px-4 py-3 text-left font-bold">日付</th>
+                    <th className="border-b bg-slate-50 px-4 py-3 text-left font-bold">物件</th>
+                    <th className="border-b bg-slate-50 px-4 py-3 text-left font-bold">部屋</th>
+                    <th className="border-b bg-slate-50 px-4 py-3 text-left font-bold">開始</th>
+                    <th className="border-b bg-slate-50 px-4 py-3 text-left font-bold">終了</th>
+                    <th className="border-b bg-slate-50 px-4 py-3 text-left font-bold">休憩</th>
+                    <th className="border-b bg-slate-50 px-4 py-3 text-left font-bold">実働</th>
+                    <th className="border-b bg-slate-50 px-4 py-3 text-left font-bold">作業種別</th>
+                    <th className="border-b bg-slate-50 px-4 py-3 text-left font-bold">備考</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredWorklogs.map((row) => (
+                    <tr key={row.id} className="hover:bg-slate-50">
+                      <td className="border-b px-4 py-3">
+                        <div className="font-medium">{row.staff_name || "-"}</div>
+                        <div className="text-xs text-slate-500">{row.staff_code || ""}</div>
+                      </td>
+                      <td className="border-b px-4 py-3">{row.work_date || "-"}</td>
+                      <td className="border-b px-4 py-3">{row.property_name || "-"}</td>
+                      <td className="border-b px-4 py-3">{row.room_name || "-"}</td>
+                      <td className="border-b px-4 py-3">{row.start_time || "-"}</td>
+                      <td className="border-b px-4 py-3">{row.end_time || "-"}</td>
+                      <td className="border-b px-4 py-3">{row.break_minutes || 0}分</td>
+                      <td className="border-b px-4 py-3 font-medium">
+                        {formatMinutes(Number(row.work_minutes || 0))}
+                      </td>
+                      <td className="border-b px-4 py-3">{workTypeLabel(row.work_type)}</td>
+                      <td className="border-b px-4 py-3 whitespace-pre-wrap">{row.note || ""}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+        )}
       </div>
-    </nav>
+    </div>
   );
 }
