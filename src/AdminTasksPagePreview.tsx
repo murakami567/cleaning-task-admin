@@ -100,6 +100,62 @@ function getTowelCount(
   return guests
 }
 
+const PROPERTY_COLORS: Record<string, string> = {
+  "FFFホテル": "#ffffff",
+  "住吉": "#ffffff",
+  "エスコート": "#ffe5e5",
+  "ジェン": "#f0f0f0",
+  "薬院": "#ffe8cc",
+  "県庁前": "#e6ffe6",
+  "ウィングス": "#e6f0ff",
+  "玉井": "#f0f0f0",
+  "西中洲": "#f3e6ff",
+  "アクシオン美野島": "#f5f0e6",
+  "冷泉": "#ffe5e5",
+  "ロイズ": "#f3e6ff",
+  "やなぎ橋": "#f5f0e6",
+  "美野島": "#e6ffe6",
+  "いそのビル": "#ffe5e5",
+  "アトラス": "#f3e6ff",
+  "東光": "#f5f0e6",
+  "比恵モダン": "#f0f0f0",
+};
+
+const PROPERTY_NAME_KEYS = [
+  "アクシオン美野島",
+  "比恵モダン",
+  "いそのビル",
+  "FFFホテル",
+  "エスコート",
+  "ウィングス",
+  "県庁前",
+  "やなぎ橋",
+  "西中洲",
+  "アトラス",
+  "ジェン",
+  "ロイズ",
+  "美野島",
+  "住吉",
+  "薬院",
+  "玉井",
+  "冷泉",
+  "東光",
+];
+
+function extractPropertyName(raw: string) {
+  const value = String(raw || "").trim();
+  if (!value) return "";
+
+  const found = PROPERTY_NAME_KEYS.find((name) => value.startsWith(name) || value.includes(name));
+  return found || value;
+}
+
+function getPropertyColor(raw: string) {
+  const propertyName = extractPropertyName(raw);
+  return PROPERTY_COLORS[propertyName] || "#ffffff";
+}
+
+
 /* =========================
  * UI parts
  * ========================= */
