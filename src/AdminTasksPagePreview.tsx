@@ -111,6 +111,7 @@ const PROPERTY_COLORS: Record<string, string> = {
   "玉井": "#f0f0f0",
   "西中洲": "#f3e6ff",
   "アクシオン美野島": "#f5f0e6",
+  "ルッシェ":"#f5f0e6",
   "冷泉": "#ffe5e5",
   "ロイズ": "#f3e6ff",
   "やなぎ橋": "#f5f0e6",
