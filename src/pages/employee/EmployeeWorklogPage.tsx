@@ -23,7 +23,7 @@ type WorkPlaceRow = {
 
 const WORK_TYPE_OPTIONS = [
   { value: "cleaning", label: "清掃" },
-  { value: "inspection", label: "インスペクション" },
+  { value: "inspection", label: "チェック" },
   { value: "linen", label: "リネン" },
   { value: "support", label: "補助作業" },
 ];
