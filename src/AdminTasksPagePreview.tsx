@@ -9,7 +9,7 @@ const STATUS_OPTIONS = [
   { value: "未着手", label: "未着手" },
   { value: "進行中", label: "進行中" },
   { value: "完了", label: "完了" },
-  { value: "保留", label: "保留" },
+  { value: "持越", label: "持越" },
 ];
 
 const DUE_OPTIONS = [
@@ -41,14 +41,23 @@ const todayIso = () => {
   return `${y}-${m}-${d}`;
 };
 
+function normalizeIsoDate(value?: string | null) {
+  if (!value) return "";
+  return String(value).slice(0, 10);
+}
+
 const addDaysIso = (baseIso: string, delta: number) => {
-  const [y, m, d] = baseIso.split("-").map((v) => parseInt(v, 10));
+  const [y, m, d] = normalizeIsoDate(baseIso)
+    .split("-")
+    .map((v) => parseInt(v, 10));
   const dt = new Date(y, m - 1, d + delta);
   return `${dt.getFullYear()}-${pad2(dt.getMonth() + 1)}-${pad2(dt.getDate())}`;
 };
 
 const formatMd = (iso: string) => {
-  const [, m, d] = iso.split("-").map((v) => parseInt(v, 10));
+  const normalized = normalizeIsoDate(iso);
+  if (!normalized) return "-";
+  const [, m, d] = normalized.split("-").map((v) => parseInt(v, 10));
   return `${m}/${d}`;
 };
 
@@ -65,13 +74,16 @@ function categoryLabel(v: string) {
 }
 
 function computeDueLabel(checkoutDate: string, nextCheckinDate: string) {
-  if (!checkoutDate || !nextCheckinDate) return "DUE_LATER";
+  const checkout = normalizeIsoDate(checkoutDate);
+  const nextCheckin = normalizeIsoDate(nextCheckinDate);
 
-  if (nextCheckinDate === checkoutDate) {
+  if (!checkout || !nextCheckin) return "DUE_LATER";
+
+  if (nextCheckin === checkout) {
     return "DUE_TODAY";
   }
 
-  if (nextCheckinDate === addDaysIso(checkoutDate, 1)) {
+  if (nextCheckin === addDaysIso(checkout, 1)) {
     return "DUE_TOMORROW";
   }
 
@@ -83,21 +95,20 @@ function getTowelCount(
   nextGuestCount?: number,
   nextStayNights?: number
 ) {
-  if (!property) return ""
+  if (!property) return "";
 
-  // 物件ルール
   if (property === "FFFホテル" || property === "やなぎ橋") {
-    return ""
+    return "";
   }
 
-  const guests = Number(nextGuestCount ?? 0)
-  const nights = Number(nextStayNights ?? 0)
+  const guests = Number(nextGuestCount ?? 0);
+  const nights = Number(nextStayNights ?? 0);
 
-  if (guests <= 0 || nights <= 0) return ""
+  if (guests <= 0 || nights <= 0) return "";
 
-  if (nights >= 8) return guests * 3
-  if (nights >= 3) return guests * 2
-  return guests
+  if (nights >= 8) return guests * 3;
+  if (nights >= 3) return guests * 2;
+  return guests;
 }
 
 const PROPERTY_COLORS: Record<string, string> = {
@@ -112,8 +123,8 @@ const PROPERTY_COLORS: Record<string, string> = {
   "玉井": "#f0f0f0",
   "西中洲": "#f3e6ff",
   "アクシオン美野島": "#f5f0e6",
-  "ルッシェ":"#f5f0e6",
-  "ウーブル博多":"#f5f0e6",
+  "ルッシェ": "#f5f0e6",
+  "ウーブル博多": "#f5f0e6",
   "冷泉": "#ffe5e5",
   "ロイズ": "#f3e6ff",
   "やなぎ橋": "#f5f0e6",
@@ -123,7 +134,7 @@ const PROPERTY_COLORS: Record<string, string> = {
   "アトラス": "#ffffff",
   "東光": "#f5f0e6",
   "比恵モダン": "#f0f0f0",
-  "浄水":"#e6f0ff",
+  "浄水": "#e6f0ff",
 };
 
 const PROPERTY_NAME_KEYS = [
@@ -152,7 +163,9 @@ function extractPropertyName(raw: string) {
   const value = String(raw || "").trim();
   if (!value) return "";
 
-  const found = PROPERTY_NAME_KEYS.find((name) => value.startsWith(name) || value.includes(name));
+  const found = PROPERTY_NAME_KEYS.find(
+    (name) => value.startsWith(name) || value.includes(name)
+  );
   return found || value;
 }
 
@@ -161,13 +174,16 @@ function getPropertyColor(raw: string) {
   return PROPERTY_COLORS[propertyName] || "#ffffff";
 }
 
-
 /* =========================
  * UI parts
  * ========================= */
 
 function Badge({ children }: { children: React.ReactNode }) {
-  return <span className="inline-flex items-center rounded-full border px-2 py-0.5 text-xs">{children}</span>;
+  return (
+    <span className="inline-flex items-center rounded-full border px-2 py-0.5 text-xs">
+      {children}
+    </span>
+  );
 }
 
 function Button({
@@ -186,17 +202,25 @@ function Button({
   const base =
     "inline-flex items-center justify-center rounded-xl font-medium transition focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:cursor-not-allowed";
   const variants: Record<string, string> = {
-    primary: "bg-black text-white hover:bg-black/90 focus:ring-black disabled:bg-black/40",
-    ghost: "bg-transparent hover:bg-black/5 text-black focus:ring-black disabled:text-black/40",
-    outline: "border bg-white hover:bg-black/5 text-black focus:ring-black disabled:text-black/40",
-    danger: "bg-red-600 text-white hover:bg-red-600/90 focus:ring-red-600 disabled:bg-red-600/40",
+    primary:
+      "bg-black text-white hover:bg-black/90 focus:ring-black disabled:bg-black/40",
+    ghost:
+      "bg-transparent hover:bg-black/5 text-black focus:ring-black disabled:text-black/40",
+    outline:
+      "border bg-white hover:bg-black/5 text-black focus:ring-black disabled:text-black/40",
+    danger:
+      "bg-red-600 text-white hover:bg-red-600/90 focus:ring-red-600 disabled:bg-red-600/40",
   };
   const sizes: Record<string, string> = {
     sm: "h-8 px-3 text-sm",
     md: "h-10 px-4 text-sm",
   };
+
   return (
-    <button className={`${base} ${variants[variant]} ${sizes[size]} ${className}`} {...props}>
+    <button
+      className={`${base} ${variants[variant]} ${sizes[size]} ${className}`}
+      {...props}
+    >
       {children}
     </button>
   );
@@ -263,7 +287,9 @@ function ToggleChip({
   return (
     <button
       onClick={onClick}
-      className={`rounded-full border px-3 py-1 text-sm transition ${active ? "bg-black text-white" : "bg-white hover:bg-black/5"}`}
+      className={`rounded-full border px-3 py-1 text-sm transition ${
+        active ? "bg-black text-white" : "bg-white hover:bg-black/5"
+      }`}
       type="button"
     >
       {children}
@@ -290,7 +316,9 @@ function Segmented({
             type="button"
             onClick={() => onChange(o.value)}
             className={`rounded-xl px-3 py-1.5 text-sm transition ${
-              active ? "bg-black text-white" : "bg-transparent text-black/70 hover:bg-black/5"
+              active
+                ? "bg-black text-white"
+                : "bg-transparent text-black/70 hover:bg-black/5"
             }`}
           >
             {o.label}
@@ -301,7 +329,13 @@ function Segmented({
   );
 }
 
-function SectionHeader({ title, actions }: { title: string; actions?: React.ReactNode }) {
+function SectionHeader({
+  title,
+  actions,
+}: {
+  title: string;
+  actions?: React.ReactNode;
+}) {
   return (
     <div className="flex flex-wrap items-center justify-between gap-3">
       <div className="text-base font-semibold">{title}</div>
@@ -324,8 +358,16 @@ function Drawer({
   footer?: React.ReactNode;
 }) {
   return (
-    <div className={`fixed inset-0 z-40 ${open ? "" : "pointer-events-none"}`} aria-hidden={!open}>
-      <div className={`absolute inset-0 bg-black/30 transition ${open ? "opacity-100" : "opacity-0"}`} onClick={onClose} />
+    <div
+      className={`fixed inset-0 z-40 ${open ? "" : "pointer-events-none"}`}
+      aria-hidden={!open}
+    >
+      <div
+        className={`absolute inset-0 bg-black/30 transition ${
+          open ? "opacity-100" : "opacity-0"
+        }`}
+        onClick={onClose}
+      />
       <div
         className={`absolute right-0 top-0 h-full w-full max-w-xl bg-white shadow-2xl transition-transform ${
           open ? "translate-x-0" : "translate-x-full"
@@ -337,7 +379,9 @@ function Drawer({
             閉じる
           </Button>
         </div>
-        <div className="h-[calc(100%-120px)] overflow-auto p-4">{children}</div>
+        <div className="h-[calc(100%-120px)] overflow-auto p-4">
+          {children}
+        </div>
         <div className="border-t p-4">{footer}</div>
       </div>
     </div>
@@ -360,9 +404,17 @@ function Table({ children }: { children: React.ReactNode }) {
   );
 }
 
-function Th({ children, className = "" }: { children: React.ReactNode; className?: string }) {
+function Th({
+  children,
+  className = "",
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
   return (
-    <th className={`sticky top-0 z-10 bg-white/90 backdrop-blur border-b px-3 py-2 text-left text-xs font-semibold text-black/70 ${className}`}>
+    <th
+      className={`sticky top-0 z-10 bg-white/90 backdrop-blur border-b px-3 py-2 text-left text-xs font-semibold text-black/70 ${className}`}
+    >
       {children}
     </th>
   );
@@ -378,7 +430,10 @@ function Td({
   colSpan?: number;
 }) {
   return (
-    <td colSpan={colSpan} className={`border-b px-3 py-2 align-top ${className}`}>
+    <td
+      colSpan={colSpan}
+      className={`border-b px-3 py-2 align-top ${className}`}
+    >
       {children}
     </td>
   );
@@ -390,24 +445,6 @@ function Td({
 
 type Attendee = { userId: string; name: string };
 
-type ShiftStaff = {
-  id: string;
-  staff_name: string;
-};
-
-type ShiftEntryApi = {
-  id: string;
-  staff_id: string;
-  status: string;
-  staff_members?: ShiftStaff;
-};
-
-type ShiftDayApi = {
-  id: string;
-  shift_date: string;
-  shift_entries: ShiftEntryApi[];
-};
-
 type CleaningTask = {
   id: string;
   status: string;
@@ -416,6 +453,7 @@ type CleaningTask = {
   assigneeIds: string[];
   assigneeNames?: string[];
   date: string;
+  checkoutDate?: string;
   due: string;
   baggageTime: string;
   checkerId: string;
@@ -491,7 +529,8 @@ type NonCleaningTask = {
 type ViewMode = "TODAY" | "FUTURE";
 
 const API_BASE =
-  (import.meta as any).env?.VITE_API_BASE_URL || "https://cleaning-task-api.onrender.com";
+  (import.meta as any).env?.VITE_API_BASE_URL ||
+  "https://cleaning-task-api.onrender.com";
 
 /* =========================
  * API helpers
@@ -512,6 +551,10 @@ function mapApiTaskToUi(task: ApiCleaningTask): CleaningTask {
       ? [task.assigned_staff_name]
       : [];
 
+  const taskDate = normalizeIsoDate(task.task_date);
+  const checkoutDate = normalizeIsoDate(task.checkout_date);
+  const nextCheckinDate = normalizeIsoDate(task.next_checkin_date ?? "");
+
   return {
     id: task.id,
     status: task.status || "未着手",
@@ -519,15 +562,17 @@ function mapApiTaskToUi(task: ApiCleaningTask): CleaningTask {
     room: task.room_name,
     assigneeIds,
     assigneeNames,
-    date: task.task_date,
-    due: computeDueLabel(task.checkout_date, task.next_checkin_date ?? ""),
+    date: taskDate,
+    checkoutDate,
+    due: computeDueLabel(checkoutDate, nextCheckinDate),
     baggageTime: "",
     checkerId: "",
     checkerName: (task as any).checker_name ?? "",
     note: task.note ?? "",
     loadScore: task.load_score ?? 0,
     guestCount: task.guest_count ?? 0,
-    nextCheckinDate: task.next_checkin_date ?? "",
+    gapNights: task.gap_nights ?? 0,
+    nextCheckinDate,
     nextGuestCount: task.next_guest_count ?? 0,
     nextStayNights: task.next_stay_nights ?? 0,
   };
@@ -556,6 +601,9 @@ async function persistCleaningTaskPatch(
   if (patch.status !== undefined) body.status = patch.status;
   if (patch.note !== undefined) body.note = patch.note;
 
+  // 持越・日付変更用。checkout_date / next_checkin_date は送らない。
+  if (patch.date !== undefined) body.task_date = patch.date;
+
   if (patch.assigneeIds !== undefined) {
     const attendees = taskDate ? attendeesByDate[taskDate] ?? [] : [];
 
@@ -571,11 +619,12 @@ async function persistCleaningTaskPatch(
   }
 
   if (patch.checkerId !== undefined) {
-  const attendees = taskDate ? attendeesByDate[taskDate] ?? [] : [];
-  const checker = attendees.find((u) => u.userId === patch.checkerId);
+    const attendees = taskDate ? attendeesByDate[taskDate] ?? [] : [];
+    const checker = attendees.find((u) => u.userId === patch.checkerId);
 
-  body.checker_name = checker?.name ?? "";
-}
+    body.checker_id = patch.checkerId || null;
+    body.checker_name = checker?.name ?? "";
+  }
 
   const res = await fetch(`${API_BASE}/tasks/update`, {
     method: "POST",
@@ -626,7 +675,7 @@ async function fetchNonCleaningTasks(): Promise<NonCleaningTask[]> {
     status: t.status ?? "未着手",
     category: t.category ?? "OTHER",
     title: t.title ?? "",
-    date: t.task_date,
+    date: normalizeIsoDate(t.task_date),
     deadline: t.deadline ?? "",
     assigneeIds: Array.isArray(t.assignee_ids) ? t.assignee_ids : [],
     assigneeNames: Array.isArray(t.assignee_names) ? t.assignee_names : [],
@@ -714,12 +763,6 @@ async function deleteNonCleaningTaskApi(taskId: string) {
   return res.json();
 }
 
-function buildAssigneeOptions(attendees: Attendee[]) {
-  const base = [{ value: "UNASSIGNED", label: "未割当" }];
-  if (!attendees || attendees.length === 0) return base;
-  return base.concat(attendees.map((u) => ({ value: u.userId, label: u.name })));
-}
-
 function assigneeLabels(userIds: string[], attendees: Attendee[]) {
   if (!userIds || userIds.length === 0) return "未割当";
 
@@ -729,12 +772,6 @@ function assigneeLabels(userIds: string[], attendees: Attendee[]) {
       return found?.name ?? id;
     })
     .join(" / ");
-}
-
-function assigneeLabel(userId: string, attendees: Attendee[]) {
-  if (!userId || userId === "UNASSIGNED") return "未割当";
-  const found = attendees?.find((u) => u.userId === userId);
-  return found?.name ?? userId;
 }
 
 function MultiAssignSelect({
@@ -781,10 +818,10 @@ function MultiAssignSelect({
  * ========================= */
 
 const baseDate = todayIso();
-const UI_VERSION = "v6-2026-03-24";
+const UI_VERSION = "v7-carry-over-2026-04-24";
 
 function isFutureDate(isoDate: string) {
-  return isoDate > baseDate;
+  return normalizeIsoDate(isoDate) > baseDate;
 }
 
 export default function AdminTasksPagePreview() {
@@ -792,14 +829,20 @@ export default function AdminTasksPagePreview() {
   const [lastUpdated, setLastUpdated] = useState(new Date());
   const [viewMode, setViewMode] = useState<ViewMode>("TODAY");
 
-  const [attendeesByDate, setAttendeesByDate] = useState<Record<string, Attendee[]>>({});
+  const [attendeesByDate, setAttendeesByDate] = useState<
+    Record<string, Attendee[]>
+  >({});
 
   const [cleaningTasks, setCleaningTasks] = useState<CleaningTask[]>([]);
-  const [selectedCleaningId, setSelectedCleaningId] = useState<string>("");
+  const [selectedCleaningId, setSelectedCleaningId] = useState("");
   const [cleaningDrawerOpen, setCleaningDrawerOpen] = useState(false);
   const [tableEditMode, setTableEditMode] = useState(false);
   const [loadingCleaning, setLoadingCleaning] = useState(false);
   const [cleaningError, setCleaningError] = useState("");
+
+  const [carryOverModalOpen, setCarryOverModalOpen] = useState(false);
+  const [carryOverTask, setCarryOverTask] = useState<CleaningTask | null>(null);
+  const [carryOverDate, setCarryOverDate] = useState("");
 
   const [addCleaningDrawerOpen, setAddCleaningDrawerOpen] = useState(false);
   const [draftCleaningTask, setDraftCleaningTask] = useState({
@@ -815,11 +858,13 @@ export default function AdminTasksPagePreview() {
   const [selectedPropertyId, setSelectedPropertyId] = useState("");
   const [selectedRoomId, setSelectedRoomId] = useState("");
 
-  const [nonCleaningTasks, setNonCleaningTasks] = useState<NonCleaningTask[]>([]);
+  const [nonCleaningTasks, setNonCleaningTasks] = useState<NonCleaningTask[]>(
+    []
+  );
   const [nonCleaningDrawerOpen, setNonCleaningDrawerOpen] = useState(false);
-  const [draftNonCleaning, setDraftNonCleaning] = useState<NonCleaningTask | null>(null);
-
-  const [editingNonCleaningId, setEditingNonCleaningId] = useState<string>("");
+  const [draftNonCleaning, setDraftNonCleaning] =
+    useState<NonCleaningTask | null>(null);
+  const [editingNonCleaningId, setEditingNonCleaningId] = useState("");
 
   const selectedCleaningTask = useMemo(
     () => cleaningTasks.find((t) => t.id === selectedCleaningId) ?? null,
@@ -831,15 +876,13 @@ export default function AdminTasksPagePreview() {
     return attendeesByDate[selectedCleaningTask.date] ?? [];
   }, [selectedCleaningTask, attendeesByDate]);
 
-  const selectedAssigneeOptions = useMemo(
-    () => buildAssigneeOptions(selectedCleaningAttendees),
-    [selectedCleaningAttendees]
-  );
-
   const selectedCheckerOptions = useMemo(
     () =>
       [{ value: "", label: "未設定" }].concat(
-        selectedCleaningAttendees.map((u) => ({ value: u.userId, label: u.name }))
+        selectedCleaningAttendees.map((u) => ({
+          value: u.userId,
+          label: u.name,
+        }))
       ),
     [selectedCleaningAttendees]
   );
@@ -848,8 +891,6 @@ export default function AdminTasksPagePreview() {
     if (!draftNonCleaning) return [] as Attendee[];
     return attendeesByDate[draftNonCleaning.date] ?? [];
   }, [draftNonCleaning, attendeesByDate]);
-
-  const draftAssigneeOptions = useMemo(() => buildAssigneeOptions(draftAttendees), [draftAttendees]);
 
   const draftCheckerOptions = useMemo(
     () =>
@@ -875,9 +916,11 @@ export default function AdminTasksPagePreview() {
       setRooms([]);
       return;
     }
+
     const res = await fetch(`${API_BASE}/rooms?property_id=${propertyId}`);
     if (!res.ok) throw new Error(`rooms fetch failed: ${res.status}`);
     const data: RoomMaster[] = await res.json();
+
     setRooms(
       data
         .filter((r) => r.is_active)
@@ -920,7 +963,9 @@ export default function AdminTasksPagePreview() {
 
       const uniqueDates = Array.from(
         new Set(
-          [...tasks.map((t) => t.date), ...nonCleaning.map((t) => t.date)].filter(Boolean)
+          [...tasks.map((t) => t.date), ...nonCleaning.map((t) => t.date)].filter(
+            Boolean
+          )
         )
       );
 
@@ -959,9 +1004,11 @@ export default function AdminTasksPagePreview() {
 
   useEffect(() => {
     if (!autoRefresh) return;
+
     const t = window.setInterval(() => {
       void refresh();
     }, 60_000);
+
     return () => window.clearInterval(t);
   }, [autoRefresh, viewMode]);
 
@@ -970,7 +1017,7 @@ export default function AdminTasksPagePreview() {
 
     const tasks =
       viewMode === "TODAY"
-        ? list.filter((t) => t.date === baseDate)
+        ? list.filter((t) => normalizeIsoDate(t.date) === baseDate)
         : list.filter((t) => isFutureDate(t.date));
 
     return sortTasksByPropertyOrder(tasks, viewMode);
@@ -980,7 +1027,7 @@ export default function AdminTasksPagePreview() {
     const list = Array.isArray(nonCleaningTasks) ? nonCleaningTasks : [];
 
     if (viewMode === "TODAY") {
-      return list.filter((t) => t.date === baseDate);
+      return list.filter((t) => normalizeIsoDate(t.date) === baseDate);
     }
 
     return list.filter((t) => isFutureDate(t.date));
@@ -1006,10 +1053,12 @@ export default function AdminTasksPagePreview() {
         window.alert("物件を選択してください。");
         return;
       }
+
       if (!selectedRoomId) {
         window.alert("部屋を選択してください。");
         return;
       }
+
       if (!draftCleaningTask.date.trim()) {
         window.alert("日付を入力してください。");
         return;
@@ -1051,23 +1100,88 @@ export default function AdminTasksPagePreview() {
     }
   };
 
-  const updateCleaningTask = async (id: string, patch: Partial<CleaningTask>) => {
-  const currentTask = cleaningTasks.find((t) => t.id === id);
+  const updateCleaningTask = async (
+    id: string,
+    patch: Partial<CleaningTask>
+  ) => {
+    const currentTask = cleaningTasks.find((t) => t.id === id);
 
-  setCleaningTasks((prev) => prev.map((t) => (t.id === id ? { ...t, ...patch } : t)));
-  setLastUpdated(new Date());
+    setCleaningTasks((prev) =>
+      prev.map((t) => (t.id === id ? { ...t, ...patch } : t))
+    );
+    setLastUpdated(new Date());
 
-  const persistableKeys = ["status", "note", "assigneeIds", "checkerId"];
-  const shouldPersist = Object.keys(patch).some((k) => persistableKeys.includes(k));
-  if (!shouldPersist) return;
+    const persistableKeys = [
+      "status",
+      "note",
+      "assigneeIds",
+      "checkerId",
+      "date",
+    ];
 
-  try {
-    await persistCleaningTaskPatch(id, patch, attendeesByDate, currentTask?.date);
-  } catch (error) {
-    console.error(error);
-    setCleaningError("更新に失敗しました。保存内容を確認してください。");
-  }
-};
+    const shouldPersist = Object.keys(patch).some((k) =>
+      persistableKeys.includes(k)
+    );
+
+    if (!shouldPersist) return;
+
+    try {
+      await persistCleaningTaskPatch(
+        id,
+        patch,
+        attendeesByDate,
+        currentTask?.date
+      );
+    } catch (error) {
+      console.error(error);
+      setCleaningError("更新に失敗しました。保存内容を確認してください。");
+    }
+  };
+
+  const handleCleaningStatusChange = (
+    task: CleaningTask,
+    nextStatus: string
+  ) => {
+    if (nextStatus === "持越") {
+      setCarryOverTask(task);
+      setCarryOverDate(addDaysIso(task.date, 1));
+      setCarryOverModalOpen(true);
+      return;
+    }
+
+    void updateCleaningTask(task.id, { status: nextStatus });
+  };
+
+  const commitCarryOver = async () => {
+    if (!carryOverTask) return;
+
+    if (!carryOverDate) {
+      window.alert("持越先の清掃日を選択してください。");
+      return;
+    }
+
+    await ensureAttendeesLoaded(carryOverDate);
+
+    await updateCleaningTask(carryOverTask.id, {
+      status: "持越",
+      date: carryOverDate,
+      assigneeIds: [],
+      checkerId: "",
+      checkerName: "",
+    });
+
+    setCarryOverModalOpen(false);
+    setCarryOverTask(null);
+    setCarryOverDate("");
+
+    await refresh();
+  };
+
+  const cancelCarryOver = () => {
+    setCarryOverModalOpen(false);
+    setCarryOverTask(null);
+    setCarryOverDate("");
+  };
 
   const removeCleaningTask = (id: string) => {
     setCleaningTasks((prev) => {
@@ -1151,7 +1265,8 @@ export default function AdminTasksPagePreview() {
             <span>ver.1</span>
           </div>
           <div className="text-xs text-black/60">
-            表示：{viewMode === "TODAY" ? "当日" : "翌日以降"} / 最終更新 {lastUpdated.toLocaleTimeString()}
+            表示：{viewMode === "TODAY" ? "当日" : "翌日以降"} / 最終更新{" "}
+            {lastUpdated.toLocaleTimeString()}
           </div>
         </div>
 
@@ -1181,7 +1296,10 @@ export default function AdminTasksPagePreview() {
                 title="清掃タスク一覧"
                 actions={
                   <>
-                    <ToggleChip active={tableEditMode} onClick={() => setTableEditMode((v) => !v)}>
+                    <ToggleChip
+                      active={tableEditMode}
+                      onClick={() => setTableEditMode((v) => !v)}
+                    >
                       {tableEditMode ? "編集モード" : "編集"}
                     </ToggleChip>
 
@@ -1218,7 +1336,7 @@ export default function AdminTasksPagePreview() {
                       <Th className="w-[170px]">物件</Th>
                       <Th className="w-[110px]">部屋</Th>
                       <Th className="w-[200px]">担当</Th>
-                      <Th className="w-[170px]">日付</Th>
+                      <Th className="w-[170px]">清掃日</Th>
                       <Th className="w-[140px]">期限</Th>
                       <Th className="w-[90px]">タオル</Th>
                       <Th className="w-[140px]">荷物預かり</Th>
@@ -1231,7 +1349,6 @@ export default function AdminTasksPagePreview() {
                     {visibleCleaningTasks.map((t) => {
                       const attendees = attendeesByDate[t.date] ?? [];
                       const isSelected = t.id === selectedCleaningId;
-
                       const propertyColor = getPropertyColor(t.property);
                       const normalizedPropertyName = extractPropertyName(t.property);
                       const checkerOptions = [{ value: "", label: "未設定" }].concat(
@@ -1246,42 +1363,51 @@ export default function AdminTasksPagePreview() {
 
                       return (
                         <tr
-  key={t.id}
-  className={`${tableEditMode ? "" : "cursor-pointer"}`}
-  style={{
-    backgroundColor: tableEditMode
-      ? propertyColor
-      : isSelected
-      ? "#f5f5f5"
-      : propertyColor,
-  }}
-  onClick={() => {
-    if (tableEditMode) return;
-    setSelectedCleaningId(t.id);
-    setCleaningDrawerOpen(true);
-  }}
->
+                          key={t.id}
+                          className={`${tableEditMode ? "" : "cursor-pointer"}`}
+                          style={{
+                            backgroundColor: tableEditMode
+                              ? propertyColor
+                              : isSelected
+                              ? "#f5f5f5"
+                              : propertyColor,
+                          }}
+                          onClick={() => {
+                            if (tableEditMode) return;
+                            setSelectedCleaningId(t.id);
+                            setCleaningDrawerOpen(true);
+                          }}
+                        >
                           <Td>
                             {tableEditMode ? (
                               <Select
                                 value={t.status}
-                                onChange={(v) => updateCleaningTask(t.id, { status: v })}
+                                onChange={(v) => handleCleaningStatusChange(t, v)}
                                 options={STATUS_OPTIONS}
                               />
                             ) : (
                               <div className="flex items-center gap-2">
-                                <span className={`h-2 w-2 rounded-full ${isSelected ? "bg-black" : "bg-black/20"}`} />
+                                <span
+                                  className={`h-2 w-2 rounded-full ${
+                                    isSelected ? "bg-black" : "bg-black/20"
+                                  }`}
+                                />
                                 <span>{statusLabel(t.status)}</span>
                               </div>
                             )}
                           </Td>
 
                           <Td>
-  <div className="font-medium">{normalizedPropertyName}</div>
-  {normalizedPropertyName !== t.property ? (
-    <div className="text-xs text-black/50">{t.property}</div>
-  ) : null}
-</Td>
+                            <div className="font-medium">
+                              {normalizedPropertyName}
+                            </div>
+                            {normalizedPropertyName !== t.property ? (
+                              <div className="text-xs text-black/50">
+                                {t.property}
+                              </div>
+                            ) : null}
+                          </Td>
+
                           <Td>{t.room || "-"}</Td>
 
                           <Td>
@@ -1289,7 +1415,9 @@ export default function AdminTasksPagePreview() {
                               <MultiAssignSelect
                                 value={t.assigneeIds ?? []}
                                 attendees={attendees}
-                                onChange={(ids) => updateCleaningTask(t.id, { assigneeIds: ids })}
+                                onChange={(ids) =>
+                                  updateCleaningTask(t.id, { assigneeIds: ids })
+                                }
                               />
                             ) : (
                               assigneeLabels(t.assigneeIds ?? [], attendees)
@@ -1297,80 +1425,107 @@ export default function AdminTasksPagePreview() {
                           </Td>
 
                           <Td>
-  {tableEditMode ? (
-    <input
-      type="date"
-      className="h-9 w-full rounded-lg border px-2 text-sm"
-      value={t.date}
-      onChange={async (e) => {
-        const nextDate = e.target.value;
-        await ensureAttendeesLoaded(nextDate);
-        updateCleaningTask(t.id, {
-          date: nextDate,
-          assigneeIds: [],
-          checkerId: "",
-          checkerName: "",
-        });
-      }}
-    />
-  ) : (
-    formatMd(t.date)
-  )}
-</Td>
+                            {tableEditMode ? (
+                              <input
+                                type="date"
+                                className="h-9 w-full rounded-lg border px-2 text-sm"
+                                value={t.date}
+                                onChange={async (e) => {
+                                  const nextDate = e.target.value;
+                                  await ensureAttendeesLoaded(nextDate);
+                                  updateCleaningTask(t.id, {
+                                    date: nextDate,
+                                    assigneeIds: [],
+                                    checkerId: "",
+                                    checkerName: "",
+                                  });
+                                }}
+                              />
+                            ) : (
+                              formatMd(t.date)
+                            )}
+                          </Td>
 
                           <Td>
                             {tableEditMode ? (
                               <Select
-                                value={computeDueLabel(t.date, t.nextCheckinDate ?? "")}
+                                value={computeDueLabel(
+                                  t.checkoutDate ?? t.date,
+                                  t.nextCheckinDate ?? ""
+                                )}
                                 onChange={() => {}}
                                 options={DUE_OPTIONS}
                                 disabled
                               />
                             ) : (
-                              dueLabel(computeDueLabel(t.date, t.nextCheckinDate ?? ""))
+                              dueLabel(
+                                computeDueLabel(
+                                  t.checkoutDate ?? t.date,
+                                  t.nextCheckinDate ?? ""
+                                )
+                              )
                             )}
                           </Td>
 
                           <Td>
-  {getTowelCount(t.property, t.nextGuestCount, t.nextStayNights)}
-</Td>
+                            {getTowelCount(
+                              t.property,
+                              t.nextGuestCount,
+                              t.nextStayNights
+                            )}
+                          </Td>
+
                           <Td>
                             {tableEditMode ? (
                               <input
                                 type="time"
                                 className="h-9 w-full rounded-lg border px-2 text-sm"
                                 value={t.baggageTime || ""}
-                                onChange={(e) => updateCleaningTask(t.id, { baggageTime: e.target.value })}
+                                onChange={(e) =>
+                                  updateCleaningTask(t.id, {
+                                    baggageTime: e.target.value,
+                                  })
+                                }
                               />
                             ) : (
                               t.baggageTime || "-"
                             )}
                           </Td>
 
-                         <Td>
-  {tableEditMode ? (
-    <Select
-      value={t.checkerId}
-      onChange={(v) => {
-        const checker = attendees.find((u) => u.userId === v);
-        updateCleaningTask(t.id, {
-          checkerId: v,
-          checkerName: checker?.name ?? "",
-        });
-      }}
-      options={checkerOptions}
-      disabled={attendees.length === 0}
-    />
-  ) : (
-    t.checkerName || "-"
-  )}
-</Td>
+                          <Td>
+                            {tableEditMode ? (
+                              <Select
+                                value={t.checkerId}
+                                onChange={(v) => {
+                                  const checker = attendees.find(
+                                    (u) => u.userId === v
+                                  );
+                                  updateCleaningTask(t.id, {
+                                    checkerId: v,
+                                    checkerName: checker?.name ?? "",
+                                  });
+                                }}
+                                options={checkerOptions}
+                                disabled={attendees.length === 0}
+                              />
+                            ) : (
+                              t.checkerName || "-"
+                            )}
+                          </Td>
 
                           <Td>
                             {tableEditMode ? (
-                              <TextInput value={t.note || ""} onChange={(v) => updateCleaningTask(t.id, { note: v })} placeholder="備考…" />
+                              <TextInput
+                                value={t.note || ""}
+                                onChange={(v) =>
+                                  updateCleaningTask(t.id, { note: v })
+                                }
+                                placeholder="備考…"
+                              />
                             ) : (
-                              <div className="max-w-[320px] truncate">{t.note || ""}</div>
+                              <div className="max-w-[320px] truncate">
+                                {t.note || ""}
+                              </div>
                             )}
                           </Td>
 
@@ -1387,7 +1542,9 @@ export default function AdminTasksPagePreview() {
                       <tr>
                         <Td colSpan={11} className="py-10">
                           <div className="text-center text-sm text-black/60">
-                            {viewMode === "TODAY" ? "当日の清掃タスクがありません。" : "翌日以降の清掃タスクがありません。"}
+                            {viewMode === "TODAY"
+                              ? "当日の清掃タスクがありません。"
+                              : "翌日以降の清掃タスクがありません。"}
                           </div>
                         </Td>
                       </tr>
@@ -1397,7 +1554,7 @@ export default function AdminTasksPagePreview() {
 
                 <div className="mt-3 text-xs text-black/50">
                   {tableEditMode
-                    ? "※編集モード：テーブル内で直接編集できます（担当/チェッカーはその日付の出勤者のみ）。"
+                    ? "※編集モード：テーブル内で直接編集できます。ステータスを持越にすると清掃日設定モーダルが開きます。"
                     : "※通常モード：行クリックで右側モーダル（ドロワー）を開いて編集します。"}
                 </div>
               </div>
@@ -1422,7 +1579,9 @@ export default function AdminTasksPagePreview() {
               />
 
               <div className="mt-3 flex items-center justify-between">
-                <div className="text-xs text-black/60">{viewMode === "TODAY" ? "当日分" : "翌日以降"}のみ表示</div>
+                <div className="text-xs text-black/60">
+                  {viewMode === "TODAY" ? "当日分" : "翌日以降"}のみ表示
+                </div>
                 <Badge>{visibleNonCleaningTasks.length} 件</Badge>
               </div>
 
@@ -1430,26 +1589,47 @@ export default function AdminTasksPagePreview() {
                 <table className="min-w-[520px] w-full text-sm">
                   <thead>
                     <tr>
-                      <th className="bg-white/90 backdrop-blur border-b px-3 py-2 text-left text-xs font-semibold text-black/70 w-[90px]">日付</th>
-                      <th className="bg-white/90 backdrop-blur border-b px-3 py-2 text-left text-xs font-semibold text-black/70 w-[110px]">種別</th>
-                      <th className="bg-white/90 backdrop-blur border-b px-3 py-2 text-left text-xs font-semibold text-black/70 min-w-[220px]">内容</th>
-                      <th className="bg-white/90 backdrop-blur border-b px-3 py-2 text-left text-xs font-semibold text-black/70 w-[90px]">時刻</th>
-                      <th className="bg-white/90 backdrop-blur border-b px-3 py-2 text-left text-xs font-semibold text-black/70 w-[90px]">担当</th>
-                      <th className="bg-white/90 backdrop-blur border-b px-3 py-2 text-left text-xs font-semibold text-black/70 w-[90px]">操作</th>
+                      <th className="bg-white/90 backdrop-blur border-b px-3 py-2 text-left text-xs font-semibold text-black/70 w-[90px]">
+                        日付
+                      </th>
+                      <th className="bg-white/90 backdrop-blur border-b px-3 py-2 text-left text-xs font-semibold text-black/70 w-[110px]">
+                        種別
+                      </th>
+                      <th className="bg-white/90 backdrop-blur border-b px-3 py-2 text-left text-xs font-semibold text-black/70 min-w-[220px]">
+                        内容
+                      </th>
+                      <th className="bg-white/90 backdrop-blur border-b px-3 py-2 text-left text-xs font-semibold text-black/70 w-[90px]">
+                        時刻
+                      </th>
+                      <th className="bg-white/90 backdrop-blur border-b px-3 py-2 text-left text-xs font-semibold text-black/70 w-[90px]">
+                        担当
+                      </th>
+                      <th className="bg-white/90 backdrop-blur border-b px-3 py-2 text-left text-xs font-semibold text-black/70 w-[90px]">
+                        操作
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
                     {visibleNonCleaningTasks.map((t) => {
                       const attendees = attendeesByDate[t.date] ?? [];
+
                       return (
                         <tr key={t.id} className="bg-white">
                           <td className="border-b px-3 py-2">{formatMd(t.date)}</td>
-                          <td className="border-b px-3 py-2">{categoryLabel(t.category)}</td>
                           <td className="border-b px-3 py-2">
-                            <div className="max-w-[320px] truncate">{t.title}</div>
+                            {categoryLabel(t.category)}
                           </td>
-                          <td className="border-b px-3 py-2">{t.deadline || "-"}</td>
-                          <td className="border-b px-3 py-2">{assigneeLabels(t.assigneeIds ?? [], attendees)}</td>
+                          <td className="border-b px-3 py-2">
+                            <div className="max-w-[320px] truncate">
+                              {t.title}
+                            </div>
+                          </td>
+                          <td className="border-b px-3 py-2">
+                            {t.deadline || "-"}
+                          </td>
+                          <td className="border-b px-3 py-2">
+                            {assigneeLabels(t.assigneeIds ?? [], attendees)}
+                          </td>
                           <td className="border-b px-3 py-2">
                             <div className="flex gap-2">
                               <Button
@@ -1471,7 +1651,11 @@ export default function AdminTasksPagePreview() {
                                 編集
                               </Button>
 
-                              <Button variant="danger" size="sm" onClick={() => removeNonCleaning(t.id)}>
+                              <Button
+                                variant="danger"
+                                size="sm"
+                                onClick={() => removeNonCleaning(t.id)}
+                              >
                                 削除
                               </Button>
                             </div>
@@ -1482,8 +1666,13 @@ export default function AdminTasksPagePreview() {
 
                     {visibleNonCleaningTasks.length === 0 ? (
                       <tr>
-                        <td colSpan={6} className="border-b px-3 py-8 text-center text-sm text-black/60">
-                          {viewMode === "TODAY" ? "当日の清掃外タスクがありません。" : "翌日以降の清掃外タスクがありません。"}
+                        <td
+                          colSpan={6}
+                          className="border-b px-3 py-8 text-center text-sm text-black/60"
+                        >
+                          {viewMode === "TODAY"
+                            ? "当日の清掃外タスクがありません。"
+                            : "翌日以降の清掃外タスクがありません。"}
                         </td>
                       </tr>
                     ) : null}
@@ -1491,7 +1680,9 @@ export default function AdminTasksPagePreview() {
                 </table>
               </div>
 
-              <div className="mt-2 text-xs text-black/50">※担当/チェッカーはその日付の出勤者のみ</div>
+              <div className="mt-2 text-xs text-black/50">
+                ※担当/チェッカーはその日付の出勤者のみ
+              </div>
             </CardBody>
           </Card>
         </div>
@@ -1499,13 +1690,25 @@ export default function AdminTasksPagePreview() {
 
       <Drawer
         open={cleaningDrawerOpen}
-        title={selectedCleaningTask ? `清掃タスク編集：${selectedCleaningTask.property} ${selectedCleaningTask.room || ""}` : "清掃タスク編集"}
+        title={
+          selectedCleaningTask
+            ? `清掃タスク編集：${selectedCleaningTask.property} ${
+                selectedCleaningTask.room || ""
+              }`
+            : "清掃タスク編集"
+        }
         onClose={() => setCleaningDrawerOpen(false)}
         footer={
           <div className="flex items-center justify-between">
-            <div className="text-xs text-black/50">※変更は対象項目のみ保存されます</div>
+            <div className="text-xs text-black/50">
+              ※変更は対象項目のみ保存されます
+            </div>
             {selectedCleaningTask ? (
-              <Button variant="danger" size="sm" onClick={() => removeCleaningTask(selectedCleaningTask.id)}>
+              <Button
+                variant="danger"
+                size="sm"
+                onClick={() => removeCleaningTask(selectedCleaningTask.id)}
+              >
                 削除
               </Button>
             ) : (
@@ -1525,23 +1728,33 @@ export default function AdminTasksPagePreview() {
               <div className="mb-1 text-xs text-black/60">ステータス</div>
               <Select
                 value={selectedCleaningTask.status}
-                onChange={(v) => updateCleaningTask(selectedCleaningTask.id, { status: v })}
+                onChange={(v) =>
+                  handleCleaningStatusChange(selectedCleaningTask, v)
+                }
                 options={STATUS_OPTIONS}
               />
             </div>
 
             <div>
               <div className="mb-1 text-xs text-black/60">物件</div>
-              <TextInput value={selectedCleaningTask.property} onChange={() => {}} placeholder="" />
+              <TextInput
+                value={selectedCleaningTask.property}
+                onChange={() => {}}
+                placeholder=""
+              />
             </div>
 
             <div>
               <div className="mb-1 text-xs text-black/60">部屋</div>
-              <TextInput value={selectedCleaningTask.room} onChange={() => {}} placeholder="" />
+              <TextInput
+                value={selectedCleaningTask.room}
+                onChange={() => {}}
+                placeholder=""
+              />
             </div>
 
             <div>
-              <div className="mb-1 text-xs text-black/60">日付</div>
+              <div className="mb-1 text-xs text-black/60">清掃日</div>
               <input
                 type="date"
                 className="h-9 w-full rounded-lg border px-2 text-sm"
@@ -1553,11 +1766,32 @@ export default function AdminTasksPagePreview() {
                     date: nextDate,
                     assigneeIds: [],
                     checkerId: "",
+                    checkerName: "",
                   });
                 }}
               />
               <div className="mt-1 text-xs text-black/50">
-                {formatMd(selectedCleaningTask.date)} / 出勤者: {selectedCleaningAttendees.map((u) => u.name).join(" / ") || "なし"}
+                {formatMd(selectedCleaningTask.date)} / 出勤者:{" "}
+                {selectedCleaningAttendees.map((u) => u.name).join(" / ") ||
+                  "なし"}
+              </div>
+            </div>
+
+            <div>
+              <div className="mb-1 text-xs text-black/60">
+                チェックアウト日
+              </div>
+              <div className="rounded-xl border bg-neutral-50 px-3 py-2 text-sm">
+                {formatMd(selectedCleaningTask.checkoutDate ?? "")}
+              </div>
+            </div>
+
+            <div>
+              <div className="mb-1 text-xs text-black/60">
+                次のチェックイン
+              </div>
+              <div className="rounded-xl border bg-neutral-50 px-3 py-2 text-sm">
+                {formatMd(selectedCleaningTask.nextCheckinDate ?? "")}
               </div>
             </div>
 
@@ -1565,7 +1799,7 @@ export default function AdminTasksPagePreview() {
               <div className="mb-1 text-xs text-black/60">期限</div>
               <Select
                 value={computeDueLabel(
-                  selectedCleaningTask.date,
+                  selectedCleaningTask.checkoutDate ?? selectedCleaningTask.date,
                   selectedCleaningTask.nextCheckinDate ?? ""
                 )}
                 onChange={() => {}}
@@ -1573,27 +1807,28 @@ export default function AdminTasksPagePreview() {
                 disabled
               />
               <div className="mt-1 text-xs text-black/50">
-                日付から自動判定されます
+                チェックアウト日と次のチェックイン日から自動判定されます
               </div>
             </div>
 
             <div>
-  <div className="mb-1 text-xs text-black/60">タオル数</div>
-  <TextInput
-    value={String(
-  getTowelCount(
-    selectedCleaningTask.property,
-    selectedCleaningTask.nextGuestCount,
-    selectedCleaningTask.nextStayNights
-  )
-)}
-    onChange={() => {}}
-    placeholder=""
-  />
-  <div className="mt-1 text-xs text-black/50">
-    次予約人数 {selectedCleaningTask.nextGuestCount ?? 0} / 次予約泊数 {selectedCleaningTask.nextStayNights ?? 0}
-  </div>
-</div>
+              <div className="mb-1 text-xs text-black/60">タオル数</div>
+              <TextInput
+                value={String(
+                  getTowelCount(
+                    selectedCleaningTask.property,
+                    selectedCleaningTask.nextGuestCount,
+                    selectedCleaningTask.nextStayNights
+                  )
+                )}
+                onChange={() => {}}
+                placeholder=""
+              />
+              <div className="mt-1 text-xs text-black/50">
+                次予約人数 {selectedCleaningTask.nextGuestCount ?? 0} /
+                次予約泊数 {selectedCleaningTask.nextStayNights ?? 0}
+              </div>
+            </div>
 
             <div>
               <div className="mb-1 text-xs text-black/60">荷物預かり（時間）</div>
@@ -1601,46 +1836,65 @@ export default function AdminTasksPagePreview() {
                 type="time"
                 className="h-9 w-full rounded-lg border px-2 text-sm"
                 value={selectedCleaningTask.baggageTime || ""}
-                onChange={(e) => updateCleaningTask(selectedCleaningTask.id, { baggageTime: e.target.value })}
+                onChange={(e) =>
+                  updateCleaningTask(selectedCleaningTask.id, {
+                    baggageTime: e.target.value,
+                  })
+                }
               />
             </div>
 
             <div>
-              <div className="mb-1 text-xs text-black/60">担当（その日付の出勤者のみ）</div>
+              <div className="mb-1 text-xs text-black/60">
+                担当（その日付の出勤者のみ）
+              </div>
               <MultiAssignSelect
                 value={selectedCleaningTask.assigneeIds ?? []}
                 attendees={selectedCleaningAttendees}
                 onChange={(ids) =>
-                  updateCleaningTask(selectedCleaningTask.id, { assigneeIds: ids })
+                  updateCleaningTask(selectedCleaningTask.id, {
+                    assigneeIds: ids,
+                  })
                 }
               />
-              {selectedCleaningAttendees.length === 0 ? <div className="mt-1 text-xs text-black/50">出勤者なし</div> : null}
+              {selectedCleaningAttendees.length === 0 ? (
+                <div className="mt-1 text-xs text-black/50">出勤者なし</div>
+              ) : null}
             </div>
 
             <div>
-  <div className="mb-1 text-xs text-black/60">チェッカー（その日付の出勤者のみ）</div>
-  <Select
-    value={selectedCleaningTask.checkerId}
-    onChange={(v) => {
-      const checker = selectedCleaningAttendees.find((u) => u.userId === v);
-      updateCleaningTask(selectedCleaningTask.id, {
-        checkerId: v,
-        checkerName: checker?.name ?? "",
-      });
-    }}
-    options={selectedCheckerOptions}
-    disabled={selectedCleaningAttendees.length === 0}
-  />
-  {selectedCleaningAttendees.length === 0 ? (
-    <div className="mt-1 text-xs text-black/50">出勤者なし</div>
-  ) : null}
-</div>
+              <div className="mb-1 text-xs text-black/60">
+                チェッカー（その日付の出勤者のみ）
+              </div>
+              <Select
+                value={selectedCleaningTask.checkerId}
+                onChange={(v) => {
+                  const checker = selectedCleaningAttendees.find(
+                    (u) => u.userId === v
+                  );
+                  updateCleaningTask(selectedCleaningTask.id, {
+                    checkerId: v,
+                    checkerName: checker?.name ?? "",
+                  });
+                }}
+                options={selectedCheckerOptions}
+                disabled={selectedCleaningAttendees.length === 0}
+              />
+              {selectedCleaningAttendees.length === 0 ? (
+                <div className="mt-1 text-xs text-black/50">出勤者なし</div>
+              ) : null}
+            </div>
+
             <div>
               <div className="mb-1 text-xs text-black/60">備考</div>
               <textarea
                 className="h-28 w-full rounded-xl border bg-white p-3 text-sm outline-none focus:ring-2 focus:ring-black/20"
                 value={selectedCleaningTask.note || ""}
-                onChange={(e) => updateCleaningTask(selectedCleaningTask.id, { note: e.target.value })}
+                onChange={(e) =>
+                  updateCleaningTask(selectedCleaningTask.id, {
+                    note: e.target.value,
+                  })
+                }
                 placeholder="備考…"
               />
             </div>
@@ -1660,7 +1914,9 @@ export default function AdminTasksPagePreview() {
         }}
         footer={
           <div className="flex items-center justify-between gap-2">
-            <div className="text-xs text-black/50">※追加で右側一覧に表示されます</div>
+            <div className="text-xs text-black/50">
+              ※追加で右側一覧に表示されます
+            </div>
             <div className="flex items-center gap-2">
               <Button
                 variant="outline"
@@ -1674,7 +1930,9 @@ export default function AdminTasksPagePreview() {
               <Button
                 variant="outline"
                 className="border-sky-200 bg-sky-50 hover:bg-sky-100"
-                disabled={!draftNonCleaning || draftNonCleaning.title.trim().length === 0}
+                disabled={
+                  !draftNonCleaning || draftNonCleaning.title.trim().length === 0
+                }
                 onClick={commitNonCleaning}
               >
                 {editingNonCleaningId ? "更新" : "追加"}
@@ -1694,39 +1952,48 @@ export default function AdminTasksPagePreview() {
               <div className="mb-1 text-xs text-black/60">ステータス</div>
               <Select
                 value={draftNonCleaning.status}
-                onChange={(v) => setDraftNonCleaning((p) => (p ? { ...p, status: v } : p))}
+                onChange={(v) =>
+                  setDraftNonCleaning((p) => (p ? { ...p, status: v } : p))
+                }
                 options={STATUS_OPTIONS}
               />
             </div>
 
             <div>
-  <div className="mb-1 text-xs text-black/60">日付</div>
-  <input
-    type="date"
-    className="h-9 w-full rounded-lg border px-2 text-sm"
-    value={selectedCleaningTask.date}
-    onChange={async (e) => {
-      const nextDate = e.target.value;
-      await ensureAttendeesLoaded(nextDate);
-      updateCleaningTask(selectedCleaningTask.id, {
-        date: nextDate,
-        assigneeIds: [],
-        checkerId: "",
-        checkerName: "",
-      });
-    }}
-  />
-  <div className="mt-1 text-xs text-black/50">
-    {formatMd(selectedCleaningTask.date)} / 出勤者:{" "}
-    {selectedCleaningAttendees.map((u) => u.name).join(" / ") || "なし"}
-  </div>
-</div>
+              <div className="mb-1 text-xs text-black/60">日付</div>
+              <input
+                type="date"
+                className="h-9 w-full rounded-lg border px-2 text-sm"
+                value={draftNonCleaning.date}
+                onChange={async (e) => {
+                  const nextDate = e.target.value;
+                  await ensureAttendeesLoaded(nextDate);
+                  setDraftNonCleaning((p) =>
+                    p
+                      ? {
+                          ...p,
+                          date: nextDate,
+                          assigneeIds: [],
+                          checkerId: "",
+                          checkerName: "",
+                        }
+                      : p
+                  );
+                }}
+              />
+              <div className="mt-1 text-xs text-black/50">
+                {formatMd(draftNonCleaning.date)} / 出勤者:{" "}
+                {draftAttendees.map((u) => u.name).join(" / ") || "なし"}
+              </div>
+            </div>
 
             <div>
               <div className="mb-1 text-xs text-black/60">業務種別</div>
               <Select
                 value={draftNonCleaning.category}
-                onChange={(v) => setDraftNonCleaning((p) => (p ? { ...p, category: v } : p))}
+                onChange={(v) =>
+                  setDraftNonCleaning((p) => (p ? { ...p, category: v } : p))
+                }
                 options={CATEGORY_OPTIONS}
               />
             </div>
@@ -1735,7 +2002,9 @@ export default function AdminTasksPagePreview() {
               <div className="mb-1 text-xs text-black/60">内容（必須）</div>
               <TextInput
                 value={draftNonCleaning.title}
-                onChange={(v) => setDraftNonCleaning((p) => (p ? { ...p, title: v } : p))}
+                onChange={(v) =>
+                  setDraftNonCleaning((p) => (p ? { ...p, title: v } : p))
+                }
                 placeholder="例）倉庫整理 / 運搬 / 買い出し…"
               />
             </div>
@@ -1746,12 +2015,18 @@ export default function AdminTasksPagePreview() {
                 type="time"
                 className="h-9 w-full rounded-lg border px-2 text-sm"
                 value={draftNonCleaning.deadline || ""}
-                onChange={(e) => setDraftNonCleaning((p) => (p ? { ...p, deadline: e.target.value } : p))}
+                onChange={(e) =>
+                  setDraftNonCleaning((p) =>
+                    p ? { ...p, deadline: e.target.value } : p
+                  )
+                }
               />
             </div>
 
             <div>
-              <div className="mb-1 text-xs text-black/60">担当（その日付の出勤者のみ）</div>
+              <div className="mb-1 text-xs text-black/60">
+                担当（その日付の出勤者のみ）
+              </div>
               <MultiAssignSelect
                 value={draftNonCleaning.assigneeIds ?? []}
                 attendees={draftAttendees}
@@ -1764,17 +2039,25 @@ export default function AdminTasksPagePreview() {
             </div>
 
             <div>
-              <div className="mb-1 text-xs text-black/60">チェッカー（その日付の出勤者のみ）</div>
+              <div className="mb-1 text-xs text-black/60">
+                チェッカー（その日付の出勤者のみ）
+              </div>
               <Select
                 value={draftNonCleaning.checkerId}
-                onChange={(v) => setDraftNonCleaning((p) => (p ? { ...p, checkerId: v } : p))}
+                onChange={(v) =>
+                  setDraftNonCleaning((p) =>
+                    p ? { ...p, checkerId: v } : p
+                  )
+                }
                 options={draftCheckerOptions}
                 disabled={draftAttendees.length === 0}
               />
             </div>
           </div>
         ) : (
-          <div className="p-6 text-sm text-black/60">フォームを初期化できませんでした。</div>
+          <div className="p-6 text-sm text-black/60">
+            フォームを初期化できませんでした。
+          </div>
         )}
       </Drawer>
 
@@ -1784,9 +2067,14 @@ export default function AdminTasksPagePreview() {
         onClose={() => setAddCleaningDrawerOpen(false)}
         footer={
           <div className="flex items-center justify-between gap-2">
-            <div className="text-xs text-black/50">必要項目を入力して追加してください。</div>
+            <div className="text-xs text-black/50">
+              必要項目を入力して追加してください。
+            </div>
             <div className="flex items-center gap-2">
-              <Button variant="outline" onClick={() => setAddCleaningDrawerOpen(false)}>
+              <Button
+                variant="outline"
+                onClick={() => setAddCleaningDrawerOpen(false)}
+              >
                 キャンセル
               </Button>
               <Button
@@ -1847,7 +2135,7 @@ export default function AdminTasksPagePreview() {
           </div>
 
           <div>
-            <div className="mb-1 text-xs text-black/60">日付</div>
+            <div className="mb-1 text-xs text-black/60">清掃日</div>
             <input
               type="date"
               className="h-9 w-full rounded-lg border px-2 text-sm"
@@ -1864,7 +2152,9 @@ export default function AdminTasksPagePreview() {
             <div className="mb-1 text-xs text-black/60">ステータス</div>
             <Select
               value={draftCleaningTask.status}
-              onChange={(v) => setDraftCleaningTask((p) => ({ ...p, status: v }))}
+              onChange={(v) =>
+                setDraftCleaningTask((p) => ({ ...p, status: v }))
+              }
               options={STATUS_OPTIONS}
             />
           </div>
@@ -1874,12 +2164,78 @@ export default function AdminTasksPagePreview() {
             <textarea
               className="h-28 w-full rounded-xl border bg-white p-3 text-sm outline-none focus:ring-2 focus:ring-black/20"
               value={draftCleaningTask.note}
-              onChange={(e) => setDraftCleaningTask((p) => ({ ...p, note: e.target.value }))}
+              onChange={(e) =>
+                setDraftCleaningTask((p) => ({ ...p, note: e.target.value }))
+              }
               placeholder="備考…"
             />
           </div>
         </div>
       </Drawer>
+
+      {carryOverModalOpen && carryOverTask ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-md rounded-2xl bg-white p-5 shadow-2xl">
+            <div className="mb-4">
+              <div className="text-lg font-semibold">清掃日を持越</div>
+              <div className="mt-1 text-sm text-black/60">
+                {carryOverTask.property} {carryOverTask.room}
+              </div>
+            </div>
+
+            <div className="grid gap-3">
+              <div>
+                <div className="mb-1 text-xs text-black/60">現在の清掃日</div>
+                <div className="rounded-xl border bg-neutral-50 px-3 py-2 text-sm">
+                  {formatMd(carryOverTask.date)}
+                </div>
+              </div>
+
+              <div>
+                <div className="mb-1 text-xs text-black/60">
+                  チェックアウト日
+                </div>
+                <div className="rounded-xl border bg-neutral-50 px-3 py-2 text-sm">
+                  {formatMd(carryOverTask.checkoutDate ?? "")}
+                </div>
+              </div>
+
+              <div>
+                <div className="mb-1 text-xs text-black/60">
+                  次のチェックイン
+                </div>
+                <div className="rounded-xl border bg-neutral-50 px-3 py-2 text-sm">
+                  {formatMd(carryOverTask.nextCheckinDate ?? "")}
+                </div>
+              </div>
+
+              <div>
+                <div className="mb-1 text-xs text-black/60">
+                  持越先の清掃日
+                </div>
+                <input
+                  type="date"
+                  className="h-10 w-full rounded-xl border px-3 text-sm"
+                  value={carryOverDate}
+                  onChange={(e) => setCarryOverDate(e.target.value)}
+                />
+              </div>
+
+              <div className="rounded-xl border border-yellow-200 bg-yellow-50 px-3 py-2 text-xs text-yellow-800">
+                チェックアウト日・次のチェックイン日は変更せず、清掃日だけを変更します。
+              </div>
+            </div>
+
+            <div className="mt-5 flex justify-end gap-2">
+              <Button variant="outline" onClick={cancelCarryOver}>
+                キャンセル
+              </Button>
+
+              <Button onClick={commitCarryOver}>保存</Button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -1898,25 +2254,23 @@ function __assert(name: string, cond: boolean) {
 
 function __runTests() {
   const d0 = "2025-01-01";
+
   __assert("addDaysIso +1", addDaysIso(d0, 1) === "2025-01-02");
   __assert("addDaysIso +31", addDaysIso(d0, 31) === "2025-02-01");
 
-  const empty = buildAssigneeOptions([] as Attendee[]);
-  __assert("assignee options include UNASSIGNED", empty.some((o) => o.value === "UNASSIGNED"));
-
-  const one = buildAssigneeOptions([{ userId: "u1", name: "A" }]);
-  __assert("assignee options include attendee", one.some((o) => o.value === "u1" && o.label === "A"));
-
-  __assert("assigneeLabel UNASSIGNED", assigneeLabel("UNASSIGNED", [{ userId: "u1", name: "A" }]) === "未割当");
-  __assert("assigneeLabel resolve", assigneeLabel("u1", [{ userId: "u1", name: "A" }]) === "A");
   __assert("statusLabel existing", statusLabel("未着手") === "未着手");
+  __assert("statusLabel carry over", statusLabel("持越") === "持越");
   __assert("dueLabel TODAY", dueLabel("DUE_TODAY") === "当日");
   __assert("formatMd 2025-12-09", formatMd("2025-12-09") === "12/9");
   __assert("categoryLabel TRANSPORT", categoryLabel("TRANSPORT") === "運搬");
   __assert("date string compare", "2025-01-02" > "2025-01-01");
-  __assert("towel 1-2 nights", getTowelCount(3, 2) === 3);
-  __assert("towel 3-7 nights", getTowelCount(4, 5) === 8);
-  __assert("towel 8+ nights", getTowelCount(2, 8) === 6);
+
+  __assert("normalize date", normalizeIsoDate("2025-01-01T00:00:00") === "2025-01-01");
+
+  __assert("towel 1-2 nights", getTowelCount("住吉", 3, 2) === 3);
+  __assert("towel 3-7 nights", getTowelCount("住吉", 4, 5) === 8);
+  __assert("towel 8+ nights", getTowelCount("住吉", 2, 8) === 6);
+  __assert("towel excluded FFF", getTowelCount("FFFホテル", 2, 2) === "");
 }
 
 try {
