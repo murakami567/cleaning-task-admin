@@ -22,6 +22,9 @@ import AdminHomePage from "./pages/admin/AdminHomePage";
 import AdminRoute from "./routes/AdminRoute";
 import AdminWorklogReportPage from "./pages/admin/AdminWorklogReportPage";
 
+// ★ 追加
+import PayrollAttendancePage from "./pages/admin/PayrollAttendancePage";
+import PayrollRoute from "./routes/PayrollRoute";
 
 function AdminLayout() {
   return (
@@ -67,10 +70,13 @@ export default function App() {
   return (
     <AuthProvider>
       <Routes>
+        {/* 初期リダイレクト */}
         <Route path="/" element={<Navigate to="/admin/login" replace />} />
 
+        {/* 管理ログイン */}
         <Route path="/admin/login" element={<AdminLoginPage />} />
 
+        {/* 管理画面 */}
         <Route
           path="/admin"
           element={
@@ -90,8 +96,20 @@ export default function App() {
           <Route path="worklogs" element={<AdminWorklogReportPage />} />
         </Route>
 
+        {/* ★ 給与ページ（完全独立 + 権限制御） */}
+        <Route
+          path="/payroll"
+          element={
+            <PayrollRoute>
+              <PayrollAttendancePage />
+            </PayrollRoute>
+          }
+        />
+
+        {/* 従業員ログイン */}
         <Route path="/employee/login" element={<EmployeeLoginPage />} />
 
+        {/* 従業員ページ */}
         <Route
           path="/employee/home"
           element={
@@ -132,8 +150,8 @@ export default function App() {
             </EmployeeProtectedRoute>
           }
         />
-        
 
+        {/* 不正URL */}
         <Route path="*" element={<Navigate to="/admin/login" replace />} />
       </Routes>
     </AuthProvider>
