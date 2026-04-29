@@ -911,54 +911,72 @@ function PayrollStaffSettingForm({
   const staff = staffs.find((s) => s.id === staffId);
 
   return (
-    <div className="mt-4 grid gap-3">
-      <select
-        className="h-10 rounded-xl border bg-white px-3 text-sm"
-        value={staffId}
-        onChange={(e) => setStaffId(e.target.value)}
-      >
-        <option value="">スタッフ選択</option>
-        {staffs.map((s) => (
-          <option key={s.id} value={s.id}>
-            {s.staff_name}
-          </option>
-        ))}
-      </select>
+    <div className="mt-4 space-y-3">
+      <div className="grid grid-cols-[110px_1fr] items-center gap-3">
+        <label className="text-sm font-medium text-neutral-600">スタッフ</label>
+        <select
+          className="h-10 rounded-xl border bg-white px-3 text-sm"
+          value={staffId}
+          onChange={(e) => setStaffId(e.target.value)}
+        >
+          <option value="">スタッフ選択</option>
+          {staffs.map((s) => (
+            <option key={s.id} value={s.id}>
+              {s.staff_name}
+            </option>
+          ))}
+        </select>
+      </div>
 
-      <select
-        className="h-10 rounded-xl border bg-white px-3 text-sm"
-        value={payrollType}
-        onChange={(e) => setPayrollType(e.target.value)}
-      >
-        <option value="piece">単価計算</option>
-        <option value="hourly">時給計算</option>
-      </select>
+      <div className="grid grid-cols-[110px_1fr] items-center gap-3">
+        <label className="text-sm font-medium text-neutral-600">計算方式</label>
+        <select
+          className="h-10 rounded-xl border bg-white px-3 text-sm"
+          value={payrollType}
+          onChange={(e) => setPayrollType(e.target.value)}
+        >
+          <option value="piece">単価計算</option>
+          <option value="hourly">時給計算</option>
+        </select>
+      </div>
 
-      <input
-        className="h-10 rounded-xl border px-3 text-sm"
-        type="number"
-        value={hourlyRate}
-        onChange={(e) => setHourlyRate(Number(e.target.value))}
-        placeholder="時給"
-      />
+      <div className="grid grid-cols-[110px_1fr] items-center gap-3">
+        <label className="text-sm font-medium text-neutral-600">時給</label>
+        <input
+          className="h-10 rounded-xl border px-3 text-sm"
+          type="number"
+          value={hourlyRate}
+          onChange={(e) => setHourlyRate(Number(e.target.value))}
+          placeholder="例：1300"
+        />
+      </div>
 
-      <input
-        className="h-10 rounded-xl border px-3 text-sm"
-        type="number"
-        value={minimumHours}
-        onChange={(e) => setMinimumHours(Number(e.target.value))}
-        placeholder="最低保証時間"
-      />
+      <div className="grid grid-cols-[110px_1fr] items-center gap-3">
+        <label className="text-sm font-medium text-neutral-600">
+          最低保証時間
+        </label>
+        <input
+          className="h-10 rounded-xl border px-3 text-sm"
+          type="number"
+          value={minimumHours}
+          onChange={(e) => setMinimumHours(Number(e.target.value))}
+          placeholder="例：6"
+        />
+      </div>
 
-      <input
-        className="h-10 rounded-xl border px-3 text-sm"
-        type="number"
-        value={transportationFee}
-        onChange={(e) => setTransportationFee(Number(e.target.value))}
-        placeholder="交通費"
-      />
+      <div className="grid grid-cols-[110px_1fr] items-center gap-3">
+        <label className="text-sm font-medium text-neutral-600">交通費</label>
+        <input
+          className="h-10 rounded-xl border px-3 text-sm"
+          type="number"
+          value={transportationFee}
+          onChange={(e) => setTransportationFee(Number(e.target.value))}
+          placeholder="例：500"
+        />
+      </div>
 
       <Button
+        className="mt-2 w-full"
         disabled={disabled}
         onClick={() => {
           if (!staff) {
