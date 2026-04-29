@@ -904,9 +904,9 @@ function PayrollStaffSettingForm({
 }) {
   const [staffId, setStaffId] = useState("");
   const [payrollType, setPayrollType] = useState("piece");
-  const [hourlyRate, setHourlyRate] = useState(1300);
-  const [minimumHours, setMinimumHours] = useState(6);
-  const [transportationFee, setTransportationFee] = useState(500);
+  const [hourlyRate, setHourlyRate] = useState("1300");
+  const [minimumHours, setMinimumHours] = useState("6");
+  const [transportationFee, setTransportationFee] = useState("");
 
   const staff = staffs.find((s) => s.id === staffId);
 
@@ -943,12 +943,12 @@ function PayrollStaffSettingForm({
       <div className="grid grid-cols-[110px_1fr] items-center gap-3">
         <label className="text-sm font-medium text-neutral-600">時給</label>
         <input
-          className="h-10 rounded-xl border px-3 text-sm"
-          type="number"
-          value={hourlyRate}
-          onChange={(e) => setHourlyRate(Number(e.target.value))}
-          placeholder="例：1300"
-        />
+  className="h-10 rounded-xl border px-3 text-sm"
+  type="number"
+  value={hourlyRate}
+  onChange={(e) => setHourlyRate(e.target.value)}
+  placeholder="例：1300"
+/>
       </div>
 
       <div className="grid grid-cols-[110px_1fr] items-center gap-3">
@@ -967,12 +967,12 @@ function PayrollStaffSettingForm({
       <div className="grid grid-cols-[110px_1fr] items-center gap-3">
         <label className="text-sm font-medium text-neutral-600">交通費</label>
         <input
-          className="h-10 rounded-xl border px-3 text-sm"
-          type="number"
-          value={transportationFee}
-          onChange={(e) => setTransportationFee(Number(e.target.value))}
-          placeholder="例：500"
-        />
+  className="h-10 rounded-xl border px-3 text-sm"
+  type="number"
+  value={transportationFee}
+  onChange={(e) => setTransportationFee(e.target.value)}
+  placeholder="例：500"
+/>
       </div>
 
       <Button
@@ -985,13 +985,13 @@ function PayrollStaffSettingForm({
           }
 
           onSave({
-            staff_id: staff.id,
-            staff_name: staff.staff_name,
-            payroll_type: payrollType,
-            hourly_rate: hourlyRate,
-            minimum_hours: minimumHours,
-            transportation_fee: transportationFee,
-          });
+  staff_id: staff.id,
+  staff_name: staff.staff_name,
+  payroll_type: payrollType,
+  hourly_rate: Number(hourlyRate || 0),
+  minimum_hours: Number(minimumHours || 0),
+  transportation_fee: Number(transportationFee || 0),
+});
         }}
       >
         保存
