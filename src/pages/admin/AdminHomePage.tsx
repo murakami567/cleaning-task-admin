@@ -500,13 +500,15 @@ export default function AdminHomePage() {
 
   {/* 給与・勤怠 */}
   <div
-    onClick={() => navigate("/admin/payroll-attendance")}
-    className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm cursor-pointer hover:-translate-y-0.5 hover:shadow-md transition"
-  >
-    <div className="text-lg font-bold text-slate-900">給与・勤怠</div>
-    <div className="mt-2 text-sm text-slate-500">勤怠確認・給与計算</div>
-    <div className="mt-4 text-sm font-semibold text-blue-600">ページを開く →</div>
-  </div>
+  onClick={() => {
+    window.location.href = "https://cleaning-task-admin.onrender.com/payroll";
+  }}
+  className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm cursor-pointer hover:-translate-y-0.5 hover:shadow-md transition"
+>
+  <div className="text-lg font-bold text-slate-900">給与・勤怠</div>
+  <div className="mt-2 text-sm text-slate-500">勤怠確認・給与計算</div>
+  <div className="mt-4 text-sm font-semibold text-blue-600">ページを開く →</div>
+</div>
 </section>
 
         <div className="grid gap-6 lg:grid-cols-2">
