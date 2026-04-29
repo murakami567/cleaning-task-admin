@@ -350,10 +350,12 @@ export default function AccountManagementPage() {
               value={form.role}
               onChange={(v: string) => setForm((s) => ({ ...s, role: v }))}
               options={[
-                { value: "staff", label: "staff" },
+                { value: "admin", label: "admin" },
+                { value: "sub_admin", label: "sub_admin" },
+                { value: "payroll_admin", label: "payroll_admin" },
                 { value: "leader", label: "leader" },
                 { value: "checker", label: "checker" },
-                { value: "admin", label: "admin" },
+                { value: "staff", label: "staff" },
               ]}
             />
           </Field>
