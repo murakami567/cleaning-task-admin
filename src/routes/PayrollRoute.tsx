@@ -1,38 +1,30 @@
-import React from "react";
 import { Navigate } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
+import { ReactNode } from "react";
 
-export default function PayrollRoute({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  const { user, loading } = useAuth();
+export default function PayrollRoute({ children }: { children: ReactNode }) {
+  const token = localStorage.getItem("admin_access_token");
+  const userRaw = localStorage.getItem("admin_user");
 
-  console.log("PAYROLL USER:", user);
-
-  if (loading) {
-    return <div>確認中...</div>;
-  }
-
-  if (!user) {
+  if (!token || !userRaw) {
     return <Navigate to="/admin/login" replace />;
   }
 
-  const role = String((user as any).role || "").toLowerCase();
+  try {
+    const user = JSON.parse(userRaw);
 
-  const allowed = [
-    "admin",
-    "sub_admin",
-    "payroll_admin",
-    "管理者",
-    "副管理者",
-    "勤怠管理者",
-  ];
+    const allowedRoles = [
+      "admin",
+      "leader",
+      "sub_admin",
+      "payroll_admin",
+    ];
 
-  if (allowed.includes(role) || role.includes("admin")) {
-    return <>{children}</>;
+    if (!allowedRoles.includes(user.role)) {
+      return <Navigate to="/admin/login" replace />;
+    }
+  } catch {
+    return <Navigate to="/admin/login" replace />;
   }
 
-  return <Navigate to="/admin/home" replace />;
+  return <>{children}</>;
 }
