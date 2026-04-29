@@ -336,8 +336,37 @@ export default function PayrollAttendancePage() {
   let lastDate = "";
 
   return (
-    <div className="min-h-screen bg-neutral-50 p-6 text-neutral-900">
-      <div className="mx-auto max-w-7xl space-y-6">
+  <div className="min-h-screen bg-neutral-50 p-6 text-neutral-900">
+    <style>
+      {`
+        @media print {
+          body * {
+            visibility: hidden;
+          }
+
+          .print-area,
+          .print-area * {
+            visibility: visible;
+          }
+
+          .print-area {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+            border: none !important;
+            box-shadow: none !important;
+          }
+
+          @page {
+            size: A4 landscape;
+            margin: 10mm;
+          }
+        }
+      `}
+    </style>
+
+    <div className="mx-auto max-w-7xl space-y-6">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold">給与・勤怠</h1>
@@ -737,7 +766,7 @@ export default function PayrollAttendancePage() {
               ))}
             </div>
 
-            <div className="rounded-2xl border bg-white p-6">
+            <div className="print-area rounded-2xl border bg-white p-6">
               <div className="border-b pb-4">
                 <h2 className="text-2xl font-bold">給与明細書</h2>
                 <div className="mt-2 grid gap-2 text-sm text-neutral-600 md:grid-cols-3">
