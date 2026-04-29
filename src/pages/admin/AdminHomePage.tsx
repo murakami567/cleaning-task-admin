@@ -475,6 +475,40 @@ export default function AdminHomePage() {
           </div>
         </section>
 
+        {/* ポータルリンク */}
+<section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+  {/* 育成課 */}
+  <div className="rounded-2xl border border-slate-200 bg-slate-100 p-5 text-slate-400 cursor-not-allowed">
+    <div className="text-lg font-bold">育成課ポータル</div>
+    <div className="mt-2 text-sm">スタッフ育成・チェック管理</div>
+    <div className="mt-4 text-sm font-semibold">準備中</div>
+  </div>
+
+  {/* 施設課 */}
+  <div className="rounded-2xl border border-slate-200 bg-slate-100 p-5 text-slate-400 cursor-not-allowed">
+    <div className="text-lg font-bold">施設課ポータル</div>
+    <div className="mt-2 text-sm">設備・修繕管理</div>
+    <div className="mt-4 text-sm font-semibold">準備中</div>
+  </div>
+
+  {/* OP */}
+  <div className="rounded-2xl border border-slate-200 bg-slate-100 p-5 text-slate-400 cursor-not-allowed">
+    <div className="text-lg font-bold">OPポータル</div>
+    <div className="mt-2 text-sm">運営管理・確認業務</div>
+    <div className="mt-4 text-sm font-semibold">準備中</div>
+  </div>
+
+  {/* 給与・勤怠 */}
+  <div
+    onClick={() => navigate("/admin/payroll-attendance")}
+    className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm cursor-pointer hover:-translate-y-0.5 hover:shadow-md transition"
+  >
+    <div className="text-lg font-bold text-slate-900">給与・勤怠</div>
+    <div className="mt-2 text-sm text-slate-500">勤怠確認・給与計算</div>
+    <div className="mt-4 text-sm font-semibold text-blue-600">ページを開く →</div>
+  </div>
+</section>
+
         <div className="grid gap-6 lg:grid-cols-2">
           <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
             <div className="flex items-start justify-between gap-4">
