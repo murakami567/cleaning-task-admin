@@ -578,8 +578,21 @@ function mapApiTaskToUi(task: ApiCleaningTask): CleaningTask {
   };
 }
 
-async function fetchCleaningTasks(mode: ViewMode): Promise<CleaningTask[]> {
-  const endpoint = mode === "TODAY" ? "/tasks/today" : "/tasks/future";
+async function fetchCleaningTasks(
+  mode: ViewMode,
+  selectedDate?: string
+): Promise<CleaningTask[]> {
+  let endpoint = "";
+
+  if (mode === "TODAY") {
+    endpoint = "/tasks/today";
+  } else if (mode === "FUTURE") {
+    endpoint = "/tasks/future";
+  } else {
+    if (!selectedDate) return [];
+    endpoint = `/tasks/by-date?date=${encodeURIComponent(selectedDate)}`;
+  }
+
   const res = await fetch(`${API_BASE}${endpoint}`);
   if (!res.ok) throw new Error(`fetch failed: ${res.status}`);
 
@@ -828,7 +841,9 @@ export default function AdminTasksPagePreview() {
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [lastUpdated, setLastUpdated] = useState(new Date());
   const [viewMode, setViewMode] = useState<ViewMode>("TODAY");
+  const [selectedDate, setSelectedDate] = useState(todayIso());
 
+  
   const [attendeesByDate, setAttendeesByDate] = useState<
     Record<string, Attendee[]>
   >({});
@@ -947,9 +962,9 @@ export default function AdminTasksPagePreview() {
       setCleaningError("");
 
       const [tasksRaw, nonCleaningRaw] = await Promise.all([
-        fetchCleaningTasks(viewMode),
-        fetchNonCleaningTasks(),
-      ]);
+  fetchCleaningTasks(viewMode, selectedDate),
+  fetchNonCleaningTasks(),
+]);
 
       const tasks = Array.isArray(tasksRaw) ? tasksRaw : [];
       const nonCleaning = Array.isArray(nonCleaningRaw) ? nonCleaningRaw : [];
@@ -999,8 +1014,8 @@ export default function AdminTasksPagePreview() {
   }, []);
 
   useEffect(() => {
-    void refresh();
-  }, [viewMode]);
+  void refresh();
+}, [viewMode, selectedDate]);
 
   useEffect(() => {
     if (!autoRefresh) return;
@@ -1010,28 +1025,37 @@ export default function AdminTasksPagePreview() {
     }, 60_000);
 
     return () => window.clearInterval(t);
-  }, [autoRefresh, viewMode]);
+  }, [autoRefresh, viewMode, selectedDate]);
 
   const visibleCleaningTasks = useMemo(() => {
-    const list = Array.isArray(cleaningTasks) ? cleaningTasks : [];
+  const list = Array.isArray(cleaningTasks) ? cleaningTasks : [];
 
-    const tasks =
-      viewMode === "TODAY"
-        ? list.filter((t) => normalizeIsoDate(t.date) === baseDate)
-        : list.filter((t) => isFutureDate(t.date));
+  let tasks: CleaningTask[] = [];
 
-    return sortTasksByPropertyOrder(tasks, viewMode);
-  }, [cleaningTasks, viewMode]);
+  if (viewMode === "TODAY") {
+    tasks = list.filter((t) => normalizeIsoDate(t.date) === baseDate);
+  } else if (viewMode === "FUTURE") {
+    tasks = list.filter((t) => isFutureDate(t.date));
+  } else {
+    tasks = list.filter((t) => normalizeIsoDate(t.date) === selectedDate);
+  }
+
+  return sortTasksByPropertyOrder(tasks, viewMode);
+}, [cleaningTasks, viewMode, selectedDate]);
 
   const visibleNonCleaningTasks = useMemo(() => {
-    const list = Array.isArray(nonCleaningTasks) ? nonCleaningTasks : [];
+  const list = Array.isArray(nonCleaningTasks) ? nonCleaningTasks : [];
 
-    if (viewMode === "TODAY") {
-      return list.filter((t) => normalizeIsoDate(t.date) === baseDate);
-    }
+  if (viewMode === "TODAY") {
+    return list.filter((t) => normalizeIsoDate(t.date) === baseDate);
+  }
 
+  if (viewMode === "FUTURE") {
     return list.filter((t) => isFutureDate(t.date));
-  }, [nonCleaningTasks, viewMode]);
+  }
+
+  return list.filter((t) => normalizeIsoDate(t.date) === selectedDate);
+}, [nonCleaningTasks, viewMode, selectedDate]);
 
   const addCleaningTask = () => {
     setDraftCleaningTask({
