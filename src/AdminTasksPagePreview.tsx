@@ -837,6 +837,12 @@ function isFutureDate(isoDate: string) {
   return normalizeIsoDate(isoDate) > baseDate;
 }
 
+function viewModeLabel(mode: ViewMode, selectedDate?: string) {
+  if (mode === "TODAY") return "当日";
+  if (mode === "FUTURE") return "翌日以降";
+  return selectedDate ? `日付指定 ${formatMd(selectedDate)}` : "日付指定";
+}
+
 export default function AdminTasksPagePreview() {
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [lastUpdated, setLastUpdated] = useState(new Date());
@@ -1289,26 +1295,38 @@ export default function AdminTasksPagePreview() {
             <span>ver.1</span>
           </div>
           <div className="text-xs text-black/60">
-            表示：{viewMode === "TODAY" ? "当日" : "翌日以降"} / 最終更新{" "}
+            表示：{viewModeLabel(viewMode, selectedDate)} / 最終更新{" "}
             {lastUpdated.toLocaleTimeString()}
           </div>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
           <Segmented
-            value={viewMode}
-            onChange={(v) => setViewMode(v as ViewMode)}
-            options={[
-              { value: "TODAY", label: "当日" },
-              { value: "FUTURE", label: "翌日以降" },
-            ]}
-          />
-          <ToggleChip active={autoRefresh} onClick={() => setAutoRefresh((v) => !v)}>
-            自動
-          </ToggleChip>
-          <Button variant="outline" onClick={() => void refresh()}>
-            更新
-          </Button>
+  value={viewMode}
+  onChange={(v) => setViewMode(v as ViewMode)}
+  options={[
+    { value: "TODAY", label: "当日" },
+    { value: "FUTURE", label: "翌日以降" },
+    { value: "DATE", label: "日付検索" },
+  ]}
+/>
+
+{viewMode === "DATE" ? (
+  <input
+    type="date"
+    value={selectedDate}
+    onChange={(e) => setSelectedDate(e.target.value)}
+    className="h-10 rounded-xl border bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-black/20"
+  />
+) : null}
+
+<ToggleChip active={autoRefresh} onClick={() => setAutoRefresh((v) => !v)}>
+  自動
+</ToggleChip>
+
+<Button variant="outline" onClick={() => void refresh()}>
+  更新
+</Button>
         </div>
       </div>
 
@@ -1567,8 +1585,10 @@ export default function AdminTasksPagePreview() {
                         <Td colSpan={11} className="py-10">
                           <div className="text-center text-sm text-black/60">
                             {viewMode === "TODAY"
-                              ? "当日の清掃タスクがありません。"
-                              : "翌日以降の清掃タスクがありません。"}
+  ? "当日の清掃タスクがありません。"
+  : viewMode === "FUTURE"
+  ? "翌日以降の清掃タスクがありません。"
+  : "指定日の清掃タスクがありません。"}
                           </div>
                         </Td>
                       </tr>
@@ -1604,7 +1624,7 @@ export default function AdminTasksPagePreview() {
 
               <div className="mt-3 flex items-center justify-between">
                 <div className="text-xs text-black/60">
-                  {viewMode === "TODAY" ? "当日分" : "翌日以降"}のみ表示
+                 {viewModeLabel(viewMode, selectedDate)}のみ表示
                 </div>
                 <Badge>{visibleNonCleaningTasks.length} 件</Badge>
               </div>
