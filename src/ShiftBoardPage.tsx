@@ -376,27 +376,27 @@ export default function ShiftBoardPage() {
               )}
 
               <div className="overflow-auto rounded-[18px] border border-slate-200">
-                <table className="min-w-[1400px] w-full border-separate border-spacing-0 text-sm">
-                  <thead>
+                <thead>
   <tr className="border-b border-slate-200">
 
-    <th className="sticky top-0 left-0 z-40 w-[72px] bg-slate-50 px-4 py-3 font-extrabold">
+    {/* 左上（最強） */}
+    <th className="sticky top-0 left-0 z-50 w-[72px] bg-slate-50 px-4 py-3 font-extrabold shadow-[2px_0_0_#e2e8f0]">
       日付
     </th>
 
-    <th className="sticky top-0 left-[72px] z-40 w-[64px] bg-slate-50 px-4 py-3 font-extrabold">
+    <th className="sticky top-0 left-[72px] z-40 w-[64px] bg-slate-50 px-4 py-3 font-extrabold shadow-[2px_0_0_#e2e8f0]">
       曜日
     </th>
 
-    <th className="sticky top-0 left-[136px] z-40 w-[96px] bg-slate-50 px-4 py-3 font-extrabold">
+    <th className="sticky top-0 left-[136px] z-40 w-[96px] bg-slate-50 px-4 py-3 font-extrabold shadow-[2px_0_0_#e2e8f0]">
       総清掃数
     </th>
 
-    <th className="sticky top-0 left-[232px] z-40 w-[96px] bg-slate-50 px-4 py-3 font-extrabold">
+    <th className="sticky top-0 left-[232px] z-40 w-[96px] bg-slate-50 px-4 py-3 font-extrabold shadow-[2px_0_0_#e2e8f0]">
       出勤人数
     </th>
 
-    <th className="sticky top-0 left-[328px] z-40 w-[140px] bg-slate-50 px-4 py-3 font-extrabold">
+    <th className="sticky top-0 left-[328px] z-40 w-[140px] bg-slate-50 px-4 py-3 font-extrabold shadow-[2px_0_0_#e2e8f0]">
       1人当たり清掃数
     </th>
 
@@ -414,23 +414,23 @@ export default function ShiftBoardPage() {
                   <tbody>
                     {visibleDates.map((date) => (
                       <tr key={date} className="border-b border-slate-100 last:border-b-0">
-                        <td className="sticky left-0 z-30 bg-white w-[72px] px-4 py-3">
+                        <td className="sticky left-0 z-30 bg-white w-[72px] px-4 py-3 shadow-[2px_0_0_#e2e8f0]">
   {formatDateLabel(date)}
 </td>
 
-<td className="sticky left-[72px] z-30 bg-white w-[64px] px-4 py-3">
+<td className="sticky left-[72px] z-30 bg-white w-[64px] px-4 py-3 shadow-[2px_0_0_#e2e8f0]">
   {weekdayLabel(date)}
 </td>
 
-<td className="sticky left-[136px] z-30 bg-white w-[96px] px-4 py-3 font-semibold">
+<td className="sticky left-[136px] z-30 bg-white w-[96px] px-4 py-3 font-semibold shadow-[2px_0_0_#e2e8f0]">
   {getCleanCount(date)}
 </td>
 
-<td className="sticky left-[232px] z-30 bg-white w-[96px] px-4 py-3">
+<td className="sticky left-[232px] z-30 bg-white w-[96px] px-4 py-3 shadow-[2px_0_0_#e2e8f0]">
   {getAttendanceCount(date)}
 </td>
 
-<td className="sticky left-[328px] z-30 bg-white w-[140px] px-4 py-3">
+<td className="sticky left-[328px] z-30 bg-white w-[140px] px-4 py-3 shadow-[2px_0_0_#e2e8f0]">
   {getWorkload(date)}
 </td>
                         {staffs.map((staff) => {
