@@ -526,7 +526,7 @@ type NonCleaningTask = {
   note: string;
 };
 
-type ViewMode = "TODAY" | "FUTURE";
+type ViewMode = "TODAY" | "FUTURE" | "DATE";
 
 const API_BASE =
   (import.meta as any).env?.VITE_API_BASE_URL ||
