@@ -53,7 +53,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const data = await api.post("/api/auth/login", {
   login_id: loginId,
   password,
-  role: "staff",
+  role: "employee_portal",
 });
 
     localStorage.setItem("employee_access_token", data.access_token);
