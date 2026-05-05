@@ -1,4 +1,5 @@
-import { Routes, Route, Navigate, NavLink, Outlet } from "react-router-dom";
+import { Routes, Route, Navigate, NavLink, Outlet, useLocation } from "react-router-dom";
+import { useEffect } from "react";
 
 import AdminTasksPagePreview from "./AdminTasksPagePreview";
 import PropertyManagementPage from "./PropertyManagementPage";
@@ -22,10 +23,37 @@ import AdminHomePage from "./pages/admin/AdminHomePage";
 import AdminRoute from "./routes/AdminRoute";
 import AdminWorklogReportPage from "./pages/admin/AdminWorklogReportPage";
 
-// ★ 追加
 import PayrollAttendancePage from "./pages/admin/PayrollAttendancePage";
 import PayrollRoute from "./routes/PayrollRoute";
 
+
+// ==========================
+// タイトル管理（追加部分）
+// ==========================
+function TitleManager() {
+  const location = useLocation();
+
+  useEffect(() => {
+    const path = location.pathname;
+
+    if (path.startsWith("/admin")) {
+      document.title = "【管理】清掃管理";
+    } else if (path.startsWith("/employee")) {
+      document.title = "【スタッフ】清掃管理";
+    } else if (path.startsWith("/payroll")) {
+      document.title = "【給与】清掃管理";
+    } else {
+      document.title = "清掃管理";
+    }
+  }, [location]);
+
+  return null;
+}
+
+
+// ==========================
+// 管理レイアウト
+// ==========================
 function AdminLayout() {
   return (
     <div className="min-h-screen bg-neutral-50">
@@ -66,9 +94,17 @@ function AdminNavButton({
   );
 }
 
+
+// ==========================
+// メインApp
+// ==========================
 export default function App() {
   return (
     <AuthProvider>
+
+      {/* ★ タイトル制御 */}
+      <TitleManager />
+
       <Routes>
         {/* 初期リダイレクト */}
         <Route path="/" element={<Navigate to="/admin/login" replace />} />
@@ -96,7 +132,7 @@ export default function App() {
           <Route path="worklogs" element={<AdminWorklogReportPage />} />
         </Route>
 
-        {/* ★ 給与ページ（完全独立 + 権限制御） */}
+        {/* 給与ページ */}
         <Route
           path="/payroll"
           element={
