@@ -37,11 +37,11 @@ function TitleManager() {
     const path = location.pathname;
 
     if (path.startsWith("/admin")) {
-      document.title = "【管理】清掃管理";
+      document.title = "タスク管理-グスク";
     } else if (path.startsWith("/employee")) {
-      document.title = "【スタッフ】清掃管理";
+      document.title = "【スタッフ】ステータス管理";
     } else if (path.startsWith("/payroll")) {
-      document.title = "【給与】清掃管理";
+      document.title = "給与・勤怠管理";
     } else {
       document.title = "清掃管理";
     }
