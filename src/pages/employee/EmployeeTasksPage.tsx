@@ -115,7 +115,7 @@ export default function EmployeeTasksPage() {
         }
       }
 
-      setSelectedTask((prev) => (prev ? { ...prev, status, note } : prev));
+      setSelectedTask(null);
     } catch (error) {
       console.error("タスク保存エラー:", error);
       alert(error instanceof Error ? error.message : "保存に失敗しました。");
