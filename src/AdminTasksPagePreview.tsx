@@ -7,9 +7,11 @@ import { sortTasksByPropertyOrder } from "./utils/propertyOrder";
 
 const STATUS_OPTIONS = [
   { value: "未着手", label: "未着手" },
-  { value: "進行中", label: "進行中" },
+  { value: "清掃開始", label: "清掃開始" },
+  { value: "清掃中", label: "清掃中" },
   { value: "完了", label: "完了" },
   { value: "持越", label: "持越" },
+  { value: "CXL", label: "CXL" },
 ];
 
 const DUE_OPTIONS = [
@@ -1180,6 +1182,14 @@ export default function AdminTasksPagePreview() {
     }
 
     void updateCleaningTask(task.id, { status: nextStatus });
+
+    // 「清掃開始」は1分後にサーバ側で自動的に「清掃中」へ遷移する。
+    // 65秒後に refresh を仕込んで画面表示も追従させる。
+    if (nextStatus === "清掃開始") {
+      window.setTimeout(() => {
+        void refresh();
+      }, 65_000);
+    }
   };
 
   const commitCarryOver = async () => {
