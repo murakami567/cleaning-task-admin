@@ -7,9 +7,11 @@ import { sortTasksByPropertyOrder } from "./utils/propertyOrder";
 
 const STATUS_OPTIONS = [
   { value: "未着手", label: "未着手" },
-  { value: "進行中", label: "進行中" },
-  { value: "完了", label: "完了" },
+  { value: "清掃開始", label: "清掃開始" },
+  { value: "清掃中", label: "清掃中" },
+  { value: "完了", label: "清掃完了" },
   { value: "持越", label: "持越" },
+  { value: "CXL", label: "CXL" },
 ];
 
 const DUE_OPTIONS = [
@@ -63,6 +65,24 @@ const formatMd = (iso: string) => {
 
 function statusLabel(v: string) {
   return STATUS_OPTIONS.find((o) => o.value === v)?.label ?? v;
+}
+
+function statusChipClass(v: string) {
+  switch (v) {
+    case "清掃中":
+    case "対応中":
+      return "border-emerald-200 bg-emerald-50 text-emerald-700";
+    case "完了":
+      return "border-slate-300 bg-slate-200 text-slate-700";
+    case "CXL":
+      return "border-slate-900 bg-slate-900 text-white";
+    case "清掃開始":
+      return "border-amber-200 bg-amber-50 text-amber-700";
+    case "持越":
+      return "border-sky-200 bg-sky-50 text-sky-700";
+    default:
+      return "border-slate-200 bg-white text-slate-600";
+  }
 }
 
 function dueLabel(v: string) {
@@ -1180,6 +1200,14 @@ export default function AdminTasksPagePreview() {
     }
 
     void updateCleaningTask(task.id, { status: nextStatus });
+
+    // 「清掃開始」は1分後にサーバ側で自動的に「清掃中」へ遷移する。
+    // 65秒後に refresh を仕込んで画面表示も追従させる。
+    if (nextStatus === "清掃開始") {
+      window.setTimeout(() => {
+        void refresh();
+      }, 65_000);
+    }
   };
 
   const commitCarryOver = async () => {
@@ -1428,14 +1456,13 @@ export default function AdminTasksPagePreview() {
                                 options={STATUS_OPTIONS}
                               />
                             ) : (
-                              <div className="flex items-center gap-2">
-                                <span
-                                  className={`h-2 w-2 rounded-full ${
-                                    isSelected ? "bg-black" : "bg-black/20"
-                                  }`}
-                                />
-                                <span>{statusLabel(t.status)}</span>
-                              </div>
+                              <span
+                                className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-semibold ${statusChipClass(
+                                  t.status
+                                )}`}
+                              >
+                                {statusLabel(t.status)}
+                              </span>
                             )}
                           </Td>
 
@@ -1765,7 +1792,13 @@ export default function AdminTasksPagePreview() {
           <div className="grid gap-3">
             <div className="flex items-center justify-between">
               <Badge>{selectedCleaningTask.id}</Badge>
-              <Badge>{statusLabel(selectedCleaningTask.status)}</Badge>
+              <span
+                className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-semibold ${statusChipClass(
+                  selectedCleaningTask.status
+                )}`}
+              >
+                {statusLabel(selectedCleaningTask.status)}
+              </span>
             </div>
 
             <div>
@@ -1989,7 +2022,13 @@ export default function AdminTasksPagePreview() {
           <div className="grid gap-3">
             <div className="flex items-center justify-between">
               <Badge>{draftNonCleaning.id}</Badge>
-              <Badge>{statusLabel(draftNonCleaning.status)}</Badge>
+              <span
+                className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-semibold ${statusChipClass(
+                  draftNonCleaning.status
+                )}`}
+              >
+                {statusLabel(draftNonCleaning.status)}
+              </span>
             </div>
 
             <div>

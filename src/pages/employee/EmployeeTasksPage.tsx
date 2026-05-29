@@ -105,6 +105,14 @@ export default function EmployeeTasksPage() {
             prev.map((task) => (task.id === taskId ? { ...task, status, note } : task))
           );
         }
+
+        // 「清掃開始」は1分後にサーバ側で自動的に「清掃中」へ遷移する。
+        // 65秒後に最新状態を取り直して画面を追従させる。
+        if (status === "started") {
+          window.setTimeout(() => {
+            void fetchTasks();
+          }, 65_000);
+        }
       }
 
       setSelectedTask((prev) => (prev ? { ...prev, status, note } : prev));
@@ -253,7 +261,7 @@ function TaskRowCard({
   assigneeName: string;
   onClick: () => void;
 }) {
-  const status = getStatusLabel(task.status);
+  const status = getStatusLabel(task.status, task.taskKind);
 
   return (
     <button
@@ -355,8 +363,18 @@ function TaskDetailModal({
                 className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm outline-none"
               >
                 <option value="pending">未着手</option>
-                <option value="in_progress">対応中</option>
-                <option value="completed">完了</option>
+                {task.taskKind !== "other" ? (
+                  <option value="started">清掃開始</option>
+                ) : null}
+                <option value="in_progress">
+                  {task.taskKind === "other" ? "対応中" : "清掃中"}
+                </option>
+                <option value="completed">
+                  {task.taskKind === "other" ? "完了" : "清掃完了"}
+                </option>
+                {task.taskKind !== "other" ? (
+                  <option value="cancelled">CXL</option>
+                ) : null}
               </select>
             </div>
 
@@ -503,17 +521,29 @@ function buildTaskCardTitle(task: EmployeeTask) {
   return `${property}${room ? ` ${room}` : ""}`.trim() || task.title || "-";
 }
 
-function getStatusLabel(status: string) {
+function getStatusLabel(status: string, taskKind: EmployeeTask["taskKind"] = "cleaning") {
   if (status === "completed") {
     return {
-      label: "完了",
-      className: "bg-emerald-50 text-emerald-700",
+      label: taskKind === "other" ? "完了" : "清掃完了",
+      className: "bg-slate-200 text-slate-700",
+    };
+  }
+  if (status === "cancelled") {
+    return {
+      label: "CXL",
+      className: "bg-slate-900 text-white",
+    };
+  }
+  if (status === "started") {
+    return {
+      label: "清掃開始",
+      className: "bg-amber-50 text-amber-700",
     };
   }
   if (status === "in_progress") {
     return {
-      label: "対応中",
-      className: "bg-sky-50 text-sky-700",
+      label: taskKind === "other" ? "対応中" : "清掃中",
+      className: "bg-emerald-50 text-emerald-700",
     };
   }
   return {
@@ -524,12 +554,16 @@ function getStatusLabel(status: string) {
 
 function normalizeStatus(status: string) {
   if (status === "completed") return "completed";
+  if (status === "cancelled") return "cancelled";
+  if (status === "started") return "started";
   if (status === "in_progress") return "in_progress";
   return "pending";
 }
 
 function denormalizeCleaningTaskStatus(status: string) {
   if (status === "completed") return "完了";
+  if (status === "cancelled") return "CXL";
+  if (status === "started") return "清掃開始";
   if (status === "in_progress") return "清掃中";
   return "未着手";
 }
