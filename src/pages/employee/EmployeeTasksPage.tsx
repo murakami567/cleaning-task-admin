@@ -523,13 +523,13 @@ function getStatusLabel(status: string, taskKind: EmployeeTask["taskKind"] = "cl
   if (status === "completed") {
     return {
       label: "完了",
-      className: "bg-emerald-50 text-emerald-700",
+      className: "bg-slate-200 text-slate-700",
     };
   }
   if (status === "cancelled") {
     return {
       label: "CXL",
-      className: "bg-rose-50 text-rose-700",
+      className: "bg-slate-900 text-white",
     };
   }
   if (status === "started") {
@@ -541,7 +541,7 @@ function getStatusLabel(status: string, taskKind: EmployeeTask["taskKind"] = "cl
   if (status === "in_progress") {
     return {
       label: taskKind === "other" ? "対応中" : "清掃中",
-      className: "bg-sky-50 text-sky-700",
+      className: "bg-emerald-50 text-emerald-700",
     };
   }
   return {

@@ -67,6 +67,23 @@ function statusLabel(v: string) {
   return STATUS_OPTIONS.find((o) => o.value === v)?.label ?? v;
 }
 
+function statusChipClass(v: string) {
+  switch (v) {
+    case "清掃中":
+      return "border-emerald-200 bg-emerald-50 text-emerald-700";
+    case "完了":
+      return "border-slate-300 bg-slate-200 text-slate-700";
+    case "CXL":
+      return "border-slate-900 bg-slate-900 text-white";
+    case "清掃開始":
+      return "border-amber-200 bg-amber-50 text-amber-700";
+    case "持越":
+      return "border-sky-200 bg-sky-50 text-sky-700";
+    default:
+      return "border-slate-200 bg-white text-slate-600";
+  }
+}
+
 function dueLabel(v: string) {
   return DUE_OPTIONS.find((o) => o.value === v)?.label ?? v;
 }
@@ -1438,14 +1455,13 @@ export default function AdminTasksPagePreview() {
                                 options={STATUS_OPTIONS}
                               />
                             ) : (
-                              <div className="flex items-center gap-2">
-                                <span
-                                  className={`h-2 w-2 rounded-full ${
-                                    isSelected ? "bg-black" : "bg-black/20"
-                                  }`}
-                                />
-                                <span>{statusLabel(t.status)}</span>
-                              </div>
+                              <span
+                                className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-semibold ${statusChipClass(
+                                  t.status
+                                )}`}
+                              >
+                                {statusLabel(t.status)}
+                              </span>
                             )}
                           </Td>
 
@@ -1775,7 +1791,13 @@ export default function AdminTasksPagePreview() {
           <div className="grid gap-3">
             <div className="flex items-center justify-between">
               <Badge>{selectedCleaningTask.id}</Badge>
-              <Badge>{statusLabel(selectedCleaningTask.status)}</Badge>
+              <span
+                className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-semibold ${statusChipClass(
+                  selectedCleaningTask.status
+                )}`}
+              >
+                {statusLabel(selectedCleaningTask.status)}
+              </span>
             </div>
 
             <div>
