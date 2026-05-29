@@ -95,6 +95,7 @@ export default function ShiftManagementPage() {
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().slice(0, 10));
   const [shiftDay, setShiftDay] = useState<ShiftDay | null>(null);
   const [loading, setLoading] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const loadStaffs = async () => {
     const res = await fetch(`${API_BASE}/staffs`);
@@ -184,6 +185,16 @@ export default function ShiftManagementPage() {
     };
   }, [shiftDay]);
 
+  const filteredStaffs = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return staffs;
+    return staffs.filter((s) => {
+      const name = (s.staff_name || "").toLowerCase();
+      const code = (s.staff_code || "").toLowerCase();
+      return name.includes(q) || code.includes(q);
+    });
+  }, [staffs, searchQuery]);
+
   return (
     <div className="p-4 space-y-4">
       <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-4 flex flex-wrap gap-3 items-center justify-between">
@@ -210,12 +221,28 @@ export default function ShiftManagementPage() {
       </div>
 
       <Card>
-        <div className="p-4 border-b border-slate-200 flex items-center justify-between">
+        <div className="p-4 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3">
           <div>
             <div className="text-sm font-extrabold">日別シフト一覧</div>
             <div className="text-xs text-slate-500 mt-1">
               {selectedDate} / {loading ? "読み込み中..." : "保存は即時反映"}
+              {searchQuery.trim() ? (
+                <span className="ml-2">
+                  ／ 該当 {filteredStaffs.length} 件 / 全 {staffs.length} 件
+                </span>
+              ) : null}
             </div>
+          </div>
+
+          <div className="flex items-center gap-2 w-full sm:w-[320px]">
+            <TextInput
+              value={searchQuery}
+              onChange={setSearchQuery}
+              placeholder="スタッフ名・コードで検索"
+            />
+            {searchQuery ? (
+              <Button onClick={() => setSearchQuery("")}>クリア</Button>
+            ) : null}
           </div>
         </div>
 
@@ -233,7 +260,16 @@ export default function ShiftManagementPage() {
               </tr>
             </thead>
             <tbody>
-              {staffs.map((staff) => {
+              {filteredStaffs.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="px-3 py-8 text-center text-sm text-slate-500">
+                    {searchQuery.trim()
+                      ? "該当するスタッフが見つかりませんでした。"
+                      : "スタッフが登録されていません。"}
+                  </td>
+                </tr>
+              ) : null}
+              {filteredStaffs.map((staff) => {
                 const entry = entryMap.get(staff.id);
 
                 return (
