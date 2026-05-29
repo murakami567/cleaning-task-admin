@@ -70,6 +70,7 @@ function statusLabel(v: string) {
 function statusChipClass(v: string) {
   switch (v) {
     case "清掃中":
+    case "対応中":
       return "border-emerald-200 bg-emerald-50 text-emerald-700";
     case "完了":
       return "border-slate-300 bg-slate-200 text-slate-700";
@@ -2021,7 +2022,13 @@ export default function AdminTasksPagePreview() {
           <div className="grid gap-3">
             <div className="flex items-center justify-between">
               <Badge>{draftNonCleaning.id}</Badge>
-              <Badge>{statusLabel(draftNonCleaning.status)}</Badge>
+              <span
+                className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-semibold ${statusChipClass(
+                  draftNonCleaning.status
+                )}`}
+              >
+                {statusLabel(draftNonCleaning.status)}
+              </span>
             </div>
 
             <div>
