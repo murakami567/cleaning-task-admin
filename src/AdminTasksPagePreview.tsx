@@ -9,7 +9,7 @@ const STATUS_OPTIONS = [
   { value: "未着手", label: "未着手" },
   { value: "清掃開始", label: "清掃開始" },
   { value: "清掃中", label: "清掃中" },
-  { value: "完了", label: "完了" },
+  { value: "完了", label: "清掃完了" },
   { value: "持越", label: "持越" },
   { value: "CXL", label: "CXL" },
 ];

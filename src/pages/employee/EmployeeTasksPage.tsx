@@ -369,7 +369,9 @@ function TaskDetailModal({
                 <option value="in_progress">
                   {task.taskKind === "other" ? "対応中" : "清掃中"}
                 </option>
-                <option value="completed">完了</option>
+                <option value="completed">
+                  {task.taskKind === "other" ? "完了" : "清掃完了"}
+                </option>
                 {task.taskKind !== "other" ? (
                   <option value="cancelled">CXL</option>
                 ) : null}
@@ -522,7 +524,7 @@ function buildTaskCardTitle(task: EmployeeTask) {
 function getStatusLabel(status: string, taskKind: EmployeeTask["taskKind"] = "cleaning") {
   if (status === "completed") {
     return {
-      label: "完了",
+      label: taskKind === "other" ? "完了" : "清掃完了",
       className: "bg-slate-200 text-slate-700",
     };
   }
