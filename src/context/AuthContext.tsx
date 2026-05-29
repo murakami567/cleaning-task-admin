@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { api } from "../lib/api";
+import { isJwtExpired } from "../lib/jwt";
 
 type User = {
   id?: string | number;
@@ -30,6 +31,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const token = localStorage.getItem("employee_access_token");
 
     if (!token) {
+      setLoading(false);
+      return;
+    }
+
+    if (isJwtExpired(token)) {
+      localStorage.removeItem("employee_access_token");
       setLoading(false);
       return;
     }
