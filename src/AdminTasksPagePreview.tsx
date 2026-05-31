@@ -142,7 +142,7 @@ const PROPERTY_COLORS: Record<string, string> = {
   "ウィングス": "#e6f0ff",
   "玉井": "#f0f0f0",
   "西中洲": "#f3e6ff",
-  "アクシオン美野島": "#f5f0e6",
+  "アクシオン": "#f5f0e6",
   "ルッシェ": "#f5f0e6",
   "ウーブル博多": "#f5f0e6",
   "冷泉": "#ffe5e5",
@@ -158,7 +158,7 @@ const PROPERTY_COLORS: Record<string, string> = {
 };
 
 const PROPERTY_NAME_KEYS = [
-  "アクシオン美野島",
+  "アクシオン",
   "比恵モダン",
   "いそのビル",
   "FFFホテル",
