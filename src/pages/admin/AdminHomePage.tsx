@@ -86,9 +86,7 @@ function formatBreakSince(iso?: string | null) {
   if (!iso) return "休憩開始時刻 不明";
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "休憩開始時刻 不明";
-
-  const minutes = Math.max(0, Math.floor((Date.now() - d.getTime()) / 60000));
-  return `${pad2(d.getHours())}:${pad2(d.getMinutes())} から / 経過 ${minutes} 分`;
+  return `${pad2(d.getHours())}:${pad2(d.getMinutes())} から`;
 }
 
 function buildMonthCells(year: number, month: number) {

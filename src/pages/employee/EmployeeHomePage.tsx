@@ -31,27 +31,6 @@ export default function EmployeeHomePage() {
   );
 
   const [breakSaving, setBreakSaving] = useState(false);
-  const [breakElapsedMin, setBreakElapsedMin] = useState<number | null>(null);
-
-  useEffect(() => {
-    if (!user?.on_break || !user?.break_started_at) {
-      setBreakElapsedMin(null);
-      return;
-    }
-
-    const tick = () => {
-      const start = new Date(user.break_started_at as string).getTime();
-      if (Number.isNaN(start)) {
-        setBreakElapsedMin(null);
-        return;
-      }
-      setBreakElapsedMin(Math.max(0, Math.floor((Date.now() - start) / 60000)));
-    };
-
-    tick();
-    const id = window.setInterval(tick, 30_000);
-    return () => window.clearInterval(id);
-  }, [user?.on_break, user?.break_started_at]);
 
   async function handleToggleBreak() {
     if (breakSaving) return;
@@ -161,11 +140,6 @@ export default function EmployeeHomePage() {
                     <div className="mt-1 text-lg font-bold text-slate-900">
                       {user?.on_break ? "休憩中" : "勤務中"}
                     </div>
-                    {user?.on_break && breakElapsedMin !== null ? (
-                      <div className="mt-1 text-xs text-amber-700">
-                        休憩開始から {breakElapsedMin} 分経過
-                      </div>
-                    ) : null}
                   </div>
 
                   <button
