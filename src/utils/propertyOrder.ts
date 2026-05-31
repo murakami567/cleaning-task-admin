@@ -4,7 +4,7 @@ export const PROPERTY_ORDER = [
   "ブランシェ",
   "住吉",
   "いそのビル",
-  "アクシオン美野島",
+  "アクシオン",
   "美野島",
   "ウィングス",
   "玉井",
@@ -29,7 +29,8 @@ function normalizePropertyName(name?: string | null) {
   if (!value) return "";
 
   // 長い名前・誤判定しやすい名前を先に判定
-  if (value.includes("アクシオン美野島")) return "アクシオン美野島";
+  // アクシオン美野島 → アクシオン リネーム時の旧データも吸収する
+  if (value.includes("アクシオン")) return "アクシオン";
   if (value.includes("ウーブル博多")) return "ウーブル博多";
   if (value.includes("グランデエス")) return "グランデエス";
   if (value.includes("いそのビル")) return "いそのビル";
