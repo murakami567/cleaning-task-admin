@@ -35,6 +35,14 @@ type Staff = {
   role?: string;
 };
 
+type OnBreakStaff = {
+  id: string;
+  name: string;
+  staff_code?: string;
+  role?: string;
+  break_started_at?: string | null;
+};
+
 type PortalSchedule = {
   id: string;
   start_date: string;
@@ -72,6 +80,15 @@ function formatMd(dateStr: string) {
   const d = new Date(dateStr);
   if (Number.isNaN(d.getTime())) return dateStr;
   return `${d.getMonth() + 1}/${d.getDate()}`;
+}
+
+function formatBreakSince(iso?: string | null) {
+  if (!iso) return "休憩開始時刻 不明";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "休憩開始時刻 不明";
+
+  const minutes = Math.max(0, Math.floor((Date.now() - d.getTime()) / 60000));
+  return `${pad2(d.getHours())}:${pad2(d.getMinutes())} から / 経過 ${minutes} 分`;
 }
 
 function buildMonthCells(year: number, month: number) {
@@ -132,6 +149,7 @@ export default function AdminHomePage() {
   const [todayDate, setTodayDate] = useState("");
   const [todayMessages, setTodayMessages] = useState<PortalMessage[]>([]);
   const [todayShift, setTodayShift] = useState<ShiftDay | null>(null);
+  const [onBreakStaff, setOnBreakStaff] = useState<OnBreakStaff[]>([]);
 
   const [staffs, setStaffs] = useState<Staff[]>([]);
   const [schedules, setSchedules] = useState<PortalSchedule[]>([]);
@@ -178,6 +196,12 @@ export default function AdminHomePage() {
 
     void fetchHome();
     void fetchStaffs();
+
+    // 休憩状況を最新に保つため 30 秒ごとに再取得する。
+    const id = window.setInterval(() => {
+      void fetchHome();
+    }, 30_000);
+    return () => window.clearInterval(id);
   }, [token, userRaw, navigate]);
 
   useEffect(() => {
@@ -214,6 +238,7 @@ export default function AdminHomePage() {
       setTodayDate(data?.todayDate || "");
       setTodayMessages(data?.todayMessages || []);
       setTodayShift(data?.todayShift || null);
+      setOnBreakStaff(Array.isArray(data?.onBreakStaff) ? data.onBreakStaff : []);
     } finally {
       setLoadingHome(false);
     }
@@ -575,6 +600,46 @@ export default function AdminHomePage() {
             </div>
           </section>
         </div>
+
+        <section
+          className={`rounded-3xl border p-6 shadow-sm ${
+            onBreakStaff.length > 0
+              ? "border-amber-300 bg-amber-50"
+              : "border-slate-200 bg-white"
+          }`}
+        >
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="text-xl font-bold text-slate-900">現在 休憩中のスタッフ</h2>
+            <span className="text-xs text-slate-500">
+              {onBreakStaff.length} 名 / 30秒ごとに更新
+            </span>
+          </div>
+
+          <div className="mt-4">
+            {onBreakStaff.length === 0 ? (
+              <div className="rounded-2xl bg-white px-4 py-4 text-sm text-slate-500 border border-slate-200">
+                現在 休憩中のスタッフはいません。
+              </div>
+            ) : (
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {onBreakStaff.map((s) => (
+                  <div
+                    key={s.id}
+                    className="rounded-2xl border border-amber-300 bg-white px-4 py-3"
+                  >
+                    <div className="font-bold text-slate-900">{s.name || "-"}</div>
+                    <div className="mt-1 text-xs text-slate-500">
+                      {s.staff_code ? `${s.staff_code} / ` : ""}{s.role || "-"}
+                    </div>
+                    <div className="mt-2 text-sm text-amber-700">
+                      {formatBreakSince(s.break_started_at)}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </section>
 
         <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
           <div className="flex items-center justify-between gap-4">

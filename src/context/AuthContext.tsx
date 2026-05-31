@@ -8,6 +8,8 @@ type User = {
   login_id?: string;
   role?: string;
   assigned_properties?: string[];
+  on_break?: boolean;
+  break_started_at?: string | null;
 };
 
 type AuthContextType = {
@@ -17,6 +19,7 @@ type AuthContextType = {
   login: (loginId: string, password: string) => Promise<void>;
   logout: () => void;
   fetchMe: () => Promise<void>;
+  setUser: (user: User | null) => void;
 };
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -80,6 +83,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       login,
       logout,
       fetchMe,
+      setUser,
     }),
     [user, loading, isLoggedIn]
   );
