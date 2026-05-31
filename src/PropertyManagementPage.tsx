@@ -279,9 +279,22 @@ export default function PropertyManagementPage() {
   const [prepNoteDrafts, setPrepNoteDrafts] = useState<Record<string, string>>({});
   const [prepSavingId, setPrepSavingId] = useState<string | null>(null);
   const [prepSort, setPrepSort] = useState<"date" | "room">("date");
+  const [prepSearch, setPrepSearch] = useState("");
+  const [prepDateFilter, setPrepDateFilter] = useState("");
 
   const sortedPrepItems = useMemo(() => {
-    const arr = [...prepItems];
+    const q = prepSearch.trim().toLowerCase();
+
+    const filtered = prepItems.filter((it) => {
+      if (prepDateFilter && it.task_date !== prepDateFilter) return false;
+      if (q) {
+        const hay = `${it.property_name} ${it.room_name}`.toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+      return true;
+    });
+
+    const arr = [...filtered];
     if (prepSort === "room") {
       arr.sort((a, b) => {
         const pa = `${a.property_name} ${a.room_name}`;
@@ -301,7 +314,7 @@ export default function PropertyManagementPage() {
       });
     }
     return arr;
-  }, [prepItems, prepSort]);
+  }, [prepItems, prepSort, prepSearch, prepDateFilter]);
 
   const [roomBulkMode, setRoomBulkMode] = useState(false);
   const [roomBulkForm, setRoomBulkForm] = useState({
@@ -965,7 +978,11 @@ export default function PropertyManagementPage() {
               <div>
                 <div className="text-xl font-extrabold">準備物確認（翌日以降）</div>
                 <div className="text-xs text-slate-500 mt-1">
-                  {prepLoading ? "読み込み中..." : `${sortedPrepItems.length} 件`}
+                  {prepLoading
+                    ? "読み込み中..."
+                    : prepSearch.trim() || prepDateFilter
+                    ? `該当 ${sortedPrepItems.length} 件 / 全 ${prepItems.length} 件`
+                    : `${sortedPrepItems.length} 件`}
                 </div>
               </div>
 
@@ -984,6 +1001,33 @@ export default function PropertyManagementPage() {
                   部屋名順
                 </ChipButton>
               </div>
+            </div>
+
+            <div className="mb-4 flex flex-wrap items-center gap-2">
+              <div className="w-full sm:w-[260px]">
+                <TextInput
+                  value={prepSearch}
+                  onChange={setPrepSearch}
+                  placeholder="物件名・部屋名で検索"
+                />
+              </div>
+              <div className="w-full sm:w-[180px]">
+                <TextInput
+                  type="date"
+                  value={prepDateFilter}
+                  onChange={setPrepDateFilter}
+                />
+              </div>
+              {prepSearch || prepDateFilter ? (
+                <Button
+                  onClick={() => {
+                    setPrepSearch("");
+                    setPrepDateFilter("");
+                  }}
+                >
+                  クリア
+                </Button>
+              ) : null}
             </div>
 
             {prepError ? (
@@ -1011,7 +1055,9 @@ export default function PropertyManagementPage() {
                   {sortedPrepItems.length === 0 && !prepLoading ? (
                     <tr>
                       <td colSpan={9} className="px-4 py-10 text-center text-sm text-slate-500">
-                        翌日以降の清掃タスクはありません。
+                        {prepSearch.trim() || prepDateFilter
+                          ? "該当する清掃タスクがありません。"
+                          : "翌日以降の清掃タスクはありません。"}
                       </td>
                     </tr>
                   ) : null}
