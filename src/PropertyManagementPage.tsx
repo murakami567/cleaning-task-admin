@@ -22,7 +22,27 @@ type RoomMaster = {
   capacity: number | null;
   room_sort_order: number | null;
   is_active: boolean;
+  prep_d?: number | null;
+  prep_s?: number | null;
+  prep_spare_s?: number | null;
+  prep_ta?: number | null;
 };
+
+type PrepItem = {
+  task_id: string;
+  task_date: string;
+  property_name: string;
+  room_name: string;
+  room_key: string;
+  towel_count: number | string;
+  prep_d: number;
+  prep_s: number;
+  prep_spare_s: number;
+  prep_ta: number;
+  note: string;
+};
+
+type MainTab = "rooms" | "prep";
 
 function ChipButton({
   children,
@@ -226,6 +246,10 @@ export default function PropertyManagementPage() {
     capacity: "1",
     room_sort_order: "999",
     is_active: true,
+    prep_d: "0",
+    prep_s: "0",
+    prep_spare_s: "0",
+    prep_ta: "0",
   });
 
   const [propertySearch, setPropertySearch] = useState("");
@@ -246,6 +270,14 @@ export default function PropertyManagementPage() {
     capacity: "1",
     room_sort_order: "999",
   });
+
+  const [mainTab, setMainTab] = useState<MainTab>("rooms");
+
+  const [prepItems, setPrepItems] = useState<PrepItem[]>([]);
+  const [prepLoading, setPrepLoading] = useState(false);
+  const [prepError, setPrepError] = useState("");
+  const [prepNoteDrafts, setPrepNoteDrafts] = useState<Record<string, string>>({});
+  const [prepSavingId, setPrepSavingId] = useState<string | null>(null);
 
   const [roomBulkMode, setRoomBulkMode] = useState(false);
   const [roomBulkForm, setRoomBulkForm] = useState({
@@ -290,6 +322,60 @@ export default function PropertyManagementPage() {
   useEffect(() => {
     void loadAll();
   }, []);
+
+  const loadPrepList = async () => {
+    try {
+      setPrepLoading(true);
+      setPrepError("");
+
+      const token = localStorage.getItem("admin_access_token") || "";
+      const res = await fetch(`${API_BASE}/api/admin-portal/prep-list`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error(`prep-list failed: ${res.status}`);
+
+      const data = await res.json();
+      const items: PrepItem[] = Array.isArray(data?.items) ? data.items : [];
+      setPrepItems(items);
+
+      const draftMap: Record<string, string> = {};
+      items.forEach((it) => {
+        draftMap[it.task_id] = it.note || "";
+      });
+      setPrepNoteDrafts(draftMap);
+    } catch (e) {
+      console.error(e);
+      setPrepError("準備物一覧の取得に失敗しました。");
+      setPrepItems([]);
+    } finally {
+      setPrepLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (mainTab === "prep") void loadPrepList();
+  }, [mainTab]);
+
+  const savePrepNote = async (taskId: string) => {
+    const note = prepNoteDrafts[taskId] ?? "";
+    try {
+      setPrepSavingId(taskId);
+      const res = await fetch(`${API_BASE}/tasks/update`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ task_id: taskId, note }),
+      });
+      if (!res.ok) throw new Error(`note update failed: ${res.status}`);
+      setPrepItems((prev) =>
+        prev.map((it) => (it.task_id === taskId ? { ...it, note } : it))
+      );
+    } catch (e) {
+      console.error(e);
+      alert("備考の保存に失敗しました。");
+    } finally {
+      setPrepSavingId(null);
+    }
+  };
 
   const selectedProperty = useMemo(
     () => properties.find((p) => p.id === selectedPropertyId) ?? null,
@@ -497,6 +583,10 @@ export default function PropertyManagementPage() {
       capacity: String(room.capacity ?? 1),
       room_sort_order: String(room.room_sort_order ?? 999),
       is_active: room.is_active,
+      prep_d: String(room.prep_d ?? 0),
+      prep_s: String(room.prep_s ?? 0),
+      prep_spare_s: String(room.prep_spare_s ?? 0),
+      prep_ta: String(room.prep_ta ?? 0),
     });
     setEditRoomDrawerOpen(true);
   };
@@ -572,6 +662,10 @@ export default function PropertyManagementPage() {
           capacity: Number(roomEditForm.capacity || 1),
           room_sort_order: Number(roomEditForm.room_sort_order || 999),
           is_active: roomEditForm.is_active,
+          prep_d: Number(roomEditForm.prep_d || 0),
+          prep_s: Number(roomEditForm.prep_s || 0),
+          prep_spare_s: Number(roomEditForm.prep_spare_s || 0),
+          prep_ta: Number(roomEditForm.prep_ta || 0),
         }),
       });
 
@@ -614,33 +708,54 @@ export default function PropertyManagementPage() {
 
   return (
     <div className="min-h-screen bg-slate-50 p-6">
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div>
           <div className="text-3xl font-black tracking-tight">物件管理</div>
-          <div className="mt-1 text-sm text-slate-500">物件マスタ・部屋マスタを管理します。</div>
+          <div className="mt-1 text-sm text-slate-500">
+            {mainTab === "rooms"
+              ? "物件マスタ・部屋マスタを管理します。"
+              : "翌日以降の清掃に対する準備物を確認します。"}
+          </div>
         </div>
 
         <div className="flex flex-wrap gap-2">
-          <Button
-            className="border-sky-200 bg-sky-50 text-sky-800 hover:bg-sky-100"
-            onClick={() => setPropertyDrawerOpen(true)}
-          >
-            ＋物件追加
-          </Button>
-          <Button
-            className="border-orange-200 bg-orange-50 text-orange-800 hover:bg-orange-100"
-            onClick={() => {
-              setRoomForm((p) => ({ ...p, property_id: selectedPropertyId || "" }));
-              setRoomBulkForm((p) => ({ ...p, property_id: selectedPropertyId || "" }));
-              setRoomDrawerOpen(true);
-            }}
-          >
-            ＋部屋追加
-          </Button>
-          <Button onClick={() => void loadAll()}>更新</Button>
+          {mainTab === "rooms" ? (
+            <>
+              <Button
+                className="border-sky-200 bg-sky-50 text-sky-800 hover:bg-sky-100"
+                onClick={() => setPropertyDrawerOpen(true)}
+              >
+                ＋物件追加
+              </Button>
+              <Button
+                className="border-orange-200 bg-orange-50 text-orange-800 hover:bg-orange-100"
+                onClick={() => {
+                  setRoomForm((p) => ({ ...p, property_id: selectedPropertyId || "" }));
+                  setRoomBulkForm((p) => ({ ...p, property_id: selectedPropertyId || "" }));
+                  setRoomDrawerOpen(true);
+                }}
+              >
+                ＋部屋追加
+              </Button>
+              <Button onClick={() => void loadAll()}>更新</Button>
+            </>
+          ) : (
+            <Button onClick={() => void loadPrepList()}>更新</Button>
+          )}
         </div>
       </div>
 
+      <div className="mb-6 flex gap-2">
+        <ChipButton active={mainTab === "rooms"} onClick={() => setMainTab("rooms")}>
+          物件・部屋一覧
+        </ChipButton>
+        <ChipButton active={mainTab === "prep"} onClick={() => setMainTab("prep")}>
+          準備物確認
+        </ChipButton>
+      </div>
+
+      {mainTab === "rooms" ? (
+        <>
       {error ? (
         <div className="mb-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
           {error}
@@ -816,6 +931,102 @@ export default function PropertyManagementPage() {
           </CardBody>
         </Card>
       </div>
+        </>
+      ) : null}
+
+      {mainTab === "prep" ? (
+        <Card>
+          <CardBody>
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <div>
+                <div className="text-xl font-extrabold">準備物確認（翌日以降）</div>
+                <div className="text-xs text-slate-500 mt-1">
+                  {prepLoading ? "読み込み中..." : `${prepItems.length} 件`}
+                </div>
+              </div>
+            </div>
+
+            {prepError ? (
+              <div className="mb-3 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+                {prepError}
+              </div>
+            ) : null}
+
+            <div className="overflow-auto">
+              <table className="w-full text-sm min-w-[960px]">
+                <thead className="bg-slate-50 text-xs text-slate-500">
+                  <tr>
+                    <th className="border-b px-3 py-2 text-left w-[100px]">清掃日</th>
+                    <th className="border-b px-3 py-2 text-left">部屋</th>
+                    <th className="border-b px-3 py-2 text-right w-[70px]">タオル</th>
+                    <th className="border-b px-3 py-2 text-right w-[60px]">D</th>
+                    <th className="border-b px-3 py-2 text-right w-[60px]">S</th>
+                    <th className="border-b px-3 py-2 text-right w-[70px]">予備S</th>
+                    <th className="border-b px-3 py-2 text-right w-[60px]">タ</th>
+                    <th className="border-b px-3 py-2 text-left min-w-[220px]">備考</th>
+                    <th className="border-b px-3 py-2 text-left w-[100px]">操作</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {prepItems.length === 0 && !prepLoading ? (
+                    <tr>
+                      <td colSpan={9} className="px-4 py-10 text-center text-sm text-slate-500">
+                        翌日以降の清掃タスクはありません。
+                      </td>
+                    </tr>
+                  ) : null}
+
+                  {prepItems.map((it) => {
+                    const draft = prepNoteDrafts[it.task_id] ?? "";
+                    const dirty = (draft ?? "") !== (it.note ?? "");
+                    return (
+                      <tr key={it.task_id} className="border-b hover:bg-slate-50">
+                        <td className="px-3 py-2 align-top">{it.task_date}</td>
+                        <td className="px-3 py-2 align-top">
+                          <div className="font-bold text-slate-900">{it.property_name}</div>
+                          <div className="text-xs text-slate-500">{it.room_name}</div>
+                        </td>
+                        <td className="px-3 py-2 align-top text-right">{it.towel_count}</td>
+                        <td className="px-3 py-2 align-top text-right">{it.prep_d}</td>
+                        <td className="px-3 py-2 align-top text-right">{it.prep_s}</td>
+                        <td className="px-3 py-2 align-top text-right">{it.prep_spare_s}</td>
+                        <td className="px-3 py-2 align-top text-right">{it.prep_ta}</td>
+                        <td className="px-3 py-2 align-top">
+                          <textarea
+                            value={draft}
+                            onChange={(e) =>
+                              setPrepNoteDrafts((prev) => ({
+                                ...prev,
+                                [it.task_id]: e.target.value,
+                              }))
+                            }
+                            placeholder="備考を入力"
+                            rows={2}
+                            className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none resize-y"
+                          />
+                        </td>
+                        <td className="px-3 py-2 align-top">
+                          <Button
+                            className={
+                              dirty
+                                ? "bg-slate-900 text-white border-slate-900 hover:bg-black"
+                                : ""
+                            }
+                            onClick={() => void savePrepNote(it.task_id)}
+                            disabled={prepSavingId === it.task_id || !dirty}
+                          >
+                            {prepSavingId === it.task_id ? "保存中" : "保存"}
+                          </Button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </CardBody>
+        </Card>
+      ) : null}
 
       <Drawer
         open={propertyDrawerOpen}
@@ -1126,6 +1337,40 @@ export default function PropertyManagementPage() {
               onChange={(v) => setRoomEditForm((p) => ({ ...p, room_sort_order: v }))}
             />
           </Field>
+
+          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+            <div className="mb-2 text-xs font-bold text-slate-600">準備物（部屋ごと）</div>
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="D">
+                <TextInput
+                  type="number"
+                  value={roomEditForm.prep_d}
+                  onChange={(v) => setRoomEditForm((p) => ({ ...p, prep_d: v }))}
+                />
+              </Field>
+              <Field label="S">
+                <TextInput
+                  type="number"
+                  value={roomEditForm.prep_s}
+                  onChange={(v) => setRoomEditForm((p) => ({ ...p, prep_s: v }))}
+                />
+              </Field>
+              <Field label="予備S">
+                <TextInput
+                  type="number"
+                  value={roomEditForm.prep_spare_s}
+                  onChange={(v) => setRoomEditForm((p) => ({ ...p, prep_spare_s: v }))}
+                />
+              </Field>
+              <Field label="タ">
+                <TextInput
+                  type="number"
+                  value={roomEditForm.prep_ta}
+                  onChange={(v) => setRoomEditForm((p) => ({ ...p, prep_ta: v }))}
+                />
+              </Field>
+            </div>
+          </div>
 
           <label className="inline-flex items-center gap-2 text-sm font-medium">
             <input
