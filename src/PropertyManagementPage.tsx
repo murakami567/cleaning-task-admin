@@ -278,6 +278,30 @@ export default function PropertyManagementPage() {
   const [prepError, setPrepError] = useState("");
   const [prepNoteDrafts, setPrepNoteDrafts] = useState<Record<string, string>>({});
   const [prepSavingId, setPrepSavingId] = useState<string | null>(null);
+  const [prepSort, setPrepSort] = useState<"date" | "room">("date");
+
+  const sortedPrepItems = useMemo(() => {
+    const arr = [...prepItems];
+    if (prepSort === "room") {
+      arr.sort((a, b) => {
+        const pa = `${a.property_name} ${a.room_name}`;
+        const pb = `${b.property_name} ${b.room_name}`;
+        const cmp = pa.localeCompare(pb, "ja");
+        if (cmp !== 0) return cmp;
+        return a.task_date.localeCompare(b.task_date);
+      });
+    } else {
+      arr.sort((a, b) => {
+        const cmp = a.task_date.localeCompare(b.task_date);
+        if (cmp !== 0) return cmp;
+        return `${a.property_name} ${a.room_name}`.localeCompare(
+          `${b.property_name} ${b.room_name}`,
+          "ja"
+        );
+      });
+    }
+    return arr;
+  }, [prepItems, prepSort]);
 
   const [roomBulkMode, setRoomBulkMode] = useState(false);
   const [roomBulkForm, setRoomBulkForm] = useState({
@@ -937,12 +961,28 @@ export default function PropertyManagementPage() {
       {mainTab === "prep" ? (
         <Card>
           <CardBody>
-            <div className="mb-4 flex items-center justify-between gap-3">
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
               <div>
                 <div className="text-xl font-extrabold">準備物確認（翌日以降）</div>
                 <div className="text-xs text-slate-500 mt-1">
-                  {prepLoading ? "読み込み中..." : `${prepItems.length} 件`}
+                  {prepLoading ? "読み込み中..." : `${sortedPrepItems.length} 件`}
                 </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-semibold text-slate-500">並び替え</span>
+                <ChipButton
+                  active={prepSort === "date"}
+                  onClick={() => setPrepSort("date")}
+                >
+                  日付順
+                </ChipButton>
+                <ChipButton
+                  active={prepSort === "room"}
+                  onClick={() => setPrepSort("room")}
+                >
+                  部屋名順
+                </ChipButton>
               </div>
             </div>
 
@@ -952,23 +992,23 @@ export default function PropertyManagementPage() {
               </div>
             ) : null}
 
-            <div className="overflow-auto">
+            <div className="overflow-auto max-h-[calc(100vh-280px)]">
               <table className="w-full text-sm min-w-[960px]">
-                <thead className="bg-slate-50 text-xs text-slate-500">
+                <thead className="sticky top-0 z-10 bg-slate-50 text-xs text-slate-500 shadow-[0_1px_0_0_rgb(226,232,240)]">
                   <tr>
-                    <th className="border-b px-3 py-2 text-left w-[100px]">清掃日</th>
-                    <th className="border-b px-3 py-2 text-left">部屋</th>
-                    <th className="border-b px-3 py-2 text-right w-[70px]">タオル</th>
-                    <th className="border-b px-3 py-2 text-right w-[60px]">D</th>
-                    <th className="border-b px-3 py-2 text-right w-[60px]">S</th>
-                    <th className="border-b px-3 py-2 text-right w-[70px]">予備S</th>
-                    <th className="border-b px-3 py-2 text-right w-[60px]">タ</th>
-                    <th className="border-b px-3 py-2 text-left min-w-[220px]">備考</th>
-                    <th className="border-b px-3 py-2 text-left w-[100px]">操作</th>
+                    <th className="px-3 py-2 text-left w-[100px] bg-slate-50">清掃日</th>
+                    <th className="px-3 py-2 text-left bg-slate-50">部屋</th>
+                    <th className="px-3 py-2 text-right w-[70px] bg-slate-50">タオル</th>
+                    <th className="px-3 py-2 text-right w-[60px] bg-slate-50">D</th>
+                    <th className="px-3 py-2 text-right w-[60px] bg-slate-50">S</th>
+                    <th className="px-3 py-2 text-right w-[70px] bg-slate-50">予備S</th>
+                    <th className="px-3 py-2 text-right w-[60px] bg-slate-50">タ</th>
+                    <th className="px-3 py-2 text-left min-w-[220px] bg-slate-50">備考</th>
+                    <th className="px-3 py-2 text-left w-[100px] bg-slate-50">操作</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {prepItems.length === 0 && !prepLoading ? (
+                  {sortedPrepItems.length === 0 && !prepLoading ? (
                     <tr>
                       <td colSpan={9} className="px-4 py-10 text-center text-sm text-slate-500">
                         翌日以降の清掃タスクはありません。
@@ -976,7 +1016,7 @@ export default function PropertyManagementPage() {
                     </tr>
                   ) : null}
 
-                  {prepItems.map((it) => {
+                  {sortedPrepItems.map((it) => {
                     const draft = prepNoteDrafts[it.task_id] ?? "";
                     const dirty = (draft ?? "") !== (it.note ?? "");
                     return (
