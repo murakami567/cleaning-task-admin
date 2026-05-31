@@ -1,7 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { api } from "../../lib/api";
 import { useAuth } from "../../context/AuthContext";
+
+const BREAK_TOGGLE_ROLES = new Set(["admin", "sub_admin", "leader"]);
 
 type TodayMessage = {
   id: string;
@@ -21,7 +23,53 @@ type HomeSummary = {
 
 export default function EmployeeHomePage() {
   const navigate = useNavigate();
-  const { user, logout } = useAuth();
+  const { user, logout, setUser } = useAuth();
+
+  const canToggleBreak = useMemo(
+    () => !!user?.role && BREAK_TOGGLE_ROLES.has(user.role),
+    [user?.role]
+  );
+
+  const [breakSaving, setBreakSaving] = useState(false);
+  const [breakElapsedMin, setBreakElapsedMin] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (!user?.on_break || !user?.break_started_at) {
+      setBreakElapsedMin(null);
+      return;
+    }
+
+    const tick = () => {
+      const start = new Date(user.break_started_at as string).getTime();
+      if (Number.isNaN(start)) {
+        setBreakElapsedMin(null);
+        return;
+      }
+      setBreakElapsedMin(Math.max(0, Math.floor((Date.now() - start) / 60000)));
+    };
+
+    tick();
+    const id = window.setInterval(tick, 30_000);
+    return () => window.clearInterval(id);
+  }, [user?.on_break, user?.break_started_at]);
+
+  async function handleToggleBreak() {
+    if (breakSaving) return;
+    try {
+      setBreakSaving(true);
+      const data = await api.post("/api/employee/break/toggle", {});
+      setUser({
+        ...(user ?? {}),
+        on_break: !!data?.on_break,
+        break_started_at: data?.break_started_at ?? null,
+      });
+    } catch (error) {
+      console.error("休憩切替エラー:", error);
+      alert(error instanceof Error ? error.message : "休憩の切替に失敗しました。");
+    } finally {
+      setBreakSaving(false);
+    }
+  }
 
   const [summary, setSummary] = useState<HomeSummary>({
   todayTaskCount: 0,
@@ -99,6 +147,47 @@ export default function EmployeeHomePage() {
           <LoadingBlock />
         ) : (
           <>
+            {canToggleBreak ? (
+              <section
+                className={`mb-4 rounded-3xl border p-4 shadow-sm transition ${
+                  user?.on_break
+                    ? "border-amber-300 bg-amber-50"
+                    : "border-slate-200 bg-white"
+                }`}
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="text-xs font-semibold text-slate-500">勤務状況</div>
+                    <div className="mt-1 text-lg font-bold text-slate-900">
+                      {user?.on_break ? "休憩中" : "勤務中"}
+                    </div>
+                    {user?.on_break && breakElapsedMin !== null ? (
+                      <div className="mt-1 text-xs text-amber-700">
+                        休憩開始から {breakElapsedMin} 分経過
+                      </div>
+                    ) : null}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleToggleBreak}
+                    disabled={breakSaving}
+                    className={`shrink-0 rounded-2xl px-5 py-3 text-sm font-bold transition disabled:opacity-50 ${
+                      user?.on_break
+                        ? "bg-emerald-600 text-white hover:bg-emerald-700"
+                        : "bg-amber-500 text-white hover:bg-amber-600"
+                    }`}
+                  >
+                    {breakSaving
+                      ? "切替中..."
+                      : user?.on_break
+                      ? "休憩終了"
+                      : "休憩開始"}
+                  </button>
+                </div>
+              </section>
+            ) : null}
+
             <section className="grid grid-cols-2 gap-3">
               <SummaryCard title="今日のタスク" value={summary.todayTaskCount} />
               <SummaryCard title="今後のタスク" value={summary.upcomingTaskCount} />
