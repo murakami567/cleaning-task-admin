@@ -3,7 +3,6 @@ import { useEffect } from "react";
 
 import AdminTasksPagePreview from "./AdminTasksPagePreview";
 import PropertyManagementPage from "./PropertyManagementPage";
-import OpeningManagementPage from "./OpeningManagementPage";
 import FacilityManagementPage from "./FacilityManagementPage";
 import ShiftManagementPage from "./ShiftManagementPage";
 import ShiftBoardPage from "./ShiftBoardPage";
@@ -62,7 +61,6 @@ function AdminLayout() {
         <AdminNavButton to="/admin/home">ホーム</AdminNavButton>
         <AdminNavButton to="/admin/tasks">タスク管理</AdminNavButton>
         <AdminNavButton to="/admin/properties">物件管理</AdminNavButton>
-        <AdminNavButton to="/admin/openings">新規オープン進捗</AdminNavButton>
         <AdminNavButton to="/admin/facilities">設備管理</AdminNavButton>
         <AdminNavButton to="/admin/shifts">シフト管理</AdminNavButton>
         <AdminNavButton to="/admin/shiftboard">シフト表</AdminNavButton>
@@ -127,7 +125,6 @@ export default function App() {
           <Route path="home" element={<AdminHomePage />} />
           <Route path="tasks" element={<AdminTasksPagePreview />} />
           <Route path="properties" element={<PropertyManagementPage />} />
-          <Route path="openings" element={<OpeningManagementPage />} />
           <Route path="facilities" element={<FacilityManagementPage />} />
           <Route path="shifts" element={<ShiftManagementPage />} />
           <Route path="shiftboard" element={<ShiftBoardPage />} />
