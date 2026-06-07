@@ -463,7 +463,11 @@ function Td({
  * Domain types
  * ========================= */
 
-type Attendee = { userId: string; name: string };
+type Attendee = {
+  userId: string;
+  name: string;
+  availablePropertyIds: string[];
+};
 
 type CleaningTask = {
   id: string;
@@ -686,11 +690,15 @@ async function fetchAvailableStaffByDate(shiftDate: string): Promise<Attendee[]>
 
   const entries = Array.isArray(day.shift_entries) ? day.shift_entries : [];
 
+  // 出勤のみ (遅刻は対応エリア絞り込みの対象外なので除外)
   return entries
-    .filter((e: any) => e.status === "出勤" || e.status === "遅刻")
+    .filter((e: any) => e.status === "出勤")
     .map((e: any) => ({
       userId: e.staff_id,
       name: e.staff_members?.staff_name || e.staff_id,
+      availablePropertyIds: Array.isArray(e.staff_members?.available_property_ids)
+        ? e.staff_members.available_property_ids
+        : [],
     }));
 }
 
@@ -912,10 +920,34 @@ export default function AdminTasksPagePreview() {
     [cleaningTasks, selectedCleaningId]
   );
 
+  // 物件名 → property_id のマップ。
+  // 担当者の available_property_ids と突合するために使う。
+  const propertyNameToId = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const p of properties) {
+      if (p.property_name) map.set(p.property_name, p.id);
+      if (p.normalized_name) map.set(p.normalized_name, p.id);
+    }
+    return map;
+  }, [properties]);
+
+  // 「シフトが出勤」かつ「アカウントの対応可能物件にその物件が含まれる」者だけに絞る。
+  // 物件マスタに該当が無い場合 (property_id が引けない) は安全側で全員許可する。
+  const filterAttendeesForProperty = (
+    attendees: Attendee[],
+    propertyName: string | undefined | null
+  ): Attendee[] => {
+    if (!propertyName) return attendees;
+    const propertyId = propertyNameToId.get(propertyName);
+    if (!propertyId) return attendees;
+    return attendees.filter((u) => u.availablePropertyIds.includes(propertyId));
+  };
+
   const selectedCleaningAttendees = useMemo(() => {
     if (!selectedCleaningTask) return [] as Attendee[];
-    return attendeesByDate[selectedCleaningTask.date] ?? [];
-  }, [selectedCleaningTask, attendeesByDate]);
+    const all = attendeesByDate[selectedCleaningTask.date] ?? [];
+    return filterAttendeesForProperty(all, selectedCleaningTask.property);
+  }, [selectedCleaningTask, attendeesByDate, propertyNameToId]);
 
   const selectedCheckerOptions = useMemo(
     () =>
@@ -1417,7 +1449,8 @@ export default function AdminTasksPagePreview() {
                   </thead>
                   <tbody>
                     {visibleCleaningTasks.map((t) => {
-                      const attendees = attendeesByDate[t.date] ?? [];
+                      const allAttendees = attendeesByDate[t.date] ?? [];
+                      const attendees = filterAttendeesForProperty(allAttendees, t.property);
                       const isSelected = t.id === selectedCleaningId;
                       const propertyColor = getPropertyColor(t.property);
                       const normalizedPropertyName = extractPropertyName(t.property);
@@ -1489,7 +1522,8 @@ export default function AdminTasksPagePreview() {
                                 }
                               />
                             ) : (
-                              assigneeLabels(t.assigneeIds ?? [], attendees)
+                              // 既存の割当名はフィルタ前リストから引いて、フィルタ外れ者でも名前を表示する
+                              assigneeLabels(t.assigneeIds ?? [], allAttendees)
                             )}
                           </Td>
 
