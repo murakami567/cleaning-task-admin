@@ -162,6 +162,48 @@ export default function ShiftBoardPage() {
   const [workloadMap, setWorkloadMap] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(false);
   const [savingKey, setSavingKey] = useState("");
+  const [jinjerSyncing, setJinjerSyncing] = useState(false);
+
+  const syncJinjer = async () => {
+    if (jinjerSyncing) return;
+    if (!confirm(`${year}年${month}月のシフトを Jinjer から取り込みます。よろしいですか？`)) {
+      return;
+    }
+    try {
+      setJinjerSyncing(true);
+      const token = localStorage.getItem("admin_access_token") || "";
+      const res = await fetch(`${API_BASE}/jinjer/shifts/sync`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ month: `${year}-${pad2(month)}` }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(body?.detail || `${res.status}`);
+      }
+      const skipped = Array.isArray(body?.skipped_no_staff) ? body.skipped_no_staff : [];
+      const errors = Array.isArray(body?.errors) ? body.errors : [];
+      const msg = [
+        `Jinjer同期 完了`,
+        `取得: ${body.fetched ?? 0} 件`,
+        `保存: ${body.saved ?? 0} 件`,
+        skipped.length > 0
+          ? `未マッチ社員番号: ${skipped.length} 件 (${skipped.slice(0, 5).join(", ")}${skipped.length > 5 ? " ほか" : ""})`
+          : "",
+        errors.length > 0 ? `エラー: ${errors.length} 件` : "",
+      ].filter(Boolean).join("\n");
+      alert(msg);
+      await loadBoard(year, month);
+    } catch (e: any) {
+      console.error(e);
+      alert(`Jinjer同期に失敗しました: ${e?.message || ""}`);
+    } finally {
+      setJinjerSyncing(false);
+    }
+  };
 
   const loadBoard = async (targetYear = year, targetMonth = month) => {
     try {
@@ -361,6 +403,16 @@ export default function ShiftBoardPage() {
                     週
                   </SmallToggle>
                 </div>
+
+                <button
+                  type="button"
+                  disabled={jinjerSyncing}
+                  onClick={() => void syncJinjer()}
+                  className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-bold text-emerald-700 hover:bg-emerald-100 disabled:opacity-50"
+                  title={`${year}年${month}月分を Jinjer から取り込みます`}
+                >
+                  {jinjerSyncing ? "同期中..." : "Jinjerから同期"}
+                </button>
               </div>
             </div>
 
