@@ -463,25 +463,33 @@ export default function ShiftBoardPage() {
     </thead>
 
     <tbody>
-      {visibleDates.map((date) => (
-        <tr key={date} className="border-b border-slate-100 last:border-b-0">
-          <td className="sticky left-0 z-30 w-[72px] min-w-[72px] bg-white px-4 py-3 shadow-[2px_0_0_#e2e8f0]">
+      {visibleDates.map((date) => {
+        const isToday = date === todayIso;
+        // sticky なセルは bg を持たないと右側のセルが透けてしまうので、
+        // 当日は薄赤(rose-50)、それ以外は白を当てる。
+        const stickyBg = isToday ? "bg-rose-50" : "bg-white";
+        return (
+        <tr
+          key={date}
+          className={`border-b border-slate-100 last:border-b-0 ${isToday ? "bg-rose-50" : ""}`}
+        >
+          <td className={`sticky left-0 z-30 w-[72px] min-w-[72px] ${stickyBg} px-4 py-3 shadow-[2px_0_0_#e2e8f0]`}>
             {formatDateLabel(date)}
           </td>
 
-          <td className="sticky left-[72px] z-30 w-[64px] min-w-[64px] bg-white px-4 py-3 shadow-[2px_0_0_#e2e8f0]">
+          <td className={`sticky left-[72px] z-30 w-[64px] min-w-[64px] ${stickyBg} px-4 py-3 shadow-[2px_0_0_#e2e8f0]`}>
             {weekdayLabel(date)}
           </td>
 
-          <td className="sticky left-[136px] z-30 w-[96px] min-w-[96px] bg-white px-4 py-3 font-semibold shadow-[2px_0_0_#e2e8f0]">
+          <td className={`sticky left-[136px] z-30 w-[96px] min-w-[96px] ${stickyBg} px-4 py-3 font-semibold shadow-[2px_0_0_#e2e8f0]`}>
             {getCleanCount(date)}
           </td>
 
-          <td className="sticky left-[232px] z-30 w-[96px] min-w-[96px] bg-white px-4 py-3 shadow-[2px_0_0_#e2e8f0]">
+          <td className={`sticky left-[232px] z-30 w-[96px] min-w-[96px] ${stickyBg} px-4 py-3 shadow-[2px_0_0_#e2e8f0]`}>
             {getAttendanceCount(date)}
           </td>
 
-          <td className="sticky left-[328px] z-30 w-[140px] min-w-[140px] bg-white px-4 py-3 shadow-[2px_0_0_#e2e8f0]">
+          <td className={`sticky left-[328px] z-30 w-[140px] min-w-[140px] ${stickyBg} px-4 py-3 shadow-[2px_0_0_#e2e8f0]`}>
             {getWorkload(date)}
           </td>
 
@@ -491,7 +499,7 @@ export default function ShiftBoardPage() {
             const saving = savingKey === key;
 
             return (
-              <td key={staff.id} className="min-w-[120px] bg-white px-4 py-3">
+              <td key={staff.id} className={`min-w-[120px] ${stickyBg} px-4 py-3`}>
                 <select
                   value={current}
                   disabled={saving}
@@ -512,7 +520,8 @@ export default function ShiftBoardPage() {
             );
           })}
         </tr>
-      ))}
+        );
+      })}
     </tbody>
   </table>
 </div>
