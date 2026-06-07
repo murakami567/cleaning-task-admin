@@ -12,7 +12,24 @@ type Staff = {
   sort_order: number | null;
   note: string | null;
   password?: string | null;
+  area?: string | null;
+  available_property_ids?: string[] | null;
 };
+
+type Property = {
+  id: string;
+  property_code: string | null;
+  property_name: string;
+  sort_order?: number | null;
+  is_active?: boolean;
+};
+
+const AREA_OPTIONS = [
+  { value: "", label: "未設定" },
+  { value: "博多", label: "博多" },
+  { value: "天神", label: "天神" },
+  { value: "F6", label: "F6" },
+];
 
 function Button({ children, className = "", ...props }: any) {
   return (
@@ -93,7 +110,9 @@ function Select({ value, onChange, options }: any) {
 
 export default function AccountManagementPage() {
   const [staffs, setStaffs] = useState<Staff[]>([]);
+  const [properties, setProperties] = useState<Property[]>([]);
   const [q, setQ] = useState("");
+  const [propertyQuery, setPropertyQuery] = useState("");
   const [showInactive, setShowInactive] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [selected, setSelected] = useState<Staff | null>(null);
@@ -108,6 +127,8 @@ export default function AccountManagementPage() {
     sort_order: "999",
     note: "",
     password: "",
+    area: "",
+    available_property_ids: [] as string[],
   });
 
   const loadStaffs = async () => {
@@ -126,8 +147,25 @@ export default function AccountManagementPage() {
     }
   };
 
+  const loadProperties = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/properties`);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.detail || "物件取得に失敗しました。");
+      const list: Property[] = Array.isArray(data) ? data : [];
+      // 有効物件のみ、sort_order 昇順
+      const filtered = list
+        .filter((p) => p.is_active !== false)
+        .sort((a, b) => (a.sort_order ?? 999) - (b.sort_order ?? 999));
+      setProperties(filtered);
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
   useEffect(() => {
     void loadStaffs();
+    void loadProperties();
   }, []);
 
   const filtered = useMemo(() => {
@@ -148,6 +186,7 @@ export default function AccountManagementPage() {
 
   const openNew = () => {
     setSelected(null);
+    setPropertyQuery("");
     setForm({
       id: "",
       staff_code: "",
@@ -157,12 +196,15 @@ export default function AccountManagementPage() {
       sort_order: "999",
       note: "",
       password: "",
+      area: "",
+      available_property_ids: [],
     });
     setDrawerOpen(true);
   };
 
   const openEdit = (staff: Staff) => {
     setSelected(staff);
+    setPropertyQuery("");
     setForm({
       id: staff.id,
       staff_code: staff.staff_code ?? "",
@@ -172,6 +214,10 @@ export default function AccountManagementPage() {
       sort_order: String(staff.sort_order ?? 999),
       note: staff.note ?? "",
       password: "",
+      area: staff.area ?? "",
+      available_property_ids: Array.isArray(staff.available_property_ids)
+        ? staff.available_property_ids
+        : [],
     });
     setDrawerOpen(true);
   };
@@ -199,6 +245,8 @@ export default function AccountManagementPage() {
         sort_order: Number(form.sort_order || 999),
         note: form.note,
         password: form.password || null,
+        area: form.area || "",
+        available_property_ids: form.available_property_ids,
       };
 
       const res = await fetch(`${API_BASE}/staffs/upsert`, {
@@ -275,6 +323,8 @@ export default function AccountManagementPage() {
                 <th className="text-left px-3 py-3">スタッフコード</th>
                 <th className="text-left px-3 py-3">名前</th>
                 <th className="text-left px-3 py-3">権限</th>
+                <th className="text-left px-3 py-3">エリア</th>
+                <th className="text-left px-3 py-3">対応物件</th>
                 <th className="text-left px-3 py-3">状態</th>
                 <th className="text-left px-3 py-3">備考</th>
               </tr>
@@ -290,6 +340,12 @@ export default function AccountManagementPage() {
                   <td className="px-3 py-3 font-semibold">{staff.staff_code}</td>
                   <td className="px-3 py-3 font-extrabold">{staff.staff_name}</td>
                   <td className="px-3 py-3">{staff.role}</td>
+                  <td className="px-3 py-3">{staff.area || ""}</td>
+                  <td className="px-3 py-3 text-xs text-slate-600">
+                    {Array.isArray(staff.available_property_ids) && staff.available_property_ids.length > 0
+                      ? `${staff.available_property_ids.length} 件`
+                      : ""}
+                  </td>
                   <td className="px-3 py-3">
                     <span
                       className={`rounded-full border px-3 py-1 text-xs font-bold ${
@@ -386,6 +442,94 @@ export default function AccountManagementPage() {
               />
               有効
             </label>
+          </div>
+
+          <Field label="対応エリア">
+            <Select
+              value={form.area}
+              onChange={(v: string) => setForm((s) => ({ ...s, area: v }))}
+              options={AREA_OPTIONS}
+            />
+          </Field>
+
+          <div className="sm:col-span-2">
+            <Field label={`対応可能物件 (${form.available_property_ids.length} 件選択中)`}>
+              <div className="rounded-xl border border-slate-200 bg-white">
+                <div className="p-2 border-b border-slate-100 flex items-center gap-2">
+                  <input
+                    className="flex-1 h-9 rounded-lg border border-slate-200 px-3 text-sm outline-none"
+                    placeholder="物件名で絞り込み"
+                    value={propertyQuery}
+                    onChange={(e) => setPropertyQuery(e.target.value)}
+                  />
+                  <button
+                    type="button"
+                    className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold hover:bg-slate-50"
+                    onClick={() =>
+                      setForm((s) => ({
+                        ...s,
+                        available_property_ids: properties.map((p) => p.id),
+                      }))
+                    }
+                  >
+                    全選択
+                  </button>
+                  <button
+                    type="button"
+                    className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold hover:bg-slate-50"
+                    onClick={() =>
+                      setForm((s) => ({ ...s, available_property_ids: [] }))
+                    }
+                  >
+                    全解除
+                  </button>
+                </div>
+
+                <div className="max-h-[260px] overflow-y-auto p-2 grid grid-cols-1 sm:grid-cols-2 gap-1">
+                  {properties
+                    .filter((p) => {
+                      const qq = propertyQuery.trim().toLowerCase();
+                      if (!qq) return true;
+                      return `${p.property_name} ${p.property_code ?? ""}`
+                        .toLowerCase()
+                        .includes(qq);
+                    })
+                    .map((p) => {
+                      const checked = form.available_property_ids.includes(p.id);
+                      return (
+                        <label
+                          key={p.id}
+                          className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm cursor-pointer ${
+                            checked
+                              ? "bg-sky-50 border-sky-300"
+                              : "bg-white border-slate-200 hover:bg-slate-50"
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={(e) => {
+                              setForm((s) => {
+                                const next = new Set(s.available_property_ids);
+                                if (e.target.checked) next.add(p.id);
+                                else next.delete(p.id);
+                                return { ...s, available_property_ids: Array.from(next) };
+                              });
+                            }}
+                          />
+                          <span className="truncate">{p.property_name}</span>
+                        </label>
+                      );
+                    })}
+
+                  {properties.length === 0 ? (
+                    <div className="col-span-full text-xs text-slate-500 px-2 py-3">
+                      物件が登録されていません。物件管理から追加してください。
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+            </Field>
           </div>
 
           <div className="sm:col-span-2">
