@@ -300,6 +300,8 @@ export default function ShiftManagementPage() {
   const openScheduleModal = (staff: Staff) => setScheduleStaff(staff);
   const closeScheduleModal = () => setScheduleStaff(null);
 
+  const [nextDayModalOpen, setNextDayModalOpen] = useState(false);
+
   const isToday = selectedDate === new Date().toISOString().slice(0, 10);
 
   return (
@@ -311,6 +313,12 @@ export default function ShiftManagementPage() {
         </div>
 
         <div className="flex flex-wrap gap-2 items-center">
+          <Button
+            className="border-sky-300 bg-sky-50 text-sky-700 hover:bg-sky-100"
+            onClick={() => setNextDayModalOpen(true)}
+          >
+            翌日連絡
+          </Button>
           <TextInput type="date" value={selectedDate} onChange={setSelectedDate} />
           <Button onClick={() => { void loadShift(selectedDate); void loadSchedules(selectedDate); }}>更新</Button>
         </div>
@@ -474,6 +482,220 @@ export default function ShiftManagementPage() {
           onChanged={() => void loadSchedules(selectedDate)}
         />
       ) : null}
+
+      {nextDayModalOpen ? (
+        <NextDayNotificationModal
+          adminToken={adminToken}
+          onClose={() => setNextDayModalOpen(false)}
+        />
+      ) : null}
+    </div>
+  );
+}
+
+type NextDayTarget = {
+  staff_id: string;
+  staff_code: string;
+  staff_name: string;
+  sort_order: number;
+  lineworks_channel_id: string;
+  assigned_area: string;
+};
+
+function NextDayNotificationModal({
+  adminToken,
+  onClose,
+}: {
+  adminToken: string;
+  onClose: () => void;
+}) {
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [targetDate, setTargetDate] = useState("");
+  const [items, setItems] = useState<NextDayTarget[]>([]);
+  const [locations, setLocations] = useState<Record<string, string>>({});
+  const [sending, setSending] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        setLoading(true);
+        setError("");
+        const res = await fetch(`${API_BASE}/lineworks/next-day-targets`, {
+          headers: { Authorization: `Bearer ${adminToken}` },
+        });
+        const body = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          throw new Error(body?.detail || `${res.status}`);
+        }
+        const list: NextDayTarget[] = Array.isArray(body?.items) ? body.items : [];
+        setTargetDate(body?.target_date || "");
+        setItems(list);
+        // 既存の assigned_area を初期値として埋める
+        const init: Record<string, string> = {};
+        list.forEach((it) => {
+          init[it.staff_id] = it.assigned_area || "";
+        });
+        setLocations(init);
+      } catch (e: any) {
+        console.error(e);
+        setError(e?.message || "対象の取得に失敗しました。");
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [adminToken]);
+
+  const handleSend = async () => {
+    if (sending) return;
+    if (items.length === 0) {
+      alert("送信対象がいません。");
+      return;
+    }
+    const missingLoc = items.filter((it) => !(locations[it.staff_id] || "").trim());
+    if (missingLoc.length > 0) {
+      const names = missingLoc.slice(0, 5).map((x) => x.staff_name).join(", ");
+      if (!confirm(`出勤場所が未入力のスタッフがいます (${missingLoc.length} 名: ${names}${missingLoc.length > 5 ? " ほか" : ""})。\n未入力分はスキップして送信しますか？`)) {
+        return;
+      }
+    }
+
+    const payload = items
+      .filter((it) => (locations[it.staff_id] || "").trim())
+      .map((it) => ({
+        staff_id: it.staff_id,
+        name: it.staff_name,
+        channel_id: it.lineworks_channel_id,
+        location: (locations[it.staff_id] || "").trim(),
+      }));
+
+    if (payload.length === 0) {
+      alert("送信対象がありません。");
+      return;
+    }
+
+    if (!confirm(`${targetDate} の翌日連絡を ${payload.length} 名に送信します。よろしいですか？`)) {
+      return;
+    }
+
+    try {
+      setSending(true);
+      const res = await fetch(`${API_BASE}/lineworks/next-day-notification`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${adminToken}`,
+        },
+        body: JSON.stringify({ items: payload }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body?.detail || `${res.status}`);
+
+      const failed = (body?.results || []).filter((r: any) => !r.ok);
+      const msg = [
+        `送信完了: ${body.sent}/${body.total} 名`,
+        failed.length > 0
+          ? `失敗: ${failed.slice(0, 5).map((f: any) => `${f.name}(${f.error})`).join(", ")}${failed.length > 5 ? " ほか" : ""}`
+          : "",
+      ].filter(Boolean).join("\n");
+      alert(msg);
+      if (failed.length === 0) {
+        onClose();
+      }
+    } catch (e: any) {
+      console.error(e);
+      alert(`送信に失敗しました: ${e?.message || ""}`);
+    } finally {
+      setSending(false);
+    }
+  };
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-3"
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      <div className="flex w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
+        <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
+          <div>
+            <div className="text-xs text-slate-500">LINE WORKS 翌日連絡</div>
+            <div className="text-lg font-extrabold">{targetDate || "翌日"} 出勤予定スタッフ</div>
+          </div>
+          <button
+            onClick={onClose}
+            className="rounded-full border border-slate-200 px-3 py-1.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+          >
+            閉じる
+          </button>
+        </div>
+
+        <div className="max-h-[70vh] overflow-y-auto px-5 py-4 space-y-2">
+          {loading ? (
+            <div className="text-sm text-slate-500">読み込み中...</div>
+          ) : error ? (
+            <div className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
+              {error}
+            </div>
+          ) : items.length === 0 ? (
+            <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-6 text-sm text-slate-500 text-center">
+              翌日 出勤予定の staff ロールはいません。
+            </div>
+          ) : (
+            items.map((it) => {
+              const hasChannel = !!it.lineworks_channel_id;
+              return (
+                <div
+                  key={it.staff_id}
+                  className={`rounded-xl border p-3 ${hasChannel ? "border-slate-200" : "border-amber-300 bg-amber-50"}`}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="min-w-0">
+                      <div className="font-bold text-slate-900 truncate">{it.staff_name}</div>
+                      <div className="text-xs text-slate-500 truncate">
+                        {it.staff_code || ""}
+                        {hasChannel ? "" : " / ⚠ チャンネルID未設定"}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mt-2">
+                    <div className="mb-1 text-[10px] font-semibold text-slate-500">出勤場所</div>
+                    <TextInput
+                      value={locations[it.staff_id] ?? ""}
+                      onChange={(v: string) =>
+                        setLocations((prev) => ({ ...prev, [it.staff_id]: v }))
+                      }
+                      placeholder="例) FFFホテル 全体清掃"
+                    />
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+
+        <div className="border-t border-slate-200 bg-white px-5 py-3 flex items-center justify-between gap-3">
+          <div className="text-xs text-slate-500">
+            {items.length > 0
+              ? `${items.length} 名 / 入力済 ${
+                  Object.values(locations).filter((v) => String(v ?? "").trim()).length
+                } 名`
+              : ""}
+          </div>
+          <div className="flex gap-2">
+            <Button onClick={onClose}>キャンセル</Button>
+            <Button
+              className="bg-slate-900 text-white border-slate-900 hover:bg-black"
+              disabled={sending || items.length === 0}
+              onClick={() => void handleSend()}
+            >
+              {sending ? "送信中..." : "LINE WORKS に送信"}
+            </Button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

@@ -14,6 +14,7 @@ type Staff = {
   password?: string | null;
   area?: string | null;
   available_property_ids?: string[] | null;
+  lineworks_channel_id?: string | null;
 };
 
 type Property = {
@@ -129,6 +130,7 @@ export default function AccountManagementPage() {
     password: "",
     area: "",
     available_property_ids: [] as string[],
+    lineworks_channel_id: "",
   });
 
   const loadStaffs = async () => {
@@ -198,6 +200,7 @@ export default function AccountManagementPage() {
       password: "",
       area: "",
       available_property_ids: [],
+      lineworks_channel_id: "",
     });
     setDrawerOpen(true);
   };
@@ -218,6 +221,7 @@ export default function AccountManagementPage() {
       available_property_ids: Array.isArray(staff.available_property_ids)
         ? staff.available_property_ids
         : [],
+      lineworks_channel_id: staff.lineworks_channel_id ?? "",
     });
     setDrawerOpen(true);
   };
@@ -247,6 +251,7 @@ export default function AccountManagementPage() {
         password: form.password || null,
         area: form.area || "",
         available_property_ids: form.available_property_ids,
+        lineworks_channel_id: form.lineworks_channel_id || "",
       };
 
       const res = await fetch(`${API_BASE}/staffs/upsert`, {
@@ -449,6 +454,16 @@ export default function AccountManagementPage() {
               value={form.area}
               onChange={(v: string) => setForm((s) => ({ ...s, area: v }))}
               options={AREA_OPTIONS}
+            />
+          </Field>
+
+          <Field label="LINE WORKS チャンネルID">
+            <TextInput
+              value={form.lineworks_channel_id}
+              onChange={(v: string) =>
+                setForm((s) => ({ ...s, lineworks_channel_id: v }))
+              }
+              placeholder="翌日連絡の送り先 (例: 01x-xxxxxxxx)"
             />
           </Field>
 
