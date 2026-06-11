@@ -7,3 +7,62 @@ html, body, #root {
   padding: 0;
   min-height: 100%;
 }
+
+@media (min-width: 1280px) {
+  body:has(input[placeholder="物件名・物件コード・キーで検索"]) {
+    overflow: hidden;
+  }
+
+  body:has(input[placeholder="物件名・物件コード・キーで検索"]) #root > div {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  body:has(input[placeholder="物件名・物件コード・キーで検索"]) #root > div > div:last-child {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  body:has(input[placeholder="物件名・物件コード・キーで検索"]) div[class*="xl:grid-cols-[420px_minmax(0,1fr)]"] {
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  body:has(input[placeholder="物件名・物件コード・キーで検索"]) div[class*="xl:grid-cols-[420px_minmax(0,1fr)]"] > div[class*="rounded-[24px]"] {
+    display: flex;
+    min-height: 0;
+  }
+
+  body:has(input[placeholder="物件名・物件コード・キーで検索"]) div[class*="xl:grid-cols-[420px_minmax(0,1fr)]"] > div[class*="rounded-[24px]"] > div {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-height: 0;
+  }
+
+  body:has(input[placeholder="物件名・物件コード・キーで検索"]) div[class*="xl:grid-cols-[420px_minmax(0,1fr)]"] > div[class*="rounded-[24px]"]:first-child > div > .space-y-2 {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding-right: 4px;
+  }
+
+  body:has(input[placeholder="物件名・物件コード・キーで検索"]) div[class*="xl:grid-cols-[420px_minmax(0,1fr)]"] > div[class*="rounded-[24px]"]:nth-child(2) > div > .overflow-auto {
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
+  }
+
+  body:has(input[placeholder="物件名・物件コード・キーで検索"]) div[class*="xl:grid-cols-[420px_minmax(0,1fr)]"] thead {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+}
