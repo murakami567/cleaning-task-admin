@@ -43,6 +43,7 @@ type PrepItem = {
 };
 
 type MainTab = "rooms" | "prep";
+type DragKind = "property" | "room";
 
 function ChipButton({
   children,
@@ -104,12 +105,28 @@ function Badge({ on }: { on: boolean }) {
   );
 }
 
-function Card({ children }: { children: React.ReactNode }) {
-  return <div className="rounded-[24px] border border-slate-200 bg-white shadow-sm">{children}</div>;
+function Card({
+  children,
+  className = "",
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <div className={`rounded-[24px] border border-slate-200 bg-white shadow-sm ${className}`}>
+      {children}
+    </div>
+  );
 }
 
-function CardBody({ children }: { children: React.ReactNode }) {
-  return <div className="p-4">{children}</div>;
+function CardBody({
+  children,
+  className = "",
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return <div className={`p-4 ${className}`}>{children}</div>;
 }
 
 function Drawer({
@@ -256,6 +273,8 @@ export default function PropertyManagementPage() {
   const [activeFilter, setActiveFilter] = useState<"active" | "all">("active");
   const [selectedPropertyId, setSelectedPropertyId] = useState("");
   const [roomSearch, setRoomSearch] = useState("");
+  const [dragItem, setDragItem] = useState<{ kind: DragKind; id: string } | null>(null);
+  const [sortSaving, setSortSaving] = useState<DragKind | null>(null);
 
   const [propertyForm, setPropertyForm] = useState({
     property_code: "",
@@ -456,6 +475,121 @@ export default function PropertyManagementPage() {
         })),
     [properties]
   );
+
+  const moveArrayItem = <T,>(items: T[], fromIndex: number, toIndex: number) => {
+    const next = [...items];
+    const [moved] = next.splice(fromIndex, 1);
+    next.splice(toIndex, 0, moved);
+    return next;
+  };
+
+  const savePropertyOrder = async (nextProperties: PropertyMaster[]) => {
+    setSortSaving("property");
+    try {
+      await Promise.all(
+        nextProperties.map((property, index) =>
+          fetch(`${API_BASE}/properties/update`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              property_id: property.id,
+              property_code: property.property_code,
+              property_name: property.property_name,
+              normalized_name: property.normalized_name ?? property.property_name,
+              sort_order: index + 1,
+              is_active: property.is_active,
+            }),
+          }).then((res) => {
+            if (!res.ok) throw new Error(`property sort update failed: ${res.status}`);
+          })
+        )
+      );
+      await loadAll();
+    } catch (e) {
+      console.error(e);
+      alert("物件の並び替え保存に失敗しました。");
+      await loadAll();
+    } finally {
+      setSortSaving(null);
+    }
+  };
+
+  const saveRoomOrder = async (nextRooms: RoomMaster[]) => {
+    setSortSaving("room");
+    try {
+      await Promise.all(
+        nextRooms.map((room, index) =>
+          fetch(`${API_BASE}/rooms/update`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              room_id: room.id,
+              property_id: room.property_id,
+              room_name: room.room_name,
+              room_code: room.room_code ?? room.room_name,
+              room_key: room.room_key,
+              normalized_room_key: room.normalized_room_key ?? room.room_key,
+              capacity: room.capacity ?? 1,
+              room_sort_order: index + 1,
+              is_active: room.is_active,
+              prep_d: room.prep_d ?? 0,
+              prep_s: room.prep_s ?? 0,
+              prep_spare_s: room.prep_spare_s ?? 0,
+              prep_ta: room.prep_ta ?? 0,
+            }),
+          }).then((res) => {
+            if (!res.ok) throw new Error(`room sort update failed: ${res.status}`);
+          })
+        )
+      );
+      await loadAll();
+    } catch (e) {
+      console.error(e);
+      alert("部屋の並び替え保存に失敗しました。");
+      await loadAll();
+    } finally {
+      setSortSaving(null);
+    }
+  };
+
+  const handlePropertyDrop = (targetPropertyId: string) => {
+    if (!dragItem || dragItem.kind !== "property" || dragItem.id === targetPropertyId) return;
+
+    const fromIndex = filteredProperties.findIndex((p) => p.id === dragItem.id);
+    const toIndex = filteredProperties.findIndex((p) => p.id === targetPropertyId);
+    if (fromIndex < 0 || toIndex < 0) return;
+
+    const visibleNext = moveArrayItem(filteredProperties, fromIndex, toIndex);
+    const visibleIds = new Set(visibleNext.map((p) => p.id));
+    const hiddenProperties = properties.filter((p) => !visibleIds.has(p.id));
+
+    const nextProperties = [...visibleNext, ...hiddenProperties].map((property, index) => ({
+      ...property,
+      sort_order: index + 1,
+    }));
+
+    setProperties(nextProperties);
+    void savePropertyOrder(nextProperties);
+  };
+
+  const handleRoomDrop = (targetRoomId: string) => {
+    if (!dragItem || dragItem.kind !== "room" || dragItem.id === targetRoomId) return;
+
+    const fromIndex = filteredRooms.findIndex((r) => r.id === dragItem.id);
+    const toIndex = filteredRooms.findIndex((r) => r.id === targetRoomId);
+    if (fromIndex < 0 || toIndex < 0) return;
+
+    const visibleNext = moveArrayItem(filteredRooms, fromIndex, toIndex).map((room, index) => ({
+      ...room,
+      room_sort_order: index + 1,
+    }));
+    const visibleIds = new Set(visibleNext.map((r) => r.id));
+
+    setRooms((prev) =>
+      prev.map((room) => visibleNext.find((nextRoom) => nextRoom.id === room.id) ?? room)
+    );
+    void saveRoomOrder(visibleNext.filter((room) => visibleIds.has(room.id)));
+  };
 
   const createProperty = async () => {
     try {
@@ -805,13 +939,13 @@ export default function PropertyManagementPage() {
         </div>
       ) : null}
 
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[420px_minmax(0,1fr)]">
-        <Card>
-          <CardBody>
+      <div className="grid grid-cols-1 gap-4 xl:h-[calc(100vh-220px)] xl:grid-cols-[420px_minmax(0,1fr)] xl:overflow-hidden">
+        <Card className="min-h-0">
+          <CardBody className="flex h-full min-h-0 flex-col">
             <div className="mb-4 flex items-center justify-between gap-3">
               <div>
                 <div className="text-xl font-extrabold">物件一覧</div>
-                <div className="text-xs text-slate-500 mt-1">{filteredProperties.length} 件</div>
+                <div className="text-xs text-slate-500 mt-1">{sortSaving === "property" ? "並び順を保存中..." : `${filteredProperties.length} 件`}</div>
               </div>
               <div className="flex gap-2">
                 <ChipButton active={activeFilter === "active"} onClick={() => setActiveFilter("active")}>
@@ -831,7 +965,7 @@ export default function PropertyManagementPage() {
               />
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-2 flex-1 overflow-y-auto pr-1">
               {filteredProperties.map((p) => {
                 const selected = p.id === selectedPropertyId;
                 const roomCount = rooms.filter((r) => r.property_id === p.id).length;
@@ -840,9 +974,16 @@ export default function PropertyManagementPage() {
                   <button
                     key={p.id}
                     type="button"
+                    draggable={sortSaving !== "property"}
                     onClick={() => setSelectedPropertyId(p.id)}
+                    onDragStart={() => setDragItem({ kind: "property", id: p.id })}
+                    onDragOver={(e) => e.preventDefault()}
+                    onDrop={() => handlePropertyDrop(p.id)}
+                    onDragEnd={() => setDragItem(null)}
+                    disabled={sortSaving === "property"}
                     className={[
-                      "w-full rounded-2xl border px-4 py-3 text-left transition",
+                      "w-full cursor-grab rounded-2xl border px-4 py-3 text-left transition active:cursor-grabbing",
+                      dragItem?.kind === "property" && dragItem.id === p.id ? "opacity-50" : "",
                       selected
                         ? "border-slate-900 bg-slate-900 text-white"
                         : "border-slate-200 bg-white hover:bg-slate-50",
@@ -850,8 +991,9 @@ export default function PropertyManagementPage() {
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div>
-                        <div className="text-sm font-bold">
-                          {p.sort_order ?? 999}. {p.property_name}
+                        <div className="flex items-center gap-2 text-sm font-bold">
+                          <span className={`text-xs ${selected ? "text-white/50" : "text-slate-400"}`}>↕</span>
+                          <span>{p.sort_order ?? 999}. {p.property_name}</span>
                         </div>
                         <div className={`mt-1 text-xs ${selected ? "text-white/70" : "text-slate-500"}`}>
                           {p.property_code} / {p.normalized_name ?? p.property_name}
@@ -892,15 +1034,15 @@ export default function PropertyManagementPage() {
           </CardBody>
         </Card>
 
-        <Card>
-          <CardBody>
+        <Card className="min-h-0">
+          <CardBody className="flex h-full min-h-0 flex-col">
             <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
               <div>
                 <div className="text-xl font-extrabold">
                   部屋一覧{selectedProperty ? ` / ${selectedProperty.property_name}` : ""}
                 </div>
                 <div className="text-xs text-slate-500 mt-1">
-                  {selectedProperty ? `${filteredRooms.length} 件` : "物件を選択してください"}
+                  {sortSaving === "room" ? "並び順を保存中..." : selectedProperty ? `${filteredRooms.length} 件` : "物件を選択してください"}
                 </div>
               </div>
 
@@ -918,10 +1060,11 @@ export default function PropertyManagementPage() {
                 左の物件一覧から対象物件を選択してください。
               </div>
             ) : (
-              <div className="overflow-auto rounded-2xl border border-slate-200">
-                <table className="w-full min-w-[860px] text-sm">
-                  <thead>
+              <div className="flex-1 overflow-auto rounded-2xl border border-slate-200">
+                <table className="w-full min-w-[920px] text-sm">
+                  <thead className="sticky top-0 z-10 bg-slate-50">
                     <tr>
+                      <th className="border-b bg-slate-50 px-4 py-3 text-left font-bold w-[52px]">並替</th>
                       <th className="border-b bg-slate-50 px-4 py-3 text-left font-bold">部屋名</th>
                       <th className="border-b bg-slate-50 px-4 py-3 text-left font-bold">部屋コード</th>
                       <th className="border-b bg-slate-50 px-4 py-3 text-left font-bold">room_key</th>
@@ -933,7 +1076,19 @@ export default function PropertyManagementPage() {
                   </thead>
                   <tbody>
                     {filteredRooms.map((r) => (
-                      <tr key={r.id} className="hover:bg-slate-50">
+                      <tr
+                        key={r.id}
+                        draggable={sortSaving !== "room"}
+                        onDragStart={() => setDragItem({ kind: "room", id: r.id })}
+                        onDragOver={(e) => e.preventDefault()}
+                        onDrop={() => handleRoomDrop(r.id)}
+                        onDragEnd={() => setDragItem(null)}
+                        className={[
+                          "cursor-grab hover:bg-slate-50 active:cursor-grabbing",
+                          dragItem?.kind === "room" && dragItem.id === r.id ? "opacity-50" : "",
+                        ].join(" ")}
+                      >
+                        <td className="border-b px-4 py-3 text-slate-400">↕</td>
                         <td className="border-b px-4 py-3 font-medium">{r.room_name}</td>
                         <td className="border-b px-4 py-3">{r.room_code}</td>
                         <td className="border-b px-4 py-3">{r.room_key}</td>
@@ -956,7 +1111,7 @@ export default function PropertyManagementPage() {
 
                     {filteredRooms.length === 0 ? (
                       <tr>
-                        <td colSpan={7} className="px-4 py-10 text-center text-sm text-slate-500">
+                        <td colSpan={8} className="px-4 py-10 text-center text-sm text-slate-500">
                           表示できる部屋がありません。
                         </td>
                       </tr>
