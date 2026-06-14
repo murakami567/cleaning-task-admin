@@ -4,6 +4,7 @@ import { BrowserRouter } from "react-router-dom";
 import App from "./App";
 import "./index.css";
 import "./property-sort-dnd";
+import "./admin-home-missing-clockin";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
