@@ -312,8 +312,8 @@ export default function ShiftBoardPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 p-6">
-      <div className="mx-auto max-w-[1250px] space-y-4">
+    <div className="min-h-screen bg-slate-50 px-4 py-6 lg:px-6">
+      <div className="w-full space-y-4">
         <div className="rounded-[22px] border border-slate-200 bg-white shadow-sm">
           <div className="flex items-start justify-between gap-4 p-4">
             <div>
@@ -427,104 +427,102 @@ export default function ShiftBoardPage() {
                 </div>
               )}
 
-              <div className="overflow-auto rounded-[18px] border border-slate-200 max-h-[70vh]">
-  <table className="min-w-[1400px] w-full border-separate border-spacing-0 text-sm">
-    <thead>
-      <tr className="border-b border-slate-200">
-        <th className="sticky top-0 left-0 z-50 w-[72px] min-w-[72px] bg-slate-50 px-4 py-3 text-left font-extrabold shadow-[2px_0_0_#e2e8f0]">
-          日付
-        </th>
+              <div className="overflow-auto rounded-[18px] border border-slate-200 max-h-[70vh] w-full">
+                <table className="min-w-full w-max border-separate border-spacing-0 text-sm">
+                  <thead>
+                    <tr className="border-b border-slate-200">
+                      <th className="sticky top-0 left-0 z-50 w-[72px] min-w-[72px] bg-slate-50 px-4 py-3 text-left font-extrabold shadow-[2px_0_0_#e2e8f0]">
+                        日付
+                      </th>
 
-        <th className="sticky top-0 left-[72px] z-40 w-[64px] min-w-[64px] bg-slate-50 px-4 py-3 text-left font-extrabold shadow-[2px_0_0_#e2e8f0]">
-          曜日
-        </th>
+                      <th className="sticky top-0 left-[72px] z-40 w-[64px] min-w-[64px] bg-slate-50 px-4 py-3 text-left font-extrabold shadow-[2px_0_0_#e2e8f0]">
+                        曜日
+                      </th>
 
-        <th className="sticky top-0 left-[136px] z-40 w-[96px] min-w-[96px] bg-slate-50 px-4 py-3 text-left font-extrabold shadow-[2px_0_0_#e2e8f0]">
-          総清掃数
-        </th>
+                      <th className="sticky top-0 left-[136px] z-40 w-[96px] min-w-[96px] bg-slate-50 px-4 py-3 text-left font-extrabold shadow-[2px_0_0_#e2e8f0]">
+                        総清掃数
+                      </th>
 
-        <th className="sticky top-0 left-[232px] z-40 w-[96px] min-w-[96px] bg-slate-50 px-4 py-3 text-left font-extrabold shadow-[2px_0_0_#e2e8f0]">
-          出勤人数
-        </th>
+                      <th className="sticky top-0 left-[232px] z-40 w-[96px] min-w-[96px] bg-slate-50 px-4 py-3 text-left font-extrabold shadow-[2px_0_0_#e2e8f0]">
+                        出勤人数
+                      </th>
 
-        <th className="sticky top-0 left-[328px] z-40 w-[140px] min-w-[140px] bg-slate-50 px-4 py-3 text-left font-extrabold shadow-[2px_0_0_#e2e8f0]">
-          1人当たり清掃数
-        </th>
+                      <th className="sticky top-0 left-[328px] z-40 w-[140px] min-w-[140px] bg-slate-50 px-4 py-3 text-left font-extrabold shadow-[2px_0_0_#e2e8f0]">
+                        1人当たり清掃数
+                      </th>
 
-        {staffs.map((staff) => (
-          <th
-            key={staff.id}
-            className="sticky top-0 z-30 min-w-[120px] bg-slate-50 px-4 py-3 text-left font-extrabold"
-          >
-            {staff.staff_name}
-          </th>
-        ))}
-      </tr>
-    </thead>
+                      {staffs.map((staff) => (
+                        <th
+                          key={staff.id}
+                          className="sticky top-0 z-30 min-w-[118px] bg-slate-50 px-3 py-3 text-left font-extrabold"
+                        >
+                          {staff.staff_name}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
 
-    <tbody>
-      {visibleDates.map((date) => {
-        const isToday = date === todayIso;
-        // sticky なセルは bg を持たないと右側のセルが透けてしまうので、
-        // 当日は薄赤(rose-50)、それ以外は白を当てる。
-        const stickyBg = isToday ? "bg-rose-50" : "bg-white";
-        return (
-        <tr
-          key={date}
-          className={`border-b border-slate-100 last:border-b-0 ${isToday ? "bg-rose-50" : ""}`}
-        >
-          <td className={`sticky left-0 z-30 w-[72px] min-w-[72px] ${stickyBg} px-4 py-3 shadow-[2px_0_0_#e2e8f0]`}>
-            {formatDateLabel(date)}
-          </td>
+                  <tbody>
+                    {visibleDates.map((date) => {
+                      const isToday = date === todayIso;
+                      const stickyBg = isToday ? "bg-rose-50" : "bg-white";
+                      return (
+                        <tr
+                          key={date}
+                          className={`border-b border-slate-100 last:border-b-0 ${isToday ? "bg-rose-50" : ""}`}
+                        >
+                          <td className={`sticky left-0 z-30 w-[72px] min-w-[72px] ${stickyBg} px-4 py-3 shadow-[2px_0_0_#e2e8f0]`}>
+                            {formatDateLabel(date)}
+                          </td>
 
-          <td className={`sticky left-[72px] z-30 w-[64px] min-w-[64px] ${stickyBg} px-4 py-3 shadow-[2px_0_0_#e2e8f0]`}>
-            {weekdayLabel(date)}
-          </td>
+                          <td className={`sticky left-[72px] z-30 w-[64px] min-w-[64px] ${stickyBg} px-4 py-3 shadow-[2px_0_0_#e2e8f0]`}>
+                            {weekdayLabel(date)}
+                          </td>
 
-          <td className={`sticky left-[136px] z-30 w-[96px] min-w-[96px] ${stickyBg} px-4 py-3 font-semibold shadow-[2px_0_0_#e2e8f0]`}>
-            {getCleanCount(date)}
-          </td>
+                          <td className={`sticky left-[136px] z-30 w-[96px] min-w-[96px] ${stickyBg} px-4 py-3 font-semibold shadow-[2px_0_0_#e2e8f0]`}>
+                            {getCleanCount(date)}
+                          </td>
 
-          <td className={`sticky left-[232px] z-30 w-[96px] min-w-[96px] ${stickyBg} px-4 py-3 shadow-[2px_0_0_#e2e8f0]`}>
-            {getAttendanceCount(date)}
-          </td>
+                          <td className={`sticky left-[232px] z-30 w-[96px] min-w-[96px] ${stickyBg} px-4 py-3 shadow-[2px_0_0_#e2e8f0]`}>
+                            {getAttendanceCount(date)}
+                          </td>
 
-          <td className={`sticky left-[328px] z-30 w-[140px] min-w-[140px] ${stickyBg} px-4 py-3 shadow-[2px_0_0_#e2e8f0]`}>
-            {getWorkload(date)}
-          </td>
+                          <td className={`sticky left-[328px] z-30 w-[140px] min-w-[140px] ${stickyBg} px-4 py-3 shadow-[2px_0_0_#e2e8f0]`}>
+                            {getWorkload(date)}
+                          </td>
 
-          {staffs.map((staff) => {
-            const current = getShiftMark(date, staff.id);
-            const key = `${date}-${staff.id}`;
-            const saving = savingKey === key;
+                          {staffs.map((staff) => {
+                            const current = getShiftMark(date, staff.id);
+                            const key = `${date}-${staff.id}`;
+                            const saving = savingKey === key;
 
-            return (
-              <td key={staff.id} className={`min-w-[120px] ${stickyBg} px-4 py-3`}>
-                <select
-                  value={current}
-                  disabled={saving}
-                  onChange={(e) =>
-                    void saveCell(date, staff.id, e.target.value as ShiftMark)
-                  }
-                  className={`h-10 min-w-[96px] rounded-xl border px-3 text-sm font-medium outline-none bg-white ${markClass(
-                    current
-                  )} ${saving ? "opacity-50" : ""}`}
-                >
-                  {SHIFT_OPTIONS.map((opt) => (
-                    <option key={opt.value} value={opt.value}>
-                      {saving && opt.value === current ? "保存中..." : opt.label}
-                    </option>
-                  ))}
-                </select>
-              </td>
-            );
-          })}
-        </tr>
-        );
-      })}
-    </tbody>
-  </table>
-</div>
+                            return (
+                              <td key={staff.id} className={`min-w-[118px] ${stickyBg} px-3 py-3`}>
+                                <select
+                                  value={current}
+                                  disabled={saving}
+                                  onChange={(e) =>
+                                    void saveCell(date, staff.id, e.target.value as ShiftMark)
+                                  }
+                                  className={`h-10 min-w-[92px] rounded-xl border px-3 text-sm font-medium outline-none bg-white ${markClass(
+                                    current
+                                  )} ${saving ? "opacity-50" : ""}`}
+                                >
+                                  {SHIFT_OPTIONS.map((opt) => (
+                                    <option key={opt.value} value={opt.value}>
+                                      {saving && opt.value === current ? "保存中..." : opt.label}
+                                    </option>
+                                  ))}
+                                </select>
+                              </td>
+                            );
+                          })}
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         )}
