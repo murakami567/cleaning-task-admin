@@ -54,6 +54,40 @@ replaceOnce(
     if (!propertyId) return attendees;
     return attendees.filter((u) => u.availablePropertyIds.includes(propertyId));
   };`,
+`  // 担当者を物件対応設定に応じて絞り込み・優先表示する。
+  // チェック解除済み物件 = 最優先・薄赤、対応可能物件 = 通常・薄青。
+  // どちらにも入っていないアカウントは表示しない。
+  const filterAttendeesForProperty = (
+    attendees: Attendee[],
+    propertyName: string | undefined | null
+  ): Attendee[] => {
+    const propertyId = propertyName ? propertyNameToId.get(propertyName) : "";
+    if (!propertyId) return [];
+
+    return attendees
+      .map((u) => {
+        const isPriority = u.uncheckedPropertyIds.includes(propertyId);
+        const isNormal = u.availablePropertyIds.includes(propertyId);
+        const propertyMatchKind: Attendee["propertyMatchKind"] = isPriority
+          ? "priority"
+          : isNormal
+          ? "normal"
+          : "other";
+        return { ...u, propertyMatchKind };
+      })
+      .filter((u) => u.propertyMatchKind === "priority" || u.propertyMatchKind === "normal")
+      .sort((a, b) => {
+        const rank = { priority: 0, normal: 1, other: 2 } as const;
+        const ar = rank[a.propertyMatchKind ?? "other"];
+        const br = rank[b.propertyMatchKind ?? "other"];
+        if (ar !== br) return ar - br;
+        return a.name.localeCompare(b.name, "ja");
+      });
+  };`,
+"filterAttendeesForProperty"
+);
+
+replaceOnce(
 `  // 担当者を物件対応設定に応じて優先表示する。
   // チェック解除済み物件 = 最優先・薄赤、対応可能物件 = 通常・薄青、その他 = 白。
   // 物件マスタに該当が無い場合は、全員をその他として表示する。
@@ -82,7 +116,37 @@ replaceOnce(
         return a.name.localeCompare(b.name, "ja");
       });
   };`,
-"filterAttendeesForProperty"
+`  // 担当者を物件対応設定に応じて絞り込み・優先表示する。
+  // チェック解除済み物件 = 最優先・薄赤、対応可能物件 = 通常・薄青。
+  // どちらにも入っていないアカウントは表示しない。
+  const filterAttendeesForProperty = (
+    attendees: Attendee[],
+    propertyName: string | undefined | null
+  ): Attendee[] => {
+    const propertyId = propertyName ? propertyNameToId.get(propertyName) : "";
+    if (!propertyId) return [];
+
+    return attendees
+      .map((u) => {
+        const isPriority = u.uncheckedPropertyIds.includes(propertyId);
+        const isNormal = u.availablePropertyIds.includes(propertyId);
+        const propertyMatchKind: Attendee["propertyMatchKind"] = isPriority
+          ? "priority"
+          : isNormal
+          ? "normal"
+          : "other";
+        return { ...u, propertyMatchKind };
+      })
+      .filter((u) => u.propertyMatchKind === "priority" || u.propertyMatchKind === "normal")
+      .sort((a, b) => {
+        const rank = { priority: 0, normal: 1, other: 2 } as const;
+        const ar = rank[a.propertyMatchKind ?? "other"];
+        const br = rank[b.propertyMatchKind ?? "other"];
+        if (ar !== br) return ar - br;
+        return a.name.localeCompare(b.name, "ja");
+      });
+  };`,
+"filterAttendeesForProperty v2"
 );
 
 replaceOnce(
