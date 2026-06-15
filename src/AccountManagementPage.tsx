@@ -109,6 +109,27 @@ function Select({ value, onChange, options }: any) {
   );
 }
 
+function PropertyCheckCard({
+  property,
+  checked,
+  onChange,
+}: {
+  property: Property;
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+}) {
+  return (
+    <label
+      className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm cursor-pointer ${
+        checked ? "bg-sky-50 border-sky-300" : "bg-white border-slate-200 hover:bg-slate-50"
+      }`}
+    >
+      <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} />
+      <span className="truncate">{property.property_name}</span>
+    </label>
+  );
+}
+
 export default function AccountManagementPage() {
   const [staffs, setStaffs] = useState<Staff[]>([]);
   const [properties, setProperties] = useState<Property[]>([]);
@@ -155,7 +176,6 @@ export default function AccountManagementPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data?.detail || "物件取得に失敗しました。");
       const list: Property[] = Array.isArray(data) ? data : [];
-      // 有効物件のみ、sort_order 昇順
       const filtered = list
         .filter((p) => p.is_active !== false)
         .sort((a, b) => (a.sort_order ?? 999) - (b.sort_order ?? 999));
@@ -185,6 +205,33 @@ export default function AccountManagementPage() {
       .slice()
       .sort((a, b) => (a.sort_order ?? 999) - (b.sort_order ?? 999));
   }, [staffs, q, showInactive]);
+
+  const filteredProperties = useMemo(() => {
+    const qq = propertyQuery.trim().toLowerCase();
+    if (!qq) return properties;
+    return properties.filter((p) =>
+      `${p.property_name} ${p.property_code ?? ""}`.toLowerCase().includes(qq)
+    );
+  }, [properties, propertyQuery]);
+
+  const selectedProperties = useMemo(() => {
+    const selectedIds = new Set(form.available_property_ids);
+    return filteredProperties.filter((p) => selectedIds.has(p.id));
+  }, [filteredProperties, form.available_property_ids]);
+
+  const uncheckedProperties = useMemo(() => {
+    const selectedIds = new Set(form.available_property_ids);
+    return filteredProperties.filter((p) => !selectedIds.has(p.id));
+  }, [filteredProperties, form.available_property_ids]);
+
+  const updatePropertySelection = (propertyId: string, checked: boolean) => {
+    setForm((s) => {
+      const next = new Set(s.available_property_ids);
+      if (checked) next.add(propertyId);
+      else next.delete(propertyId);
+      return { ...s, available_property_ids: Array.from(next) };
+    });
+  };
 
   const openNew = () => {
     setSelected(null);
@@ -468,7 +515,7 @@ export default function AccountManagementPage() {
           </Field>
 
           <div className="sm:col-span-2">
-            <Field label={`対応可能物件 (${form.available_property_ids.length} 件選択中)`}>
+            <Field label={`物件対応設定 (${form.available_property_ids.length} / ${properties.length} 件選択中)`}>
               <div className="rounded-xl border border-slate-200 bg-white">
                 <div className="p-2 border-b border-slate-100 flex items-center gap-2">
                   <input
@@ -500,49 +547,65 @@ export default function AccountManagementPage() {
                   </button>
                 </div>
 
-                <div className="max-h-[260px] overflow-y-auto p-2 grid grid-cols-1 sm:grid-cols-2 gap-1">
-                  {properties
-                    .filter((p) => {
-                      const qq = propertyQuery.trim().toLowerCase();
-                      if (!qq) return true;
-                      return `${p.property_name} ${p.property_code ?? ""}`
-                        .toLowerCase()
-                        .includes(qq);
-                    })
-                    .map((p) => {
-                      const checked = form.available_property_ids.includes(p.id);
-                      return (
-                        <label
-                          key={p.id}
-                          className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm cursor-pointer ${
-                            checked
-                              ? "bg-sky-50 border-sky-300"
-                              : "bg-white border-slate-200 hover:bg-slate-50"
-                          }`}
-                        >
-                          <input
-                            type="checkbox"
-                            checked={checked}
-                            onChange={(e) => {
-                              setForm((s) => {
-                                const next = new Set(s.available_property_ids);
-                                if (e.target.checked) next.add(p.id);
-                                else next.delete(p.id);
-                                return { ...s, available_property_ids: Array.from(next) };
-                              });
-                            }}
-                          />
-                          <span className="truncate">{p.property_name}</span>
-                        </label>
-                      );
-                    })}
-
-                  {properties.length === 0 ? (
-                    <div className="col-span-full text-xs text-slate-500 px-2 py-3">
-                      物件が登録されていません。物件管理から追加してください。
+                <div className="grid grid-cols-1 gap-3 p-2 sm:grid-cols-2">
+                  <div className="rounded-xl border border-sky-200 bg-sky-50/40">
+                    <div className="border-b border-sky-100 px-3 py-2">
+                      <div className="text-xs font-extrabold text-sky-800">
+                        対応可能物件 ({selectedProperties.length} 件)
+                      </div>
+                      <div className="mt-0.5 text-[11px] text-sky-700">
+                        チェック済みの物件
+                      </div>
                     </div>
-                  ) : null}
+                    <div className="max-h-[220px] overflow-y-auto p-2 space-y-1">
+                      {selectedProperties.map((p) => (
+                        <PropertyCheckCard
+                          key={p.id}
+                          property={p}
+                          checked={true}
+                          onChange={(checked) => updatePropertySelection(p.id, checked)}
+                        />
+                      ))}
+                      {selectedProperties.length === 0 ? (
+                        <div className="rounded-lg border border-dashed border-sky-200 bg-white px-3 py-4 text-xs text-sky-700">
+                          対応可能物件はありません。
+                        </div>
+                      ) : null}
+                    </div>
+                  </div>
+
+                  <div className="rounded-xl border border-slate-200 bg-slate-50/70">
+                    <div className="border-b border-slate-200 px-3 py-2">
+                      <div className="text-xs font-extrabold text-slate-700">
+                        チェック解除済み物件 ({uncheckedProperties.length} 件)
+                      </div>
+                      <div className="mt-0.5 text-[11px] text-slate-500">
+                        チェックを入れると対応可能に追加
+                      </div>
+                    </div>
+                    <div className="max-h-[220px] overflow-y-auto p-2 space-y-1">
+                      {uncheckedProperties.map((p) => (
+                        <PropertyCheckCard
+                          key={p.id}
+                          property={p}
+                          checked={false}
+                          onChange={(checked) => updatePropertySelection(p.id, checked)}
+                        />
+                      ))}
+                      {uncheckedProperties.length === 0 ? (
+                        <div className="rounded-lg border border-dashed border-slate-200 bg-white px-3 py-4 text-xs text-slate-500">
+                          チェック解除済み物件はありません。
+                        </div>
+                      ) : null}
+                    </div>
+                  </div>
                 </div>
+
+                {properties.length === 0 ? (
+                  <div className="px-3 pb-3 text-xs text-slate-500">
+                    物件が登録されていません。物件管理から追加してください。
+                  </div>
+                ) : null}
               </div>
             </Field>
           </div>
