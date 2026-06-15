@@ -14,6 +14,7 @@ type Staff = {
   password?: string | null;
   area?: string | null;
   available_property_ids?: string[] | null;
+  unchecked_property_ids?: string[] | null;
   lineworks_channel_id?: string | null;
 };
 
@@ -31,6 +32,10 @@ const AREA_OPTIONS = [
   { value: "天神", label: "天神" },
   { value: "F6", label: "F6" },
 ];
+
+function unique(values: string[]) {
+  return Array.from(new Set(values.filter(Boolean)));
+}
 
 function Button({ children, className = "", ...props }: any) {
   return (
@@ -51,7 +56,7 @@ function Drawer({ open, title, subtitle, children, onClose, footer }: any) {
       className="fixed inset-0 z-[999] flex justify-end bg-black/40"
       onMouseDown={(e) => e.target === e.currentTarget && onClose()}
     >
-      <div className="h-full w-[520px] max-w-[92vw] bg-white shadow-2xl border-l border-slate-200 flex flex-col">
+      <div className="h-full w-[560px] max-w-[94vw] bg-white shadow-2xl border-l border-slate-200 flex flex-col">
         <div className="p-4 border-b border-slate-200 flex items-start justify-between gap-3">
           <div>
             <div className="text-base font-extrabold">{title}</div>
@@ -112,16 +117,20 @@ function Select({ value, onChange, options }: any) {
 function PropertyCheckCard({
   property,
   checked,
+  tone,
   onChange,
 }: {
   property: Property;
   checked: boolean;
+  tone: "priority" | "normal";
   onChange: (checked: boolean) => void;
 }) {
+  const checkedClass =
+    tone === "priority" ? "bg-rose-50 border-rose-300" : "bg-sky-50 border-sky-300";
   return (
     <label
       className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm cursor-pointer ${
-        checked ? "bg-sky-50 border-sky-300" : "bg-white border-slate-200 hover:bg-slate-50"
+        checked ? checkedClass : "bg-white border-slate-200 hover:bg-slate-50"
       }`}
     >
       <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} />
@@ -151,6 +160,7 @@ export default function AccountManagementPage() {
     password: "",
     area: "",
     available_property_ids: [] as string[],
+    unchecked_property_ids: [] as string[],
     lineworks_channel_id: "",
   });
 
@@ -158,11 +168,7 @@ export default function AccountManagementPage() {
     try {
       const res = await fetch(`${API_BASE}/staffs`);
       const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data?.detail || "スタッフ取得に失敗しました。");
-      }
-
+      if (!res.ok) throw new Error(data?.detail || "スタッフ取得に失敗しました。");
       setStaffs(data || []);
     } catch (error) {
       console.error(error);
@@ -176,10 +182,11 @@ export default function AccountManagementPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data?.detail || "物件取得に失敗しました。");
       const list: Property[] = Array.isArray(data) ? data : [];
-      const filtered = list
-        .filter((p) => p.is_active !== false)
-        .sort((a, b) => (a.sort_order ?? 999) - (b.sort_order ?? 999));
-      setProperties(filtered);
+      setProperties(
+        list
+          .filter((p) => p.is_active !== false)
+          .sort((a, b) => (a.sort_order ?? 999) - (b.sort_order ?? 999))
+      );
     } catch (error) {
       console.error(error);
     }
@@ -192,12 +199,10 @@ export default function AccountManagementPage() {
 
   const filtered = useMemo(() => {
     const qq = q.trim().toLowerCase();
-
     return staffs
       .filter((s) => (showInactive ? true : s.is_active))
       .filter((s) => {
         if (!qq) return true;
-
         return `${s.staff_name} ${s.staff_code ?? ""} ${s.role ?? ""} ${s.note ?? ""}`
           .toLowerCase()
           .includes(qq);
@@ -214,22 +219,48 @@ export default function AccountManagementPage() {
     );
   }, [properties, propertyQuery]);
 
-  const selectedProperties = useMemo(() => {
-    const selectedIds = new Set(form.available_property_ids);
-    return filteredProperties.filter((p) => selectedIds.has(p.id));
-  }, [filteredProperties, form.available_property_ids]);
+  const prioritySet = useMemo(
+    () => new Set(form.unchecked_property_ids),
+    [form.unchecked_property_ids]
+  );
+  const normalSet = useMemo(
+    () => new Set(form.available_property_ids),
+    [form.available_property_ids]
+  );
 
-  const uncheckedProperties = useMemo(() => {
-    const selectedIds = new Set(form.available_property_ids);
-    return filteredProperties.filter((p) => !selectedIds.has(p.id));
-  }, [filteredProperties, form.available_property_ids]);
-
-  const updatePropertySelection = (propertyId: string, checked: boolean) => {
+  const setPriorityProperty = (propertyId: string, checked: boolean) => {
     setForm((s) => {
-      const next = new Set(s.available_property_ids);
-      if (checked) next.add(propertyId);
-      else next.delete(propertyId);
-      return { ...s, available_property_ids: Array.from(next) };
+      const priority = new Set(s.unchecked_property_ids);
+      const normal = new Set(s.available_property_ids);
+      if (checked) {
+        priority.add(propertyId);
+        normal.delete(propertyId);
+      } else {
+        priority.delete(propertyId);
+      }
+      return {
+        ...s,
+        unchecked_property_ids: unique(Array.from(priority)),
+        available_property_ids: unique(Array.from(normal)),
+      };
+    });
+  };
+
+  const setNormalProperty = (propertyId: string, checked: boolean) => {
+    setForm((s) => {
+      const priority = new Set(s.unchecked_property_ids);
+      const normal = new Set(s.available_property_ids);
+      if (checked) {
+        normal.add(propertyId);
+        priority.delete(propertyId);
+      } else {
+        normal.delete(propertyId);
+      }
+      return {
+        ...s,
+        unchecked_property_ids: unique(Array.from(priority)),
+        available_property_ids: unique(Array.from(normal)),
+      };
     });
   };
 
@@ -247,12 +278,21 @@ export default function AccountManagementPage() {
       password: "",
       area: "",
       available_property_ids: [],
+      unchecked_property_ids: [],
       lineworks_channel_id: "",
     });
     setDrawerOpen(true);
   };
 
   const openEdit = (staff: Staff) => {
+    const priorityIds = Array.isArray(staff.unchecked_property_ids)
+      ? staff.unchecked_property_ids
+      : [];
+    const priority = new Set(priorityIds);
+    const normalIds = Array.isArray(staff.available_property_ids)
+      ? staff.available_property_ids.filter((id) => !priority.has(id))
+      : [];
+
     setSelected(staff);
     setPropertyQuery("");
     setForm({
@@ -265,9 +305,8 @@ export default function AccountManagementPage() {
       note: staff.note ?? "",
       password: "",
       area: staff.area ?? "",
-      available_property_ids: Array.isArray(staff.available_property_ids)
-        ? staff.available_property_ids
-        : [],
+      available_property_ids: normalIds,
+      unchecked_property_ids: priorityIds,
       lineworks_channel_id: staff.lineworks_channel_id ?? "",
     });
     setDrawerOpen(true);
@@ -278,7 +317,6 @@ export default function AccountManagementPage() {
       alert("スタッフコードを入力してください。");
       return;
     }
-
     if (!form.staff_name.trim()) {
       alert("名前を入力してください。");
       return;
@@ -286,6 +324,8 @@ export default function AccountManagementPage() {
 
     try {
       setSaving(true);
+      const priority = new Set(form.unchecked_property_ids);
+      const normal = form.available_property_ids.filter((id) => !priority.has(id));
 
       const payload = {
         staff_id: form.id || null,
@@ -297,7 +337,8 @@ export default function AccountManagementPage() {
         note: form.note,
         password: form.password || null,
         area: form.area || "",
-        available_property_ids: form.available_property_ids,
+        unchecked_property_ids: unique(form.unchecked_property_ids),
+        available_property_ids: unique(normal),
         lineworks_channel_id: form.lineworks_channel_id || "",
       };
 
@@ -308,10 +349,7 @@ export default function AccountManagementPage() {
       });
 
       const data = await res.json().catch(() => null);
-
-      if (!res.ok) {
-        throw new Error(data?.detail || "保存に失敗しました。");
-      }
+      if (!res.ok) throw new Error(data?.detail || "保存に失敗しました。");
 
       setDrawerOpen(false);
       await loadStaffs();
@@ -368,7 +406,7 @@ export default function AccountManagementPage() {
         </div>
 
         <div className="overflow-auto">
-          <table className="w-full text-sm min-w-[860px]">
+          <table className="w-full text-sm min-w-[900px]">
             <thead className="sticky top-0 bg-slate-50 border-b border-slate-200 text-slate-500 text-xs">
               <tr>
                 <th className="text-left px-3 py-3">並び順</th>
@@ -376,7 +414,8 @@ export default function AccountManagementPage() {
                 <th className="text-left px-3 py-3">名前</th>
                 <th className="text-left px-3 py-3">権限</th>
                 <th className="text-left px-3 py-3">エリア</th>
-                <th className="text-left px-3 py-3">対応物件</th>
+                <th className="text-left px-3 py-3">チェック解除済み</th>
+                <th className="text-left px-3 py-3">対応可能</th>
                 <th className="text-left px-3 py-3">状態</th>
                 <th className="text-left px-3 py-3">備考</th>
               </tr>
@@ -393,7 +432,12 @@ export default function AccountManagementPage() {
                   <td className="px-3 py-3 font-extrabold">{staff.staff_name}</td>
                   <td className="px-3 py-3">{staff.role}</td>
                   <td className="px-3 py-3">{staff.area || ""}</td>
-                  <td className="px-3 py-3 text-xs text-slate-600">
+                  <td className="px-3 py-3 text-xs text-rose-700">
+                    {Array.isArray(staff.unchecked_property_ids) && staff.unchecked_property_ids.length > 0
+                      ? `${staff.unchecked_property_ids.length} 件`
+                      : ""}
+                  </td>
+                  <td className="px-3 py-3 text-xs text-sky-700">
                     {Array.isArray(staff.available_property_ids) && staff.available_property_ids.length > 0
                       ? `${staff.available_property_ids.length} 件`
                       : ""}
@@ -515,7 +559,9 @@ export default function AccountManagementPage() {
           </Field>
 
           <div className="sm:col-span-2">
-            <Field label={`物件対応設定 (${form.available_property_ids.length} / ${properties.length} 件選択中)`}>
+            <Field
+              label={`物件対応設定 / チェック解除済み ${form.unchecked_property_ids.length} 件・対応可能 ${form.available_property_ids.length} 件`}
+            >
               <div className="rounded-xl border border-slate-200 bg-white">
                 <div className="p-2 border-b border-slate-100 flex items-center gap-2">
                   <input
@@ -530,73 +576,96 @@ export default function AccountManagementPage() {
                     onClick={() =>
                       setForm((s) => ({
                         ...s,
-                        available_property_ids: properties.map((p) => p.id),
+                        unchecked_property_ids: [],
+                        available_property_ids: [],
                       }))
-                    }
-                  >
-                    全選択
-                  </button>
-                  <button
-                    type="button"
-                    className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold hover:bg-slate-50"
-                    onClick={() =>
-                      setForm((s) => ({ ...s, available_property_ids: [] }))
                     }
                   >
                     全解除
                   </button>
                 </div>
 
-                <div className="grid grid-cols-1 gap-3 p-2 sm:grid-cols-2">
-                  <div className="rounded-xl border border-sky-200 bg-sky-50/40">
-                    <div className="border-b border-sky-100 px-3 py-2">
-                      <div className="text-xs font-extrabold text-sky-800">
-                        対応可能物件 ({selectedProperties.length} 件)
+                <div className="p-2 space-y-3">
+                  <div className="rounded-xl border border-rose-200 bg-rose-50/40">
+                    <div className="border-b border-rose-100 px-3 py-2 flex items-center justify-between gap-2">
+                      <div>
+                        <div className="text-xs font-extrabold text-rose-800">
+                          チェック解除済み物件（最優先）
+                        </div>
+                        <div className="mt-0.5 text-[11px] text-rose-700">
+                          清掃可能。割当・表示判定ではこのグループを最上位として扱います。
+                        </div>
                       </div>
-                      <div className="mt-0.5 text-[11px] text-sky-700">
-                        チェック済みの物件
-                      </div>
+                      <button
+                        type="button"
+                        className="shrink-0 rounded-lg border border-rose-200 bg-white px-2 py-1 text-[11px] font-semibold text-rose-700 hover:bg-rose-50"
+                        onClick={() =>
+                          setForm((s) => ({
+                            ...s,
+                            unchecked_property_ids: unique([
+                              ...s.unchecked_property_ids,
+                              ...filteredProperties.map((p) => p.id),
+                            ]),
+                            available_property_ids: s.available_property_ids.filter(
+                              (id) => !filteredProperties.some((p) => p.id === id)
+                            ),
+                          }))
+                        }
+                      >
+                        表示中を全選択
+                      </button>
                     </div>
-                    <div className="max-h-[220px] overflow-y-auto p-2 space-y-1">
-                      {selectedProperties.map((p) => (
+                    <div className="max-h-[210px] overflow-y-auto p-2 grid grid-cols-1 sm:grid-cols-2 gap-1">
+                      {filteredProperties.map((p) => (
                         <PropertyCheckCard
-                          key={p.id}
+                          key={`priority-${p.id}`}
                           property={p}
-                          checked={true}
-                          onChange={(checked) => updatePropertySelection(p.id, checked)}
+                          tone="priority"
+                          checked={prioritySet.has(p.id)}
+                          onChange={(checked) => setPriorityProperty(p.id, checked)}
                         />
                       ))}
-                      {selectedProperties.length === 0 ? (
-                        <div className="rounded-lg border border-dashed border-sky-200 bg-white px-3 py-4 text-xs text-sky-700">
-                          対応可能物件はありません。
-                        </div>
-                      ) : null}
                     </div>
                   </div>
 
-                  <div className="rounded-xl border border-slate-200 bg-slate-50/70">
-                    <div className="border-b border-slate-200 px-3 py-2">
-                      <div className="text-xs font-extrabold text-slate-700">
-                        チェック解除済み物件 ({uncheckedProperties.length} 件)
+                  <div className="rounded-xl border border-sky-200 bg-sky-50/40">
+                    <div className="border-b border-sky-100 px-3 py-2 flex items-center justify-between gap-2">
+                      <div>
+                        <div className="text-xs font-extrabold text-sky-800">
+                          対応可能物件（通常）
+                        </div>
+                        <div className="mt-0.5 text-[11px] text-sky-700">
+                          清掃可能。チェック解除済み物件の下位グループとして扱います。
+                        </div>
                       </div>
-                      <div className="mt-0.5 text-[11px] text-slate-500">
-                        チェックを入れると対応可能に追加
-                      </div>
+                      <button
+                        type="button"
+                        className="shrink-0 rounded-lg border border-sky-200 bg-white px-2 py-1 text-[11px] font-semibold text-sky-700 hover:bg-sky-50"
+                        onClick={() =>
+                          setForm((s) => ({
+                            ...s,
+                            available_property_ids: unique([
+                              ...s.available_property_ids,
+                              ...filteredProperties
+                                .map((p) => p.id)
+                                .filter((id) => !s.unchecked_property_ids.includes(id)),
+                            ]),
+                          }))
+                        }
+                      >
+                        表示中を全選択
+                      </button>
                     </div>
-                    <div className="max-h-[220px] overflow-y-auto p-2 space-y-1">
-                      {uncheckedProperties.map((p) => (
+                    <div className="max-h-[210px] overflow-y-auto p-2 grid grid-cols-1 sm:grid-cols-2 gap-1">
+                      {filteredProperties.map((p) => (
                         <PropertyCheckCard
-                          key={p.id}
+                          key={`normal-${p.id}`}
                           property={p}
-                          checked={false}
-                          onChange={(checked) => updatePropertySelection(p.id, checked)}
+                          tone="normal"
+                          checked={normalSet.has(p.id)}
+                          onChange={(checked) => setNormalProperty(p.id, checked)}
                         />
                       ))}
-                      {uncheckedProperties.length === 0 ? (
-                        <div className="rounded-lg border border-dashed border-slate-200 bg-white px-3 py-4 text-xs text-slate-500">
-                          チェック解除済み物件はありません。
-                        </div>
-                      ) : null}
                     </div>
                   </div>
                 </div>
