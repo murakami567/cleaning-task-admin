@@ -5,7 +5,10 @@ let src = fs.readFileSync(file, "utf8");
 
 const replaceOnce = (from, to, label) => {
   if (src.includes(to)) return;
-  if (!src.includes(from)) throw new Error(`patch target not found: ${label}`);
+  if (!src.includes(from)) {
+    console.warn(`patch target not found, skipped: ${label}`);
+    return;
+  }
   src = src.replace(from, to);
 };
 
@@ -56,6 +59,11 @@ replaceOnce(
 `            { ["未着手", "対応中", "保留", "完了"].map((v) => (`,
 `            {["保留", "対応中", "対応完了"].map((v) => (`,
 "status filter options"
+);
+replaceOnce(
+`            {["未着手", "対応中", "保留", "完了"].map((v) => (`,
+`            {["保留", "対応中", "対応完了"].map((v) => (`,
+"status filter options compact"
 );
 
 replaceOnce(
@@ -134,17 +142,8 @@ replaceOnce(
 "report date field"
 );
 
-replaceOnce(
-`          <Field label="終了日">`,
-`          <Field label="対応日">`,
-"end date label"
-);
-
-replaceOnce(
-`            <Field label="対応内容">`,
-`            <Field label="報告内容">`,
-"content label"
-);
+replaceOnce(`          <Field label="終了日">`, `          <Field label="対応日">`, "end date label");
+replaceOnce(`            <Field label="対応内容">`, `            <Field label="報告内容">`, "content label");
 
 replaceOnce(
 `          <div className="sm:col-span-2">
