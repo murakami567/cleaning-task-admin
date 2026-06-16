@@ -31,6 +31,14 @@ type FacilityItem = {
   note: string;
 };
 
+const FACILITY_STATUS_OPTIONS = ["保留", "対応中", "対応済み"];
+
+function normalizeFacilityStatus(value: string | null | undefined) {
+  if (value === "完了" || value === "対応完了" || value === "対応済み") return "対応済み";
+  if (value === "対応中") return "対応中";
+  return "保留";
+}
+
 function Button({ children, className = "", ...props }: any) {
   return (
     <button
@@ -109,15 +117,14 @@ function Select({ value, onChange, options, placeholder, disabled = false }: any
 }
 
 function StatusBadge({ value }: { value: string }) {
+  const normalized = normalizeFacilityStatus(value);
   const cls =
-    value === "完了"
+    normalized === "対応済み"
       ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-      : value === "対応中"
+      : normalized === "対応中"
       ? "bg-indigo-50 text-indigo-700 border-indigo-200"
-      : value === "保留"
-      ? "bg-amber-50 text-amber-700 border-amber-200"
-      : "bg-slate-100 text-slate-700 border-slate-200";
-  return <span className={`rounded-full border px-3 py-1 text-xs font-bold ${cls}`}>{value}</span>;
+      : "bg-amber-50 text-amber-700 border-amber-200";
+  return <span className={`rounded-full border px-3 py-1 text-xs font-bold ${cls}`}>{normalized}</span>;
 }
 
 export default function FacilityManagementPage() {
@@ -138,7 +145,7 @@ export default function FacilityManagementPage() {
     content: "",
     start_date: new Date().toISOString().slice(0, 10),
     end_date: new Date().toISOString().slice(0, 10),
-    status: "未着手",
+    status: "保留",
     note: "",
   });
 
@@ -149,7 +156,7 @@ export default function FacilityManagementPage() {
     ]);
     const fData = await fRes.json();
     const pData = await pRes.json();
-    setItems(fData);
+    setItems((fData || []).map((x: FacilityItem) => ({ ...x, status: normalizeFacilityStatus(x.status) })));
     setProperties((pData || []).filter((x: PropertyMaster) => x.is_active));
   };
 
@@ -184,7 +191,7 @@ export default function FacilityManagementPage() {
   const filtered = useMemo(() => {
     const qq = q.trim().toLowerCase();
     return items
-      .filter((x) => (status === "all" ? true : x.status === status))
+      .filter((x) => (status === "all" ? true : normalizeFacilityStatus(x.status) === status))
       .filter((x) => {
         if (!qq) return true;
         return `${x.property_name} ${x.room_name} ${x.assignee} ${x.content}`
@@ -207,7 +214,7 @@ export default function FacilityManagementPage() {
       content: "",
       start_date: new Date().toISOString().slice(0, 10),
       end_date: new Date().toISOString().slice(0, 10),
-      status: "未着手",
+      status: "保留",
       note: "",
     });
     setDrawerOpen(true);
@@ -215,7 +222,7 @@ export default function FacilityManagementPage() {
 
   const openEdit = async (item: FacilityItem) => {
     setSelected(item);
-    setForm(item);
+    setForm({ ...item, status: normalizeFacilityStatus(item.status) });
     if (item.property_id) {
       await loadRooms(item.property_id);
     } else {
@@ -238,7 +245,7 @@ export default function FacilityManagementPage() {
       content: form.content,
       start_date: form.start_date,
       end_date: form.end_date,
-      status: form.status,
+      status: normalizeFacilityStatus(form.status),
       note: form.note,
     };
 
@@ -282,7 +289,7 @@ export default function FacilityManagementPage() {
             onChange={(e) => setStatus(e.target.value)}
           >
             <option value="all">全ステータス</option>
-            {["未着手", "対応中", "保留", "完了"].map((v) => (
+            {FACILITY_STATUS_OPTIONS.map((v) => (
               <option value={v} key={v}>
                 {v}
               </option>
@@ -402,12 +409,7 @@ export default function FacilityManagementPage() {
             <Select
               value={form.status}
               onChange={(v: string) => setForm((s) => ({ ...s, status: v }))}
-              options={[
-                { value: "未着手", label: "未着手" },
-                { value: "対応中", label: "対応中" },
-                { value: "保留", label: "保留" },
-                { value: "完了", label: "完了" },
-              ]}
+              options={FACILITY_STATUS_OPTIONS.map((v) => ({ value: v, label: v }))}
             />
           </Field>
 
