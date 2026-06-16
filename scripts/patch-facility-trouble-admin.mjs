@@ -27,10 +27,19 @@ replaceOnce(
 `    value === "完了"
       ? "bg-emerald-50 text-emerald-700 border-emerald-200"
       : value === "対応中"`,
-`    value === "対応完了" || value === "完了"
+`    value === "対応済み" || value === "完了"
       ? "bg-emerald-50 text-emerald-700 border-emerald-200"
       : value === "対応中"`,
 "StatusBadge completed"
+);
+replaceOnce(
+`    value === "対応完了" || value === "完了"
+      ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+      : value === "対応中"`,
+`    value === "対応済み" || value === "完了"
+      ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+      : value === "対応中"`,
+"StatusBadge completed v2"
 );
 
 replaceOnce(`    status: "未着手",`, `    status: "保留",`, "initial status");
@@ -57,13 +66,18 @@ replaceOnce(
 
 replaceOnce(
 `            { ["未着手", "対応中", "保留", "完了"].map((v) => (`,
-`            {["保留", "対応中", "対応完了"].map((v) => (`,
+`            {["保留", "対応中", "対応済み"].map((v) => (`,
 "status filter options"
 );
 replaceOnce(
 `            {["未着手", "対応中", "保留", "完了"].map((v) => (`,
-`            {["保留", "対応中", "対応完了"].map((v) => (`,
+`            {["保留", "対応中", "対応済み"].map((v) => (`,
 "status filter options compact"
+);
+replaceOnce(
+`            {["保留", "対応中", "対応完了"].map((v) => (`,
+`            {["保留", "対応中", "対応済み"].map((v) => (`,
+"status filter options rename completed"
 );
 
 replaceOnce(
@@ -110,8 +124,17 @@ replaceOnce(
                  { value: "完了", label: "完了" },`,
 `                 { value: "保留", label: "保留" },
                  { value: "対応中", label: "対応中" },
-                 { value: "対応完了", label: "対応完了" },`,
+                 { value: "対応済み", label: "対応済み" },`,
 "drawer status options"
+);
+replaceOnce(
+`                 { value: "保留", label: "保留" },
+                 { value: "対応中", label: "対応中" },
+                 { value: "対応完了", label: "対応完了" },`,
+`                 { value: "保留", label: "保留" },
+                 { value: "対応中", label: "対応中" },
+                 { value: "対応済み", label: "対応済み" },`,
+"drawer status options rename completed"
 );
 
 replaceOnce(
