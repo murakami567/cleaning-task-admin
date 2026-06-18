@@ -22,14 +22,11 @@ import AdminHomePage from "./pages/admin/AdminHomePage";
 import AdminRoute from "./routes/AdminRoute";
 import AdminWorklogReportPage from "./pages/admin/AdminWorklogReportPage";
 import AdminLostItemsPage from "./pages/admin/AdminLostItemsPage";
+import AdminDataExportPage from "./pages/admin/AdminDataExportPage";
 
 import PayrollAttendancePage from "./pages/admin/PayrollAttendancePage";
 import PayrollRoute from "./routes/PayrollRoute";
 
-
-// ==========================
-// タイトル管理（追加部分）
-// ==========================
 function TitleManager() {
   const location = useLocation();
 
@@ -50,10 +47,6 @@ function TitleManager() {
   return null;
 }
 
-
-// ==========================
-// 管理レイアウト
-// ==========================
 function AdminLayout() {
   return (
     <div className="min-h-screen bg-neutral-50">
@@ -66,6 +59,7 @@ function AdminLayout() {
         <AdminNavButton to="/admin/shiftboard">シフト表</AdminNavButton>
         <AdminNavButton to="/admin/worklogs">実働報告</AdminNavButton>
         <AdminNavButton to="/admin/lost-items">忘れ物</AdminNavButton>
+        <AdminNavButton to="/admin/data-export">データ出力</AdminNavButton>
       </div>
 
       <Outlet />
@@ -94,25 +88,15 @@ function AdminNavButton({
   );
 }
 
-
-// ==========================
-// メインApp
-// ==========================
 export default function App() {
   return (
     <AuthProvider>
-
-      {/* ★ タイトル制御 */}
       <TitleManager />
 
       <Routes>
-        {/* 初期リダイレクト */}
         <Route path="/" element={<Navigate to="/admin/login" replace />} />
-
-        {/* 管理ログイン */}
         <Route path="/admin/login" element={<AdminLoginPage />} />
 
-        {/* 管理画面 */}
         <Route
           path="/admin"
           element={
@@ -130,9 +114,9 @@ export default function App() {
           <Route path="shiftboard" element={<ShiftBoardPage />} />
           <Route path="worklogs" element={<AdminWorklogReportPage />} />
           <Route path="lost-items" element={<AdminLostItemsPage />} />
+          <Route path="data-export" element={<AdminDataExportPage />} />
         </Route>
 
-        {/* 給与ページ */}
         <Route
           path="/payroll"
           element={
@@ -142,10 +126,7 @@ export default function App() {
           }
         />
 
-        {/* 従業員ログイン */}
         <Route path="/employee/login" element={<EmployeeLoginPage />} />
-
-        {/* 従業員ページ */}
         <Route
           path="/employee/home"
           element={
@@ -187,7 +168,6 @@ export default function App() {
           }
         />
 
-        {/* 不正URL */}
         <Route path="*" element={<Navigate to="/admin/login" replace />} />
       </Routes>
     </AuthProvider>
