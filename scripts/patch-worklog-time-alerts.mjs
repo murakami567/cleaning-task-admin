@@ -13,6 +13,37 @@ const patchFile = (file, patches) => {
   fs.writeFileSync(file, src);
 };
 
+const timeSelectBlock = `function TimeSelect({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  const options: string[] = [];
+  for (let h = 0; h < 24; h += 1) {
+    for (const m of [0, 15, 30, 45]) {
+      options.push(String(h).padStart(2, "0") + ":" + String(m).padStart(2, "0"));
+    }
+  }
+
+  return (
+    <select
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm outline-none"
+    >
+      {options.map((time) => (
+        <option key={time} value={time}>
+          {time}
+        </option>
+      ))}
+    </select>
+  );
+}
+
+`;
+
 patchFile("src/pages/employee/EmployeeWorklogPage.tsx", [
   {
     label: "default clock out 16",
@@ -35,50 +66,39 @@ patchFile("src/pages/employee/EmployeeWorklogPage.tsx", [
     to: `    setBreakMinutes("0");`,
   },
   {
-    label: "work start step",
+    label: "work start time select",
     from: `<TextInput type="time" value={workStartTime} onChange={setWorkStartTime} />`,
-    to: `<TextInput type="time" value={workStartTime} onChange={setWorkStartTime} step="900" />`,
+    to: `<TimeSelect value={workStartTime} onChange={setWorkStartTime} />`,
   },
   {
-    label: "clock in step",
+    label: "work start time select from step",
+    from: `<TextInput type="time" value={workStartTime} onChange={setWorkStartTime} step="900" />`,
+    to: `<TimeSelect value={workStartTime} onChange={setWorkStartTime} />`,
+  },
+  {
+    label: "clock in time select",
     from: `<TextInput type="time" value={clockInTime} onChange={setClockInTime} />`,
-    to: `<TextInput type="time" value={clockInTime} onChange={setClockInTime} step="900" />`,
+    to: `<TimeSelect value={clockInTime} onChange={setClockInTime} />`,
   },
   {
-    label: "clock out step",
+    label: "clock in time select from step",
+    from: `<TextInput type="time" value={clockInTime} onChange={setClockInTime} step="900" />`,
+    to: `<TimeSelect value={clockInTime} onChange={setClockInTime} />`,
+  },
+  {
+    label: "clock out time select",
     from: `<TextInput type="time" value={clockOutTime} onChange={setClockOutTime} />`,
-    to: `<TextInput type="time" value={clockOutTime} onChange={setClockOutTime} step="900" />`,
+    to: `<TimeSelect value={clockOutTime} onChange={setClockOutTime} />`,
   },
   {
-    label: "TextInput props add step param",
-    from: `function TextInput({
-  value,
-  onChange,
-  type = "text",
-}: {
-  value: string;
-  onChange: (value: string) => void;
-  type?: string;
-}) {`,
-    to: `function TextInput({
-  value,
-  onChange,
-  type = "text",
-  step,
-}: {
-  value: string;
-  onChange: (value: string) => void;
-  type?: string;
-  step?: string;
-}) {`,
+    label: "clock out time select from step",
+    from: `<TextInput type="time" value={clockOutTime} onChange={setClockOutTime} step="900" />`,
+    to: `<TimeSelect value={clockOutTime} onChange={setClockOutTime} />`,
   },
   {
-    label: "TextInput step attr",
-    from: `      value={value}
-      onChange={(e) => onChange(e.target.value)}`,
-    to: `      value={value}
-      step={step}
-      onChange={(e) => onChange(e.target.value)}`,
+    label: "insert TimeSelect component",
+    from: `function TextInput({`,
+    to: `${timeSelectBlock}function TextInput({`,
   },
 ]);
 
@@ -159,4 +179,4 @@ patchFile("src/pages/admin/AdminWorklogReportPage.tsx", [
   },
 ]);
 
-console.log("patched worklog time defaults and admin alerts");
+console.log("patched worklog time select defaults and admin alerts");
