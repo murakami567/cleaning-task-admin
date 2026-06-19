@@ -193,11 +193,78 @@ function WorklogAlertBadges({ row }: { row: { start_time: string; end_time: stri
 }
 `;
 
+const alertFilterBlock = `function hasAlert(row: { start_time: string; end_time: string }, target: "late" | "early") {
+  const start = timeToMinutes(row.start_time);
+  const end = timeToMinutes(row.end_time);
+  if (target === "late") return start !== null && start > 10 * 60;
+  if (target === "early") return end !== null && end < 16 * 60;
+  return false;
+}
+
+`;
+
 patchFile("src/pages/admin/AdminWorklogReportPage.tsx", [
   {
     label: "add alert helpers",
     from: formatMinutesBlock,
-    to: alertHelpersBlock,
+    to: alertHelpersBlock + alertFilterBlock,
+  },
+  {
+    label: "add alert filter state",
+    from: `  const [workTypeFilter, setWorkTypeFilter] = useState<
+    "all" | "cleaning" | "inspection" | "linen" | "support"
+  >("all");`,
+    to: `  const [workTypeFilter, setWorkTypeFilter] = useState<
+    "all" | "cleaning" | "inspection" | "linen" | "support"
+  >("all");
+  const [alertFilter, setAlertFilter] = useState<"all" | "late" | "early">("all");`,
+  },
+  {
+    label: "filter worklogs by alert",
+    from: `  const filteredWorklogs = useMemo(() => {
+    return worklogs.filter((row) => matchesWorkTypeFilter(row.work_type, workTypeFilter));
+  }, [worklogs, workTypeFilter]);`,
+    to: `  const filteredWorklogs = useMemo(() => {
+    return worklogs.filter((row) => {
+      const workTypeMatched = matchesWorkTypeFilter(row.work_type, workTypeFilter);
+      const alertMatched = alertFilter === "all" || hasAlert(row, alertFilter);
+      return workTypeMatched && alertMatched;
+    });
+  }, [worklogs, workTypeFilter, alertFilter]);`,
+  },
+  {
+    label: "add alert filter buttons before date",
+    from: `            <div className="flex flex-wrap items-end gap-3">
+              <div>
+                <div className="mb-2 text-xs font-semibold text-slate-500">対象日</div>`,
+    to: `            <div className="flex flex-wrap items-end gap-3">
+              <div>
+                <div className="mb-2 text-xs font-semibold text-slate-500">表示</div>
+                <div className="flex rounded-2xl border border-slate-200 bg-white p-1">
+                  {[
+                    { value: "all", label: "すべて" },
+                    { value: "late", label: "遅刻" },
+                    { value: "early", label: "早退" },
+                  ].map((item) => (
+                    <button
+                      key={item.value}
+                      type="button"
+                      onClick={() => setAlertFilter(item.value as "all" | "late" | "early")}
+                      className={
+                        "h-9 rounded-xl px-3 text-xs font-bold transition " +
+                        (alertFilter === item.value
+                          ? "bg-slate-900 text-white"
+                          : "text-slate-600 hover:bg-slate-50")
+                      }
+                    >
+                      {item.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <div className="mb-2 text-xs font-semibold text-slate-500">対象日</div>`,
   },
   {
     label: "table min width",
@@ -222,4 +289,4 @@ patchFile("src/pages/admin/AdminWorklogReportPage.tsx", [
   },
 ]);
 
-console.log("patched native worklog time UI, mobile width, quarter-hour normalization and admin alerts");
+console.log("patched native worklog time UI, mobile width, quarter-hour normalization, admin alerts and alert filter");
