@@ -13,33 +13,19 @@ const patchFile = (file, patches) => {
   fs.writeFileSync(file, src);
 };
 
-const timeSelectBlock = `function TimeSelect({
-  value,
-  onChange,
-}: {
-  value: string;
-  onChange: (value: string) => void;
-}) {
-  const options: string[] = [];
-  for (let h = 0; h < 24; h += 1) {
-    for (const m of [0, 15, 30, 45]) {
-      options.push(String(h).padStart(2, "0") + ":" + String(m).padStart(2, "0"));
-    }
+const normalizeQuarterHourBlock = `function normalizeQuarterHour(time: string) {
+  if (!time || !time.includes(":")) return time;
+  const [hRaw, mRaw] = time.split(":").map(Number);
+  if (Number.isNaN(hRaw) || Number.isNaN(mRaw)) return time;
+
+  let h = hRaw;
+  let m = Math.round(mRaw / 15) * 15;
+  if (m === 60) {
+    h = (h + 1) % 24;
+    m = 0;
   }
 
-  return (
-    <select
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm outline-none"
-    >
-      {options.map((time) => (
-        <option key={time} value={time}>
-          {time}
-        </option>
-      ))}
-    </select>
-  );
+  return String(h).padStart(2, "0") + ":" + String(m).padStart(2, "0");
 }
 
 `;
@@ -66,39 +52,64 @@ patchFile("src/pages/employee/EmployeeWorklogPage.tsx", [
     to: `    setBreakMinutes("0");`,
   },
   {
-    label: "work start time select",
+    label: "insert normalizeQuarterHour",
+    from: `function timeToMinutes(time: string) {`,
+    to: `${normalizeQuarterHourBlock}function timeToMinutes(time: string) {`,
+  },
+  {
+    label: "work start step",
     from: `<TextInput type="time" value={workStartTime} onChange={setWorkStartTime} />`,
-    to: `<TimeSelect value={workStartTime} onChange={setWorkStartTime} />`,
+    to: `<TextInput type="time" value={workStartTime} onChange={setWorkStartTime} step="900" />`,
   },
   {
-    label: "work start time select from step",
-    from: `<TextInput type="time" value={workStartTime} onChange={setWorkStartTime} step="900" />`,
-    to: `<TimeSelect value={workStartTime} onChange={setWorkStartTime} />`,
-  },
-  {
-    label: "clock in time select",
+    label: "clock in step",
     from: `<TextInput type="time" value={clockInTime} onChange={setClockInTime} />`,
-    to: `<TimeSelect value={clockInTime} onChange={setClockInTime} />`,
+    to: `<TextInput type="time" value={clockInTime} onChange={setClockInTime} step="900" />`,
   },
   {
-    label: "clock in time select from step",
-    from: `<TextInput type="time" value={clockInTime} onChange={setClockInTime} step="900" />`,
-    to: `<TimeSelect value={clockInTime} onChange={setClockInTime} />`,
-  },
-  {
-    label: "clock out time select",
+    label: "clock out step",
     from: `<TextInput type="time" value={clockOutTime} onChange={setClockOutTime} />`,
-    to: `<TimeSelect value={clockOutTime} onChange={setClockOutTime} />`,
+    to: `<TextInput type="time" value={clockOutTime} onChange={setClockOutTime} step="900" />`,
   },
   {
-    label: "clock out time select from step",
-    from: `<TextInput type="time" value={clockOutTime} onChange={setClockOutTime} step="900" />`,
-    to: `<TimeSelect value={clockOutTime} onChange={setClockOutTime} />`,
+    label: "TextInput props add step param",
+    from: `function TextInput({
+  value,
+  onChange,
+  type = "text",
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  type?: string;
+}) {`,
+    to: `function TextInput({
+  value,
+  onChange,
+  type = "text",
+  step,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  type?: string;
+  step?: string;
+}) {`,
   },
   {
-    label: "insert TimeSelect component",
-    from: `function TextInput({`,
-    to: `${timeSelectBlock}function TextInput({`,
+    label: "TextInput step attr",
+    from: `      value={value}
+      onChange={(e) => onChange(e.target.value)}`,
+    to: `      value={value}
+      step={step}
+      onChange={(e) => onChange(e.target.value)}`,
+  },
+  {
+    label: "worklog payload normalize times",
+    from: `  work_start_time: workStartTime,
+   start_time: clockInTime,
+   end_time: clockOutTime,`,
+    to: `  work_start_time: normalizeQuarterHour(workStartTime),
+   start_time: normalizeQuarterHour(clockInTime),
+   end_time: normalizeQuarterHour(clockOutTime),`,
   },
 ]);
 
@@ -179,4 +190,4 @@ patchFile("src/pages/admin/AdminWorklogReportPage.tsx", [
   },
 ]);
 
-console.log("patched worklog time select defaults and admin alerts");
+console.log("patched native worklog time UI with quarter-hour normalization and admin alerts");
