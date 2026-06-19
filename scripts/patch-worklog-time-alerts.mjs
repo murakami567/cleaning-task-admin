@@ -57,6 +57,26 @@ patchFile("src/pages/employee/EmployeeWorklogPage.tsx", [
     to: `${normalizeQuarterHourBlock}function timeToMinutes(time: string) {`,
   },
   {
+    label: "main mobile width",
+    from: `<main className="mx-auto w-full max-w-4xl px-4 pt-6">`,
+    to: `<main className="mx-auto w-full max-w-4xl box-border px-3 pt-4 sm:px-4 sm:pt-6">`,
+  },
+  {
+    label: "form mobile overflow",
+    from: `className="rounded-3xl border border-slate-200 bg-white shadow-sm"`,
+    to: `className="w-full max-w-full overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm"`,
+  },
+  {
+    label: "form inner mobile padding",
+    from: `<div className="p-5 md:p-6">`,
+    to: `<div className="box-border w-full max-w-full p-4 sm:p-5 md:p-6">`,
+  },
+  {
+    label: "grid min width",
+    from: `<div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2">`,
+    to: `<div className="mt-6 grid w-full min-w-0 grid-cols-1 gap-4 md:grid-cols-2">`,
+  },
+  {
     label: "work start step",
     from: `<TextInput type="time" value={workStartTime} onChange={setWorkStartTime} />`,
     to: `<TextInput type="time" value={workStartTime} onChange={setWorkStartTime} step="900" />`,
@@ -101,6 +121,18 @@ patchFile("src/pages/employee/EmployeeWorklogPage.tsx", [
     to: `      value={value}
       step={step}
       onChange={(e) => onChange(e.target.value)}`,
+  },
+  {
+    label: "TextInput mobile class",
+    from: `      className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm outline-none"`,
+    to: `      className="block h-11 w-full max-w-full min-w-0 box-border rounded-2xl border border-slate-200 bg-white px-4 text-sm outline-none"`,
+  },
+  {
+    label: "Field mobile width",
+    from: `    <div>
+      <div className="mb-2 text-sm font-semibold text-slate-500">{label}</div>`,
+    to: `    <div className="w-full min-w-0 max-w-full">
+      <div className="mb-2 text-sm font-semibold text-slate-500">{label}</div>`,
   },
   {
     label: "worklog payload normalize times",
@@ -190,4 +222,4 @@ patchFile("src/pages/admin/AdminWorklogReportPage.tsx", [
   },
 ]);
 
-console.log("patched native worklog time UI with quarter-hour normalization and admin alerts");
+console.log("patched native worklog time UI, mobile width, quarter-hour normalization and admin alerts");
