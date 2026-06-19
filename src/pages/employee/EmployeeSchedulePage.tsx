@@ -143,9 +143,9 @@ export default function EmployeeSchedulePage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 pb-24">
+    <div className="min-h-screen overflow-x-hidden bg-slate-50 pb-24">
       <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/95 backdrop-blur">
-        <div className="mx-auto w-full max-w-4xl px-4 pt-5 pb-4">
+        <div className="mx-auto box-border w-full max-w-4xl px-4 pt-5 pb-4">
           <div>
             <div className="text-xs font-medium text-slate-500">一般画面</div>
             <h1 className="mt-1 text-2xl font-bold text-slate-900">スケジュール</h1>
@@ -156,35 +156,35 @@ export default function EmployeeSchedulePage() {
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-4xl px-4 pt-6">
-        <section className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm md:p-6">
-          <div className="mb-5 flex items-center justify-between gap-3">
+      <main className="mx-auto box-border w-full max-w-4xl px-3 pt-4 sm:px-4 sm:pt-6">
+        <section className="box-border w-full max-w-full rounded-3xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4 md:p-6">
+          <div className="mb-4 flex items-center justify-between gap-2 sm:mb-5 sm:gap-3">
             <button
               type="button"
               onClick={() => moveMonth(-1)}
-              className="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700 hover:bg-slate-50"
+              className="rounded-2xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 sm:px-4 sm:text-sm"
             >
               前月
             </button>
 
-            <div className="text-xl font-bold text-slate-900">
+            <div className="text-base font-bold text-slate-900 sm:text-xl">
               {year}年 {month}月
             </div>
 
             <button
               type="button"
               onClick={() => moveMonth(1)}
-              className="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700 hover:bg-slate-50"
+              className="rounded-2xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 sm:px-4 sm:text-sm"
             >
               次月
             </button>
           </div>
 
-          <div className="grid grid-cols-7 gap-2">
+          <div className="grid grid-cols-7 gap-1 sm:gap-2">
             {WEEK_LABELS.map((label) => (
               <div
                 key={label}
-                className="px-2 py-2 text-center text-sm font-semibold text-slate-500"
+                className="px-1 py-2 text-center text-xs font-semibold text-slate-500 sm:px-2 sm:text-sm"
               >
                 {label}
               </div>
@@ -204,30 +204,32 @@ export default function EmployeeSchedulePage() {
                   onClick={() => openDayDetail(cell.date)}
                   disabled={!clickable}
                   className={[
-                    "relative min-h-[88px] rounded-3xl border p-3 text-left transition",
+                    "relative flex h-[74px] min-w-0 flex-col overflow-hidden rounded-2xl border p-1.5 text-center transition sm:h-[88px] sm:rounded-3xl sm:p-3 sm:text-left",
                     cell.inMonth
                       ? "border-slate-200 bg-white"
                       : "border-slate-200 bg-slate-50 text-slate-300",
                     clickable
-                      ? "hover:border-indigo-400 hover:shadow-sm cursor-pointer"
+                      ? "cursor-pointer hover:border-indigo-400 hover:shadow-sm"
                       : "cursor-default",
                     selectedDay?.date === cell.date ? "border-indigo-500 ring-2 ring-indigo-200" : "",
                   ].join(" ")}
                 >
-                  <div className="text-base font-semibold">{cell.day}</div>
+                  <div className="min-w-0 text-sm font-bold leading-none sm:text-base sm:font-semibold">
+                    {cell.day}
+                  </div>
 
                   {clickable ? (
                     <>
-                      <div className="absolute right-3 top-3 flex h-6 min-w-[24px] items-center justify-center rounded-full bg-slate-100 px-2 text-xs font-bold text-slate-500">
+                      <div className="absolute right-1 top-1 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-slate-100 px-1 text-[10px] font-bold leading-none text-slate-500 sm:right-3 sm:top-3 sm:h-6 sm:min-w-[24px] sm:px-2 sm:text-xs">
                         {totalCount}
                       </div>
 
-                      <div className="mt-4 text-sm text-slate-700">
-                        清{cleaningCount} / 検{inspectionCount}
+                      <div className="mt-auto min-w-0 truncate text-[10px] font-bold leading-tight text-slate-700 sm:mt-4 sm:text-sm sm:font-normal">
+                        清{cleaningCount}/検{inspectionCount}
                       </div>
                     </>
                   ) : (
-                    <div className="mt-4 text-sm text-slate-300">—</div>
+                    <div className="mt-auto min-w-0 truncate text-xs leading-none text-slate-300 sm:mt-4 sm:text-sm">—</div>
                   )}
                 </button>
               );
