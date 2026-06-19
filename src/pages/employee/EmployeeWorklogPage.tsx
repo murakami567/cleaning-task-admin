@@ -45,6 +45,21 @@ function makeRow(): WorkPlaceRow {
   };
 }
 
+function normalizeQuarterHour(time: string) {
+  if (!time || !time.includes(":")) return time;
+  const [hRaw, mRaw] = time.split(":").map(Number);
+  if (Number.isNaN(hRaw) || Number.isNaN(mRaw)) return time;
+
+  let h = hRaw;
+  let m = Math.round(mRaw / 15) * 15;
+  if (m === 60) {
+    h = (h + 1) % 24;
+    m = 0;
+  }
+
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+}
+
 function timeToMinutes(time: string) {
   if (!time || !time.includes(":")) return 0;
   const [h, m] = time.split(":").map(Number);
@@ -57,12 +72,11 @@ export default function EmployeeWorklogPage() {
 
   const [workDate, setWorkDate] = useState(todayString());
 
-  // ここを分離
   const [workStartTime, setWorkStartTime] = useState("10:00");
   const [clockInTime, setClockInTime] = useState("10:00");
-  const [clockOutTime, setClockOutTime] = useState("18:00");
+  const [clockOutTime, setClockOutTime] = useState("16:00");
 
-  const [breakMinutes, setBreakMinutes] = useState("60");
+  const [breakMinutes, setBreakMinutes] = useState("0");
   const [selectedWorkTypes, setSelectedWorkTypes] = useState<string[]>(["cleaning"]);
   const [rows, setRows] = useState<WorkPlaceRow[]>([makeRow()]);
   const [note, setNote] = useState("");
@@ -101,7 +115,6 @@ export default function EmployeeWorklogPage() {
     }
   }
 
-  // 実働は出勤〜退勤で計算
   const actualMinutes = useMemo(() => {
     const start = timeToMinutes(clockInTime);
     const end = timeToMinutes(clockOutTime);
@@ -141,8 +154,8 @@ export default function EmployeeWorklogPage() {
     setWorkDate(todayString());
     setWorkStartTime("10:00");
     setClockInTime("10:00");
-    setClockOutTime("18:00");
-    setBreakMinutes("60");
+    setClockOutTime("16:00");
+    setBreakMinutes("0");
     setSelectedWorkTypes(["cleaning"]);
     setRows([makeRow()]);
     setNote("");
@@ -181,6 +194,9 @@ export default function EmployeeWorklogPage() {
 
       const token = localStorage.getItem("employee_access_token") || "";
       const workTypeValue = selectedWorkTypes.join(",");
+      const normalizedWorkStartTime = normalizeQuarterHour(workStartTime);
+      const normalizedClockInTime = normalizeQuarterHour(clockInTime);
+      const normalizedClockOutTime = normalizeQuarterHour(clockOutTime);
 
       for (const row of validRows) {
         const property = properties.find((p) => p.id === row.property_id);
@@ -195,16 +211,16 @@ export default function EmployeeWorklogPage() {
             Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({
-  work_date: workDate,
-  property_name: property.property_name,
-  room_name: room.room_name,
-  work_start_time: workStartTime,
-  start_time: clockInTime,
-  end_time: clockOutTime,
-  break_minutes: Number(breakMinutes || 0),
-  work_type: workTypeValue,
-  note,
-}),
+            work_date: workDate,
+            property_name: property.property_name,
+            room_name: room.room_name,
+            work_start_time: normalizedWorkStartTime,
+            start_time: normalizedClockInTime,
+            end_time: normalizedClockOutTime,
+            break_minutes: Number(breakMinutes || 0),
+            work_type: workTypeValue,
+            note,
+          }),
         });
 
         const text = await res.text();
@@ -227,9 +243,9 @@ export default function EmployeeWorklogPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 pb-24">
+    <div className="min-h-screen overflow-x-hidden bg-slate-50 pb-24">
       <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/95 backdrop-blur">
-        <div className="mx-auto w-full max-w-4xl px-4 pt-5 pb-4">
+        <div className="mx-auto box-border w-full max-w-4xl px-4 pt-5 pb-4">
           <div>
             <div className="text-xs font-medium text-slate-500">一般画面</div>
             <h1 className="mt-1 text-2xl font-bold text-slate-900">実働記入</h1>
@@ -237,41 +253,40 @@ export default function EmployeeWorklogPage() {
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-4xl px-4 pt-6">
+      <main className="mx-auto box-border w-full max-w-4xl px-3 pt-4 sm:px-4 sm:pt-6">
         <form
           onSubmit={handleSubmit}
-          className="rounded-3xl border border-slate-200 bg-white shadow-sm"
+          className="box-border w-full max-w-full rounded-3xl border border-slate-200 bg-white shadow-sm"
         >
-          <div className="p-5 md:p-6">
+          <div className="box-border w-full max-w-full p-4 sm:p-5 md:p-6">
             <div className="text-3xl font-black text-slate-900">実働記入</div>
             <div className="mt-2 text-sm text-slate-500">
               送信はサーバー保存で登録します
             </div>
 
-            <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div className="mt-6 grid w-full min-w-0 grid-cols-1 gap-4 md:grid-cols-2">
               <Field label="日付">
                 <TextInput type="date" value={workDate} onChange={setWorkDate} />
               </Field>
 
               <Field label="作業開始時間">
-                <TextInput type="time" value={workStartTime} onChange={setWorkStartTime} />
+                <TextInput type="time" value={workStartTime} onChange={setWorkStartTime} step="900" />
               </Field>
 
               <Field label="出勤時刻">
-                <TextInput type="time" value={clockInTime} onChange={setClockInTime} />
+                <TextInput type="time" value={clockInTime} onChange={setClockInTime} step="900" />
               </Field>
 
               <Field label="退勤時刻">
-                <TextInput type="time" value={clockOutTime} onChange={setClockOutTime} />
+                <TextInput type="time" value={clockOutTime} onChange={setClockOutTime} step="900" />
               </Field>
 
               <Field label="休憩（分）">
                 <TextInput type="number" value={breakMinutes} onChange={setBreakMinutes} />
               </Field>
-
             </div>
 
-            <div className="mt-5">
+            <div className="mt-5 min-w-0">
               <div className="mb-2 text-sm font-semibold text-slate-500">
                 作業内容（複数選択）
               </div>
@@ -297,7 +312,7 @@ export default function EmployeeWorklogPage() {
               </div>
             </div>
 
-            <div className="mt-6">
+            <div className="mt-6 min-w-0">
               <div className="mb-2 flex items-center justify-between gap-3">
                 <div className="text-sm font-semibold text-slate-500">
                   物件 / 部屋（＋で行を追加）
@@ -306,7 +321,7 @@ export default function EmployeeWorklogPage() {
                 <button
                   type="button"
                   onClick={addRow}
-                  className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-900 text-xl font-bold text-white hover:bg-black"
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-900 text-xl font-bold text-white hover:bg-black"
                 >
                   ＋
                 </button>
@@ -319,9 +334,9 @@ export default function EmployeeWorklogPage() {
                   return (
                     <div
                       key={row.id}
-                      className="grid grid-cols-[1fr_1fr_44px] gap-3"
+                      className="grid w-full min-w-0 grid-cols-[minmax(0,1fr)_minmax(0,1fr)_44px] gap-2 sm:gap-3"
                     >
-                      <div>
+                      <div className="min-w-0">
                         <div className="mb-2 text-sm font-semibold text-slate-500">物件</div>
                         <select
                           value={row.property_id}
@@ -329,7 +344,7 @@ export default function EmployeeWorklogPage() {
                             updateRow(row.id, "property_id", e.target.value);
                             updateRow(row.id, "room_id", "");
                           }}
-                          className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm outline-none"
+                          className="block h-11 w-full max-w-full min-w-0 box-border rounded-2xl border border-slate-200 bg-white px-3 text-sm outline-none sm:px-4"
                           disabled={loadingMasters}
                         >
                           <option value="">選択してください</option>
@@ -341,12 +356,12 @@ export default function EmployeeWorklogPage() {
                         </select>
                       </div>
 
-                      <div>
+                      <div className="min-w-0">
                         <div className="mb-2 text-sm font-semibold text-slate-500">部屋</div>
                         <select
                           value={row.room_id}
                           onChange={(e) => updateRow(row.id, "room_id", e.target.value)}
-                          className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm outline-none"
+                          className="block h-11 w-full max-w-full min-w-0 box-border rounded-2xl border border-slate-200 bg-white px-3 text-sm outline-none sm:px-4"
                           disabled={!row.property_id || loadingMasters}
                         >
                           <option value="">選択してください</option>
@@ -358,11 +373,11 @@ export default function EmployeeWorklogPage() {
                         </select>
                       </div>
 
-                      <div className="flex items-end">
+                      <div className="flex items-end justify-end">
                         <button
                           type="button"
                           onClick={() => removeRow(row.id)}
-                          className="flex h-11 w-11 items-center justify-center rounded-full border border-slate-200 bg-white text-lg font-bold text-slate-500 hover:bg-slate-50"
+                          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-white text-lg font-bold text-slate-500 hover:bg-slate-50"
                         >
                           −
                         </button>
@@ -373,14 +388,14 @@ export default function EmployeeWorklogPage() {
               </div>
             </div>
 
-            <div className="mt-5">
+            <div className="mt-5 min-w-0">
               <Field label="備考">
                 <textarea
                   value={note}
                   onChange={(e) => setNote(e.target.value)}
                   rows={5}
                   placeholder="例：分業 / 気づき / 引継ぎ"
-                  className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none resize-none"
+                  className="block w-full max-w-full min-w-0 box-border resize-none rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none"
                 />
               </Field>
             </div>
@@ -398,7 +413,7 @@ export default function EmployeeWorklogPage() {
             ) : null}
           </div>
 
-          <div className="flex items-center justify-end gap-3 border-t border-slate-200 p-5">
+          <div className="flex items-center justify-end gap-3 border-t border-slate-200 p-4 sm:p-5">
             <button
               type="button"
               onClick={clearForm}
@@ -431,7 +446,7 @@ function Field({
   children: React.ReactNode;
 }) {
   return (
-    <div>
+    <div className="w-full min-w-0 max-w-full">
       <div className="mb-2 text-sm font-semibold text-slate-500">{label}</div>
       {children}
     </div>
@@ -442,17 +457,21 @@ function TextInput({
   value,
   onChange,
   type = "text",
+  step,
 }: {
   value: string;
   onChange: (value: string) => void;
   type?: string;
+  step?: string;
 }) {
   return (
     <input
       type={type}
       value={value}
+      step={step}
       onChange={(e) => onChange(e.target.value)}
-      className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm outline-none"
+      className="block h-11 w-full max-w-full min-w-0 box-border rounded-2xl border border-slate-200 bg-white px-4 text-sm outline-none"
+      style={{ maxWidth: "100%" }}
     />
   );
 }
