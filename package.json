@@ -4,8 +4,8 @@
   "version": "0.0.1",
   "type": "module",
   "scripts": {
-    "dev": "node scripts/patch-admin-tasks-priority.mjs && node scripts/patch-shiftboard-mate.mjs && node scripts/patch-employee-checklist.mjs && node scripts/patch-employee-facility-trouble.mjs && node scripts/patch-facility-trouble-admin.mjs && node scripts/patch-worklog-time-alerts.mjs && vite",
-    "build": "node scripts/patch-admin-tasks-priority.mjs && node scripts/patch-shiftboard-mate.mjs && node scripts/patch-employee-checklist.mjs && node scripts/patch-employee-facility-trouble.mjs && node scripts/patch-facility-trouble-admin.mjs && node scripts/patch-worklog-time-alerts.mjs && vite build",
+    "dev": "node scripts/patch-admin-tasks-priority.mjs && node scripts/patch-shiftboard-mate.mjs && node scripts/patch-employee-checklist.mjs && node scripts/patch-employee-facility-trouble.mjs && node scripts/patch-facility-trouble-admin.mjs && vite",
+    "build": "node scripts/patch-admin-tasks-priority.mjs && node scripts/patch-shiftboard-mate.mjs && node scripts/patch-employee-checklist.mjs && node scripts/patch-employee-facility-trouble.mjs && node scripts/patch-facility-trouble-admin.mjs && vite build",
     "preview": "vite preview"
   },
   "dependencies": {
