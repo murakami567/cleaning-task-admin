@@ -39,17 +39,13 @@ type GroupedWorklog = {
   row_count: number;
 };
 
+type AlertFilter = "all" | "late" | "early";
+
 function Card({ children }: { children: React.ReactNode }) {
   return <div className="rounded-[22px] border border-slate-200 bg-white shadow-sm">{children}</div>;
 }
 
-function SummaryCard({
-  label,
-  value,
-}: {
-  label: string;
-  value: string | number;
-}) {
+function SummaryCard({ label, value }: { label: string; value: string | number }) {
   return (
     <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
       <div className="text-xs font-semibold text-slate-500">{label}</div>
@@ -72,6 +68,69 @@ function formatMinutes(minutes: number) {
   const m = minutes % 60;
   if (h <= 0) return `${m}分`;
   return `${h}時間${m}分`;
+}
+
+function timeToMinutes(time: string) {
+  if (!time || !time.includes(":")) return null;
+  const [h, m] = time.split(":").map(Number);
+  if (Number.isNaN(h) || Number.isNaN(m)) return null;
+  return h * 60 + m;
+}
+
+function isLate(row: { start_time: string }) {
+  const start = timeToMinutes(row.start_time);
+  return start !== null && start > 10 * 60;
+}
+
+function isEarly(row: { end_time: string }) {
+  const end = timeToMinutes(row.end_time);
+  return end !== null && end < 16 * 60;
+}
+
+function isOvertime(row: { end_time: string }) {
+  const end = timeToMinutes(row.end_time);
+  return end !== null && end > 16 * 60;
+}
+
+function getWorklogAlerts(row: { start_time: string; end_time: string }) {
+  const alerts: { label: string; className: string }[] = [];
+
+  if (isLate(row)) {
+    alerts.push({ label: "遅刻", className: "border-rose-200 bg-rose-50 text-rose-700" });
+  }
+  if (isEarly(row)) {
+    alerts.push({ label: "早退", className: "border-amber-200 bg-amber-50 text-amber-700" });
+  }
+  if (isOvertime(row)) {
+    alerts.push({ label: "残業", className: "border-indigo-200 bg-indigo-50 text-indigo-700" });
+  }
+
+  return alerts;
+}
+
+function hasAlert(row: { start_time: string; end_time: string }, filter: AlertFilter) {
+  if (filter === "all") return true;
+  if (filter === "late") return isLate(row);
+  if (filter === "early") return isEarly(row);
+  return true;
+}
+
+function WorklogAlertBadges({ row }: { row: { start_time: string; end_time: string } }) {
+  const alerts = getWorklogAlerts(row);
+  if (alerts.length === 0) return <span className="text-slate-400">-</span>;
+
+  return (
+    <div className="flex flex-wrap gap-1">
+      {alerts.map((alert) => (
+        <span
+          key={alert.label}
+          className={`rounded-full border px-2 py-1 text-xs font-bold ${alert.className}`}
+        >
+          {alert.label}
+        </span>
+      ))}
+    </div>
+  );
 }
 
 function workTypeLabel(workType: string) {
@@ -108,6 +167,7 @@ export default function AdminWorklogReportPage() {
   const [worklogs, setWorklogs] = useState<Worklog[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [alertFilter, setAlertFilter] = useState<AlertFilter>("all");
   const [workTypeFilter, setWorkTypeFilter] = useState<
     "all" | "cleaning" | "inspection" | "linen" | "support"
   >("all");
@@ -151,8 +211,12 @@ export default function AdminWorklogReportPage() {
   }, [selectedDate]);
 
   const filteredWorklogs = useMemo(() => {
-    return worklogs.filter((row) => matchesWorkTypeFilter(row.work_type, workTypeFilter));
-  }, [worklogs, workTypeFilter]);
+    return worklogs.filter((row) => {
+      const workTypeMatched = matchesWorkTypeFilter(row.work_type, workTypeFilter);
+      const alertMatched = hasAlert(row, alertFilter);
+      return workTypeMatched && alertMatched;
+    });
+  }, [worklogs, workTypeFilter, alertFilter]);
 
   const groupedWorklogs = useMemo<GroupedWorklog[]>(() => {
     const map = new Map<string, GroupedWorklog>();
@@ -257,6 +321,31 @@ export default function AdminWorklogReportPage() {
 
             <div className="flex flex-wrap items-end gap-3">
               <div>
+                <div className="mb-2 text-xs font-semibold text-slate-500">表示</div>
+                <div className="flex rounded-2xl border border-slate-200 bg-white p-1">
+                  {[
+                    { value: "all", label: "すべて" },
+                    { value: "late", label: "遅刻" },
+                    { value: "early", label: "早退" },
+                  ].map((item) => (
+                    <button
+                      key={item.value}
+                      type="button"
+                      onClick={() => setAlertFilter(item.value as AlertFilter)}
+                      className={
+                        "h-9 rounded-xl px-3 text-xs font-bold transition " +
+                        (alertFilter === item.value
+                          ? "bg-slate-900 text-white"
+                          : "text-slate-600 hover:bg-slate-50")
+                      }
+                    >
+                      {item.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
                 <div className="mb-2 text-xs font-semibold text-slate-500">対象日</div>
                 <input
                   type="date"
@@ -340,7 +429,7 @@ export default function AdminWorklogReportPage() {
         ) : (
           <Card>
             <div className="overflow-auto">
-              <table className="w-full min-w-[1460px] text-sm">
+              <table className="w-full min-w-[1580px] text-sm">
                 <thead>
                   <tr>
                     <th className="border-b bg-slate-50 px-4 py-3 text-left font-bold">スタッフ</th>
@@ -350,6 +439,7 @@ export default function AdminWorklogReportPage() {
                     <th className="border-b bg-slate-50 px-4 py-3 text-left font-bold">作業開始</th>
                     <th className="border-b bg-slate-50 px-4 py-3 text-left font-bold">出勤</th>
                     <th className="border-b bg-slate-50 px-4 py-3 text-left font-bold">退勤</th>
+                    <th className="border-b bg-slate-50 px-4 py-3 text-left font-bold">アラート</th>
                     <th className="border-b bg-slate-50 px-4 py-3 text-left font-bold">休憩</th>
                     <th className="border-b bg-slate-50 px-4 py-3 text-left font-bold">作業時間</th>
                     <th className="border-b bg-slate-50 px-4 py-3 text-left font-bold">作業種別</th>
@@ -374,6 +464,7 @@ export default function AdminWorklogReportPage() {
                       <td className="border-b px-4 py-3">{row.work_start_time || "-"}</td>
                       <td className="border-b px-4 py-3">{row.start_time || "-"}</td>
                       <td className="border-b px-4 py-3">{row.end_time || "-"}</td>
+                      <td className="border-b px-4 py-3"><WorklogAlertBadges row={row} /></td>
                       <td className="border-b px-4 py-3">{row.break_minutes || 0}分</td>
                       <td className="border-b px-4 py-3 font-medium">
                         {formatMinutes(Number(row.work_minutes || 0))}
