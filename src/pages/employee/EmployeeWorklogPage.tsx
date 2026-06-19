@@ -446,7 +446,7 @@ function Field({
   children: React.ReactNode;
 }) {
   return (
-    <div className="w-full min-w-0 max-w-full">
+    <div className="w-full min-w-0 max-w-full overflow-hidden">
       <div className="mb-2 text-sm font-semibold text-slate-500">{label}</div>
       {children}
     </div>
@@ -470,8 +470,13 @@ function TextInput({
       value={value}
       step={step}
       onChange={(e) => onChange(e.target.value)}
-      className="block h-11 w-full max-w-full min-w-0 box-border rounded-2xl border border-slate-200 bg-white px-4 text-sm outline-none"
-      style={{ maxWidth: "100%" }}
+      className="block h-11 max-w-full min-w-0 box-border appearance-none rounded-2xl border border-slate-200 bg-white px-4 text-sm outline-none"
+      style={{
+        width: "-webkit-fill-available",
+        maxWidth: "100%",
+        minWidth: 0,
+        WebkitAppearance: "none",
+      }}
     />
   );
 }
