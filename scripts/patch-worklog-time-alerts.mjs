@@ -82,23 +82,14 @@ patchFile("src/pages/employee/EmployeeWorklogPage.tsx", [
   },
 ]);
 
-patchFile("src/pages/admin/AdminWorklogReportPage.tsx", [
-  {
-    label: "add alert helpers",
-    from: `function formatMinutes(minutes: number) {
-  const h = Math.floor(minutes / 60);
-  const m = minutes % 60;
-  if (h <= 0) return `${m}分`;
-  return `${h}時間${m}分`;
-}
-`,
-    to: `function formatMinutes(minutes: number) {
-  const h = Math.floor(minutes / 60);
-  const m = minutes % 60;
-  if (h <= 0) return `${m}分`;
-  return `${h}時間${m}分`;
-}
+const formatMinutesBlock = "function formatMinutes(minutes: number) {\n" +
+  "  const h = Math.floor(minutes / 60);\n" +
+  "  const m = minutes % 60;\n" +
+  "  if (h <= 0) return `${m}分`;\n" +
+  "  return `${h}時間${m}分`;\n" +
+  "}\n";
 
+const alertHelpersBlock = formatMinutesBlock + `
 function timeToMinutes(time: string) {
   if (!time || !time.includes(":")) return null;
   const [h, m] = time.split(":").map(Number);
@@ -130,14 +121,20 @@ function WorklogAlertBadges({ row }: { row: { start_time: string; end_time: stri
   return (
     <div className="flex flex-wrap gap-1">
       {alerts.map((alert) => (
-        <span key={alert.label} className={`rounded-full border px-2 py-1 text-xs font-bold ${alert.className}`}>
+        <span key={alert.label} className={"rounded-full border px-2 py-1 text-xs font-bold " + alert.className}>
           {alert.label}
         </span>
       ))}
     </div>
   );
 }
-`,
+`;
+
+patchFile("src/pages/admin/AdminWorklogReportPage.tsx", [
+  {
+    label: "add alert helpers",
+    from: formatMinutesBlock,
+    to: alertHelpersBlock,
   },
   {
     label: "table min width",
