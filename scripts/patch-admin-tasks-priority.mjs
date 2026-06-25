@@ -35,7 +35,7 @@ replaceOnce(
 `      availablePropertyIds: Array.isArray(e.staff_members?.available_property_ids)
         ? e.staff_members.available_property_ids
         : [],
-      uncheckedPropertyIds: Array.isArray(e.staff_members?.unchecked_property_ids)
+       uncheckedPropertyIds: Array.isArray(e.staff_members?.unchecked_property_ids)
         ? e.staff_members.unchecked_property_ids
         : [],
     }));`,
@@ -197,5 +197,38 @@ replaceOnce(
 "MultiAssignSelect labels"
 );
 
+replaceOnce(
+`function assigneeLabels(userIds: string[], attendees: Attendee[]) {
+  if (!userIds || userIds.length === 0) return "未割当";
+
+  return userIds
+    .map((id) => {
+      const found = attendees?.find((u) => u.userId === id);
+      return found?.name ?? id;
+    })
+    .join(" / ");
+}`,
+`function assigneeLabels(userIds: string[], attendees: Attendee[], fallbackNames: string[] = []) {
+  const names = (fallbackNames ?? []).filter(Boolean);
+  if (names.length > 0) return names.join(" / ");
+  if (!userIds || userIds.length === 0) return "未割当";
+
+  return userIds
+    .map((id) => {
+      const found = attendees?.find((u) => u.userId === id);
+      return found?.name ?? "未割当";
+    })
+    .filter((name) => name && name !== "未割当")
+    .join(" / ") || "未割当";
+}`,
+"assigneeLabels names fallback"
+);
+
+replaceOnce(
+`                              assigneeLabels(t.assigneeIds ?? [], allAttendees)`,
+`                              assigneeLabels(t.assigneeIds ?? [], allAttendees, t.assigneeNames ?? [])`,
+"assigneeLabels row usage"
+);
+
 fs.writeFileSync(file, src);
-console.log("patched AdminTasksPagePreview priority display");
+console.log("patched AdminTasksPagePreview priority display and assigned names fallback");
