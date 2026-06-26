@@ -10,6 +10,7 @@ type PropertyMaster = {
   normalized_name: string | null;
   sort_order: number | null;
   is_active: boolean;
+  max_assignable_count?: number | null;
 };
 
 type RoomMaster = {
@@ -236,6 +237,7 @@ export default function PropertyManagementPage() {
     property_name: "",
     sort_order: "999",
     is_active: true,
+    max_assignable_count: "",
   });
 
   const [roomEditForm, setRoomEditForm] = useState({
@@ -261,6 +263,7 @@ export default function PropertyManagementPage() {
     property_code: "",
     property_name: "",
     sort_order: "999",
+    max_assignable_count: "",
   });
 
   const [roomForm, setRoomForm] = useState({
@@ -476,6 +479,10 @@ export default function PropertyManagementPage() {
           property_name: propertyForm.property_name.trim(),
           normalized_name: propertyForm.property_name.trim(),
           sort_order: Number(propertyForm.sort_order || 999),
+          max_assignable_count:
+  propertyForm.max_assignable_count === ""
+    ? null
+    : Number(propertyForm.max_assignable_count),
           is_active: true,
         }),
       });
@@ -487,6 +494,7 @@ export default function PropertyManagementPage() {
       setPropertyForm({
         property_code: "",
         property_name: "",
+        max_assignable_count: "",
         sort_order: "999",
       });
       await loadAll();
@@ -605,6 +613,10 @@ export default function PropertyManagementPage() {
       property_code: property.property_code,
       property_name: property.property_name,
       sort_order: String(property.sort_order ?? 999),
+      max_assignable_count:
+  property.max_assignable_count == null
+    ? ""
+    : String(property.max_assignable_count),
       is_active: property.is_active,
     });
     setEditPropertyDrawerOpen(true);
@@ -649,6 +661,10 @@ export default function PropertyManagementPage() {
           property_name: propertyEditForm.property_name.trim(),
           normalized_name: propertyEditForm.property_name.trim(),
           sort_order: Number(propertyEditForm.sort_order || 999),
+          max_assignable_count:
+  propertyEditForm.max_assignable_count === ""
+    ? null
+    : Number(propertyEditForm.max_assignable_count),
           is_active: propertyEditForm.is_active,
         }),
       });
@@ -857,7 +873,7 @@ export default function PropertyManagementPage() {
                           {p.property_code} / {p.normalized_name ?? p.property_name}
                         </div>
                         <div className={`mt-1 text-xs ${selected ? "text-white/70" : "text-slate-500"}`}>
-                          {roomCount} 室
+                          {roomCount} 室 / 最大対応可能 {p.max_assignable_count ?? "制限なし"}
                         </div>
                       </div>
 
@@ -1159,6 +1175,17 @@ export default function PropertyManagementPage() {
               placeholder="999"
             />
           </Field>
+
+          <Field label="最大対応可能数">
+  <TextInput
+    type="number"
+    value={propertyForm.max_assignable_count}
+    onChange={(v) =>
+      setPropertyForm((p) => ({ ...p, max_assignable_count: v }))
+    }
+    placeholder="空欄なら制限なし"
+  />
+</Field>
         </div>
       </Drawer>
 
@@ -1344,6 +1371,17 @@ export default function PropertyManagementPage() {
               onChange={(v) => setPropertyEditForm((p) => ({ ...p, sort_order: v }))}
             />
           </Field>
+
+          <Field label="最大対応可能数">
+  <TextInput
+    type="number"
+    value={propertyEditForm.max_assignable_count}
+    onChange={(v) =>
+      setPropertyEditForm((p) => ({ ...p, max_assignable_count: v }))
+    }
+    placeholder="空欄なら制限なし"
+  />
+</Field>
 
           <label className="inline-flex items-center gap-2 text-sm font-medium">
             <input
