@@ -11,6 +11,8 @@ type PropertyMaster = {
   sort_order: number | null;
   is_active: boolean;
   max_assignable_count?: number | null;
+
+  cleaning_point?: number | null;
 };
 
 type RoomMaster = {
@@ -232,13 +234,14 @@ export default function PropertyManagementPage() {
   const [editingRoom, setEditingRoom] = useState<RoomMaster | null>(null);
 
   const [propertyEditForm, setPropertyEditForm] = useState({
-    id: "",
-    property_code: "",
-    property_name: "",
-    sort_order: "999",
-    is_active: true,
-    max_assignable_count: "",
-  });
+  id: "",
+  property_code: "",
+  property_name: "",
+  sort_order: "999",
+  is_active: true,
+  max_assignable_count: "",
+  cleaning_point: "60",
+});
 
   const [roomEditForm, setRoomEditForm] = useState({
     id: "",
@@ -260,11 +263,12 @@ export default function PropertyManagementPage() {
   const [roomSearch, setRoomSearch] = useState("");
 
   const [propertyForm, setPropertyForm] = useState({
-    property_code: "",
-    property_name: "",
-    sort_order: "999",
-    max_assignable_count: "",
-  });
+  property_code: "",
+  property_name: "",
+  sort_order: "999",
+  max_assignable_count: "",
+  cleaning_point: "60",
+});
 
   const [roomForm, setRoomForm] = useState({
     property_id: "",
@@ -475,28 +479,32 @@ export default function PropertyManagementPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          property_code: propertyForm.property_code.trim(),
-          property_name: propertyForm.property_name.trim(),
-          normalized_name: propertyForm.property_name.trim(),
-          sort_order: Number(propertyForm.sort_order || 999),
-          max_assignable_count:
-  propertyForm.max_assignable_count === ""
-    ? null
-    : Number(propertyForm.max_assignable_count),
-          is_active: true,
-        }),
-      });
+    property_code: propertyForm.property_code.trim(),
+    property_name: propertyForm.property_name.trim(),
+    normalized_name: propertyForm.property_name.trim(),
+    sort_order: Number(propertyForm.sort_order || 999),
+
+    max_assignable_count:
+      propertyForm.max_assignable_count === ""
+        ? null
+        : Number(propertyForm.max_assignable_count),
+
+    cleaning_point: Number(propertyForm.cleaning_point || 60),
+
+    is_active: true,
+}),
 
       if (!res.ok) throw new Error(`property create failed: ${res.status}`);
 
       await res.json();
       setPropertyDrawerOpen(false);
       setPropertyForm({
-        property_code: "",
-        property_name: "",
-        max_assignable_count: "",
-        sort_order: "999",
-      });
+    property_code: "",
+    property_name: "",
+    max_assignable_count: "",
+    cleaning_point: "60",
+    sort_order: "999",
+});
       await loadAll();
     } catch (e) {
       console.error(e);
@@ -609,16 +617,23 @@ export default function PropertyManagementPage() {
   const openEditProperty = (property: PropertyMaster) => {
     setEditingProperty(property);
     setPropertyEditForm({
-      id: property.id,
-      property_code: property.property_code,
-      property_name: property.property_name,
-      sort_order: String(property.sort_order ?? 999),
-      max_assignable_count:
-  property.max_assignable_count == null
-    ? ""
-    : String(property.max_assignable_count),
-      is_active: property.is_active,
-    });
+    id: property.id,
+    property_code: property.property_code,
+    property_name: property.property_name,
+    sort_order: String(property.sort_order ?? 999),
+
+    max_assignable_count:
+        property.max_assignable_count == null
+            ? ""
+            : String(property.max_assignable_count),
+
+    cleaning_point:
+        property.cleaning_point == null
+            ? "60"
+            : String(property.cleaning_point),
+
+    is_active: property.is_active,
+});
     setEditPropertyDrawerOpen(true);
   };
 
@@ -656,17 +671,23 @@ export default function PropertyManagementPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          property_id: propertyEditForm.id,
-          property_code: propertyEditForm.property_code.trim(),
-          property_name: propertyEditForm.property_name.trim(),
-          normalized_name: propertyEditForm.property_name.trim(),
-          sort_order: Number(propertyEditForm.sort_order || 999),
-          max_assignable_count:
-  propertyEditForm.max_assignable_count === ""
-    ? null
-    : Number(propertyEditForm.max_assignable_count),
-          is_active: propertyEditForm.is_active,
-        }),
+    property_id: propertyEditForm.id,
+    property_code: propertyEditForm.property_code.trim(),
+    property_name: propertyEditForm.property_name.trim(),
+    normalized_name: propertyEditForm.property_name.trim(),
+
+    sort_order: Number(propertyEditForm.sort_order || 999),
+
+    max_assignable_count:
+      propertyEditForm.max_assignable_count === ""
+        ? null
+        : Number(propertyEditForm.max_assignable_count),
+
+    cleaning_point:
+      Number(propertyEditForm.cleaning_point || 60),
+
+    is_active: propertyEditForm.is_active,
+}),
       });
 
       if (!res.ok) throw new Error(`property update failed: ${res.status}`);
@@ -873,8 +894,12 @@ export default function PropertyManagementPage() {
                           {p.property_code} / {p.normalized_name ?? p.property_name}
                         </div>
                         <div className={`mt-1 text-xs ${selected ? "text-white/70" : "text-slate-500"}`}>
-                          {roomCount} 室 / 最大対応可能 {p.max_assignable_count ?? "制限なし"}
-                        </div>
+  {roomCount} 室
+  {" / "}
+  最大対応可能 {p.max_assignable_count ?? "制限なし"}
+  {" / "}
+  物件点数 {p.cleaning_point ?? 60}pt
+</div>
                       </div>
 
                       <div className="flex items-center gap-2">
@@ -1186,6 +1211,20 @@ export default function PropertyManagementPage() {
     placeholder="空欄なら制限なし"
   />
 </Field>
+
+          <Field label="物件点数">
+    <TextInput
+        type="number"
+        value={propertyForm.cleaning_point}
+        onChange={(v) =>
+            setPropertyForm((p) => ({
+                ...p,
+                cleaning_point: v,
+            }))
+        }
+    />
+</Field>
+          
         </div>
       </Drawer>
 
@@ -1381,6 +1420,19 @@ export default function PropertyManagementPage() {
     }
     placeholder="空欄なら制限なし"
   />
+</Field>
+
+          <Field label="物件点数">
+    <TextInput
+        type="number"
+        value={propertyEditForm.cleaning_point}
+        onChange={(v) =>
+            setPropertyEditForm((p) => ({
+                ...p,
+                cleaning_point: v,
+            }))
+        }
+    />
 </Field>
 
           <label className="inline-flex items-center gap-2 text-sm font-medium">
