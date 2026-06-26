@@ -493,7 +493,7 @@ export default function PropertyManagementPage() {
 
     is_active: true,
 }),
-
+});
       if (!res.ok) throw new Error(`property create failed: ${res.status}`);
 
       await res.json();
