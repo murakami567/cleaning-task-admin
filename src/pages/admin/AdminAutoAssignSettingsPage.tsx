@@ -11,6 +11,7 @@ type PropertyRow = {
   is_active?: boolean;
   assignment_mode?: "solo" | "shared" | "both" | string | null;
   max_assignable_count?: number | null;
+  cleaning_point?: number | null;
 };
 
 type StaffRow = {
@@ -80,29 +81,22 @@ export default function AdminAutoAssignSettingsPage() {
   const [loading, setLoading] = useState(false);
   const [savingKey, setSavingKey] = useState("");
   const [query, setQuery] = useState("");
-  const [selectedPropertyId, setSelectedPropertyId] = useState("");
-
-  const propertyNameById = useMemo(() => {
-    const m = new Map<string, string>();
-    properties.forEach((p) => m.set(p.id, p.property_name));
-    return m;
-  }, [properties]);
 
   const loadAll = async () => {
     setLoading(true);
     try {
-      const [pRes, rRes, sRes] = await Promise.all([
+      const [pRes, sRes] = await Promise.all([
         fetch(`${API_BASE}/properties`),
         fetch(`${API_BASE}/staffs`),
       ]);
+
       if (!pRes.ok) throw new Error(`properties ${pRes.status}`);
-      if (!rRes.ok) throw new Error(`rooms ${rRes.status}`);
       if (!sRes.ok) throw new Error(`staffs ${sRes.status}`);
+
       const p = await pRes.json();
-      const r = await rRes.json();
       const s = await sRes.json();
+
       setProperties(Array.isArray(p) ? p : []);
-      setRooms(Array.isArray(r) ? r : []);
       setStaffs(Array.isArray(s) ? s : []);
     } catch (e) {
       console.error(e);
@@ -131,6 +125,7 @@ export default function AdminAutoAssignSettingsPage() {
           is_active: row.is_active ?? true,
           assignment_mode: row.assignment_mode || "solo",
           max_assignable_count: row.max_assignable_count ?? null,
+          cleaning_point: row.cleaning_point ?? 60,
         }),
       });
       if (!res.ok) throw new Error(`property update ${res.status}`);
@@ -142,7 +137,6 @@ export default function AdminAutoAssignSettingsPage() {
       setSavingKey("");
     }
   };
-
 
   const saveStaff = async (row: StaffRow) => {
     setSavingKey(`staff-${row.id}`);
@@ -184,25 +178,24 @@ export default function AdminAutoAssignSettingsPage() {
       .sort((a, b) => (a.sort_order ?? 999) - (b.sort_order ?? 999));
   }, [properties, query]);
 
-  
   const filteredStaffs = useMemo(() => {
-  const q = query.trim().toLowerCase();
+    const q = query.trim().toLowerCase();
 
-  return staffs
-    .filter((s) => s.is_active !== false)
-    .filter((s) => {
-      const role = (s.role ?? "").toLowerCase();
-      return role === "staff" || role === "checker";
-    })
-    .filter(
-      (s) =>
-        !q ||
-        `${s.staff_name} ${s.staff_code ?? ""}`
-          .toLowerCase()
-          .includes(q)
-    )
-    .sort((a, b) => (a.sort_order ?? 999) - (b.sort_order ?? 999));
-}, [staffs, query]);
+    return staffs
+      .filter((s) => s.is_active !== false)
+      .filter((s) => {
+        const role = (s.role ?? "").toLowerCase();
+        return role === "staff" || role === "checker";
+      })
+      .filter(
+        (s) =>
+          !q ||
+          `${s.staff_name} ${s.staff_code ?? ""}`
+            .toLowerCase()
+            .includes(q)
+      )
+      .sort((a, b) => (a.sort_order ?? 999) - (b.sort_order ?? 999));
+  }, [staffs, query]);
 
   return (
     <div className="min-h-screen bg-slate-50 p-6">
@@ -210,7 +203,7 @@ export default function AdminAutoAssignSettingsPage() {
         <div>
           <div className="text-3xl font-black tracking-tight">自動割当設定</div>
           <div className="mt-1 text-sm text-slate-500">
-            300pt方式、単独・分業・両方可、部屋点数、スタッフ上限を管理します。
+            300pt方式、単独・分業・両方可、物件点数、スタッフ上限を管理します。
           </div>
         </div>
         <Button onClick={() => void loadAll()}>{loading ? "読込中" : "更新"}</Button>
@@ -232,12 +225,13 @@ export default function AdminAutoAssignSettingsPage() {
 
       {tab === "properties" ? (
         <div className="overflow-auto rounded-2xl border border-slate-200 bg-white">
-          <table className="w-full min-w-[780px] text-sm">
+          <table className="w-full min-w-[900px] text-sm">
             <thead className="bg-slate-50 text-left text-xs text-slate-500">
               <tr>
                 <th className="px-4 py-3">物件</th>
                 <th className="px-4 py-3">割当方式</th>
                 <th className="px-4 py-3">最大対応数</th>
+                <th className="px-4 py-3">物件点数</th>
                 <th className="px-4 py-3">説明</th>
                 <th className="px-4 py-3">操作</th>
               </tr>
@@ -263,8 +257,15 @@ export default function AdminAutoAssignSettingsPage() {
                       onChange={(v: string) => setProperties((prev) => prev.map((x) => x.id === p.id ? { ...x, max_assignable_count: v === "" ? null : Number(v) } : x))}
                     />
                   </td>
+                  <td className="px-4 py-3">
+                    <NumberInput
+                      value={p.cleaning_point ?? 60}
+                      placeholder="60"
+                      onChange={(v: string) => setProperties((prev) => prev.map((x) => x.id === p.id ? { ...x, cleaning_point: Number(v || 60) } : x))}
+                    />
+                  </td>
                   <td className="px-4 py-3 text-xs text-slate-500">
-                    {modeLabel(p.assignment_mode)} / 最大対応数は1人がその物件で持てる部屋数
+                    {modeLabel(p.assignment_mode)} / 物件点数は1部屋あたりの作業pt / 最大対応数は1人がその物件で持てる部屋数
                   </td>
                   <td className="px-4 py-3">
                     <Button disabled={savingKey === `property-${p.id}`} onClick={() => void saveProperty(p)}>保存</Button>
