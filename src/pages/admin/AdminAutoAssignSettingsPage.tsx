@@ -13,17 +13,6 @@ type PropertyRow = {
   max_assignable_count?: number | null;
 };
 
-type RoomRow = {
-  id: string;
-  property_id: string;
-  room_name: string;
-  room_code?: string | null;
-  room_key?: string | null;
-  room_sort_order?: number | null;
-  is_active?: boolean;
-  cleaning_score?: number | null;
-};
-
 type StaffRow = {
   id: string;
   staff_code?: string | null;
@@ -41,7 +30,7 @@ type StaffRow = {
   shared_enabled?: boolean | null;
 };
 
-type Tab = "properties" | "rooms" | "staffs";
+type Tab = "properties" | "staffs";
 
 function Button({ children, className = "", ...props }: any) {
   return (
@@ -87,7 +76,6 @@ function modeLabel(mode?: string | null) {
 export default function AdminAutoAssignSettingsPage() {
   const [tab, setTab] = useState<Tab>("properties");
   const [properties, setProperties] = useState<PropertyRow[]>([]);
-  const [rooms, setRooms] = useState<RoomRow[]>([]);
   const [staffs, setStaffs] = useState<StaffRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [savingKey, setSavingKey] = useState("");
@@ -105,7 +93,6 @@ export default function AdminAutoAssignSettingsPage() {
     try {
       const [pRes, rRes, sRes] = await Promise.all([
         fetch(`${API_BASE}/properties`),
-        fetch(`${API_BASE}/rooms`),
         fetch(`${API_BASE}/staffs`),
       ]);
       if (!pRes.ok) throw new Error(`properties ${pRes.status}`);
@@ -156,26 +143,6 @@ export default function AdminAutoAssignSettingsPage() {
     }
   };
 
-  const saveRoom = async (row: RoomRow) => {
-    setSavingKey(`room-${row.id}`);
-    try {
-      const res = await fetch(`${API_BASE}/rooms/update`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          room_id: row.id,
-          cleaning_score: row.cleaning_score ?? 60,
-        }),
-      });
-      if (!res.ok) throw new Error(`room update ${res.status}`);
-      await loadAll();
-    } catch (e) {
-      console.error(e);
-      alert("部屋点数の保存に失敗しました。");
-    } finally {
-      setSavingKey("");
-    }
-  };
 
   const saveStaff = async (row: StaffRow) => {
     setSavingKey(`staff-${row.id}`);
@@ -217,20 +184,7 @@ export default function AdminAutoAssignSettingsPage() {
       .sort((a, b) => (a.sort_order ?? 999) - (b.sort_order ?? 999));
   }, [properties, query]);
 
-  const filteredRooms = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    return rooms
-      .filter((r) => !selectedPropertyId || r.property_id === selectedPropertyId)
-      .filter((r) => !q || `${propertyNameById.get(r.property_id) ?? ""} ${r.room_name}`.toLowerCase().includes(q))
-      .sort((a, b) => {
-        const pa = propertyNameById.get(a.property_id) ?? "";
-        const pb = propertyNameById.get(b.property_id) ?? "";
-        const cmp = pa.localeCompare(pb, "ja");
-        if (cmp !== 0) return cmp;
-        return (a.room_sort_order ?? 999) - (b.room_sort_order ?? 999);
-      });
-  }, [rooms, query, selectedPropertyId, propertyNameById]);
-
+  
   const filteredStaffs = useMemo(() => {
   const q = query.trim().toLowerCase();
 
@@ -264,7 +218,6 @@ export default function AdminAutoAssignSettingsPage() {
 
       <div className="mb-4 flex flex-wrap gap-2">
         <Button className={tab === "properties" ? "bg-black text-white" : "bg-white"} onClick={() => setTab("properties")}>物件方式</Button>
-        <Button className={tab === "rooms" ? "bg-black text-white" : "bg-white"} onClick={() => setTab("rooms")}>部屋点数</Button>
         <Button className={tab === "staffs" ? "bg-black text-white" : "bg-white"} onClick={() => setTab("staffs")}>スタッフ上限</Button>
       </div>
 
@@ -275,14 +228,6 @@ export default function AdminAutoAssignSettingsPage() {
           onChange={(e) => setQuery(e.target.value)}
           placeholder="検索"
         />
-        {tab === "rooms" ? (
-          <Select value={selectedPropertyId} onChange={setSelectedPropertyId}>
-            <option value="">全物件</option>
-            {properties.map((p) => (
-              <option key={p.id} value={p.id}>{p.property_name}</option>
-            ))}
-          </Select>
-        ) : null}
       </div>
 
       {tab === "properties" ? (
@@ -323,38 +268,6 @@ export default function AdminAutoAssignSettingsPage() {
                   </td>
                   <td className="px-4 py-3">
                     <Button disabled={savingKey === `property-${p.id}`} onClick={() => void saveProperty(p)}>保存</Button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      ) : null}
-
-      {tab === "rooms" ? (
-        <div className="overflow-auto rounded-2xl border border-slate-200 bg-white">
-          <table className="w-full min-w-[680px] text-sm">
-            <thead className="bg-slate-50 text-left text-xs text-slate-500">
-              <tr>
-                <th className="px-4 py-3">物件</th>
-                <th className="px-4 py-3">部屋</th>
-                <th className="px-4 py-3">清掃点数</th>
-                <th className="px-4 py-3">操作</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredRooms.map((r) => (
-                <tr key={r.id} className="border-t">
-                  <td className="px-4 py-3">{propertyNameById.get(r.property_id) ?? "-"}</td>
-                  <td className="px-4 py-3 font-bold">{r.room_name}</td>
-                  <td className="px-4 py-3">
-                    <NumberInput
-                      value={r.cleaning_score ?? 60}
-                      onChange={(v: string) => setRooms((prev) => prev.map((x) => x.id === r.id ? { ...x, cleaning_score: Number(v || 60) } : x))}
-                    />
-                  </td>
-                  <td className="px-4 py-3">
-                    <Button disabled={savingKey === `room-${r.id}`} onClick={() => void saveRoom(r)}>保存</Button>
                   </td>
                 </tr>
               ))}
