@@ -23,6 +23,7 @@ import AdminRoute from "./routes/AdminRoute";
 import AdminWorklogReportPage from "./pages/admin/AdminWorklogReportPage";
 import AdminLostItemsPage from "./pages/admin/AdminLostItemsPage";
 import AdminDataExportPage from "./pages/admin/AdminDataExportPage";
+import AdminAutoAssignSettingsPage from "./pages/admin/AdminAutoAssignSettingsPage";
 
 import PayrollAttendancePage from "./pages/admin/PayrollAttendancePage";
 import PayrollRoute from "./routes/PayrollRoute";
@@ -54,6 +55,7 @@ function AdminLayout() {
         <AdminNavButton to="/admin/home">ホーム</AdminNavButton>
         <AdminNavButton to="/admin/tasks">タスク管理</AdminNavButton>
         <AdminNavButton to="/admin/properties">物件管理</AdminNavButton>
+        <AdminNavButton to="/admin/auto-assign-settings">割当設定</AdminNavButton>
         <AdminNavButton to="/admin/facilities">設備管理</AdminNavButton>
         <AdminNavButton to="/admin/shifts">シフト管理</AdminNavButton>
         <AdminNavButton to="/admin/shiftboard">シフト表</AdminNavButton>
@@ -109,6 +111,7 @@ export default function App() {
           <Route path="home" element={<AdminHomePage />} />
           <Route path="tasks" element={<AdminTasksPagePreview />} />
           <Route path="properties" element={<PropertyManagementPage />} />
+          <Route path="auto-assign-settings" element={<AdminAutoAssignSettingsPage />} />
           <Route path="facilities" element={<FacilityManagementPage />} />
           <Route path="shifts" element={<ShiftManagementPage />} />
           <Route path="shiftboard" element={<ShiftBoardPage />} />
