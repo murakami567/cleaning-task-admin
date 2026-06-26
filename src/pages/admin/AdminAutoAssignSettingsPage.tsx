@@ -232,12 +232,23 @@ export default function AdminAutoAssignSettingsPage() {
   }, [rooms, query, selectedPropertyId, propertyNameById]);
 
   const filteredStaffs = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    return staffs
-      .filter((s) => s.is_active !== false)
-      .filter((s) => !q || `${s.staff_name} ${s.staff_code ?? ""}`.toLowerCase().includes(q))
-      .sort((a, b) => (a.sort_order ?? 999) - (b.sort_order ?? 999));
-  }, [staffs, query]);
+  const q = query.trim().toLowerCase();
+
+  return staffs
+    .filter((s) => s.is_active !== false)
+    .filter((s) => {
+      const role = (s.role ?? "").toLowerCase();
+      return role === "staff" || role === "checker";
+    })
+    .filter(
+      (s) =>
+        !q ||
+        `${s.staff_name} ${s.staff_code ?? ""}`
+          .toLowerCase()
+          .includes(q)
+    )
+    .sort((a, b) => (a.sort_order ?? 999) - (b.sort_order ?? 999));
+}, [staffs, query]);
 
   return (
     <div className="min-h-screen bg-slate-50 p-6">
