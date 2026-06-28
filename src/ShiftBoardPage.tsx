@@ -163,6 +163,8 @@ export default function ShiftBoardPage() {
   const [loading, setLoading] = useState(false);
   const [savingKey, setSavingKey] = useState("");
   const [jinjerSyncing, setJinjerSyncing] = useState(false);
+  const [shiftUploadFile, setShiftUploadFile] = useState<File | null>(null);
+  const [shiftUploading, setShiftUploading] = useState(false);
 
   const syncJinjer = async () => {
     if (jinjerSyncing) return;
@@ -202,6 +204,58 @@ export default function ShiftBoardPage() {
       alert(`Jinjer同期に失敗しました: ${e?.message || ""}`);
     } finally {
       setJinjerSyncing(false);
+    }
+  };
+
+  const uploadShiftFile = async () => {
+    if (shiftUploading) return;
+    if (!shiftUploadFile) {
+      alert("取り込むExcelまたはCSVファイルを選択してください。");
+      return;
+    }
+    if (!confirm(`${year}年${month}月のシフトをファイルから取り込みます。よろしいですか？`)) {
+      return;
+    }
+
+    try {
+      setShiftUploading(true);
+      const token = localStorage.getItem("admin_access_token") || "";
+      const formData = new FormData();
+      formData.append("file", shiftUploadFile);
+      formData.append("month", `${year}-${pad2(month)}`);
+
+      const res = await fetch(`${API_BASE}/jinjer/shifts/upload`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: formData,
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(body?.detail || `${res.status}`);
+      }
+
+      const skipped = Array.isArray(body?.skipped_no_staff) ? body.skipped_no_staff : [];
+      const errors = Array.isArray(body?.errors) ? body.errors : [];
+      const msg = [
+        `シフト取込 完了`,
+        `対象月: ${body.month || `${year}-${pad2(month)}`}`,
+        `読取: ${body.fetched ?? 0} 件`,
+        `保存: ${body.saved ?? 0} 件`,
+        skipped.length > 0
+          ? `未マッチ: ${skipped.length} 件 (${skipped.slice(0, 5).join(", ")}${skipped.length > 5 ? " ほか" : ""})`
+          : "",
+        errors.length > 0 ? `エラー: ${errors.length} 件` : "",
+      ].filter(Boolean).join("\n");
+      alert(msg);
+      setShiftUploadFile(null);
+      await loadBoard(year, month);
+    } catch (e: any) {
+      console.error(e);
+      alert(`シフト取込に失敗しました: ${e?.message || ""}`);
+    } finally {
+      setShiftUploading(false);
     }
   };
 
@@ -349,6 +403,9 @@ export default function ShiftBoardPage() {
                 <div className="mt-1 text-sm text-slate-500">
                   出勤状況に加えて、総清掃数・出勤人数・1人当たり清掃数を表示
                 </div>
+                <div className="mt-2 text-xs text-slate-400">
+                  当月以前はJinjer同期、未来月はExcel/CSV取込を使用
+                </div>
               </div>
 
               <div className="flex items-center gap-2 flex-wrap">
@@ -412,6 +469,26 @@ export default function ShiftBoardPage() {
                   title={`${year}年${month}月分を Jinjer から取り込みます`}
                 >
                   {jinjerSyncing ? "同期中..." : "Jinjerから同期"}
+                </button>
+
+                <label className="cursor-pointer rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-700 hover:bg-slate-50">
+                  {shiftUploadFile ? shiftUploadFile.name : "Excel/CSV選択"}
+                  <input
+                    type="file"
+                    accept=".xlsx,.xls,.csv"
+                    className="hidden"
+                    onChange={(e) => setShiftUploadFile(e.target.files?.[0] ?? null)}
+                  />
+                </label>
+
+                <button
+                  type="button"
+                  disabled={!shiftUploadFile || shiftUploading}
+                  onClick={() => void uploadShiftFile()}
+                  className="rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-sm font-bold text-blue-700 hover:bg-blue-100 disabled:opacity-50"
+                  title={`${year}年${month}月分を Excel/CSV から取り込みます`}
+                >
+                  {shiftUploading ? "取込中..." : "Excel取込"}
                 </button>
               </div>
             </div>
