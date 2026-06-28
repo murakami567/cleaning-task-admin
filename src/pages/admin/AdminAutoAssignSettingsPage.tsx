@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 
 const API_BASE =
   (import.meta as any).env?.VITE_API_BASE_URL || "https://cleaning-task-api.onrender.com";
@@ -26,12 +26,13 @@ type StaffRow = {
   available_property_ids?: string[] | null;
   unchecked_property_ids?: string[] | null;
   lineworks_channel_id?: string | null;
-  daily_capacity_point?: number | null;
+  daily_capacity_point?: number | string | null;
   solo_enabled?: boolean | null;
   shared_enabled?: boolean | null;
 };
 
 type Tab = "properties" | "staffs";
+type SaveStatus = "" | "保存待ち" | "保存中..." | "✓ 保存済み" | "保存失敗";
 
 function Button({ children, className = "", ...props }: any) {
   return (
@@ -56,13 +57,15 @@ function Select({ value, onChange, children }: any) {
   );
 }
 
-function NumberInput({ value, onChange, placeholder }: any) {
+function NumberInput({ value, onChange, placeholder, onBlur, onKeyDown }: any) {
   return (
     <input
       type="number"
       className="h-10 w-28 rounded-xl border border-slate-200 px-3 text-sm outline-none"
       value={value ?? ""}
       onChange={(e) => onChange(e.target.value)}
+      onBlur={onBlur}
+      onKeyDown={onKeyDown}
       placeholder={placeholder}
     />
   );
@@ -80,13 +83,31 @@ function toPositiveNumberOrDefault(value: number | string | null | undefined, fa
   return Number.isFinite(n) && n > 0 ? n : fallback;
 }
 
+function toNullablePositiveNumber(value: number | string | null | undefined) {
+  if (value === "" || value == null) return null;
+  const n = Number(value);
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
+
 export default function AdminAutoAssignSettingsPage() {
   const [tab, setTab] = useState<Tab>("properties");
   const [properties, setProperties] = useState<PropertyRow[]>([]);
   const [staffs, setStaffs] = useState<StaffRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [savingKey, setSavingKey] = useState("");
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>("");
   const [query, setQuery] = useState("");
+  const propertyTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+  const staffTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+  const statusTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const showStatus = (status: SaveStatus) => {
+    setSaveStatus(status);
+    if (statusTimer.current) clearTimeout(statusTimer.current);
+    if (status === "✓ 保存済み") {
+      statusTimer.current = setTimeout(() => setSaveStatus(""), 1500);
+    }
+  };
 
   const loadAll = async () => {
     setLoading(true);
@@ -114,10 +135,16 @@ export default function AdminAutoAssignSettingsPage() {
 
   useEffect(() => {
     void loadAll();
+    return () => {
+      Object.values(propertyTimers.current).forEach(clearTimeout);
+      Object.values(staffTimers.current).forEach(clearTimeout);
+      if (statusTimer.current) clearTimeout(statusTimer.current);
+    };
   }, []);
 
   const saveProperty = async (row: PropertyRow) => {
     setSavingKey(`property-${row.id}`);
+    showStatus("保存中...");
     try {
       const res = await fetch(`${API_BASE}/properties/update`, {
         method: "POST",
@@ -130,17 +157,15 @@ export default function AdminAutoAssignSettingsPage() {
           sort_order: row.sort_order ?? 999,
           is_active: row.is_active ?? true,
           assignment_mode: row.assignment_mode || "solo",
-          max_assignable_count:
-            row.max_assignable_count === "" || row.max_assignable_count == null
-              ? null
-              : Number(row.max_assignable_count),
+          max_assignable_count: toNullablePositiveNumber(row.max_assignable_count),
           cleaning_point: toPositiveNumberOrDefault(row.cleaning_point, 60),
         }),
       });
       if (!res.ok) throw new Error(`property update ${res.status}`);
-      await loadAll();
+      showStatus("✓ 保存済み");
     } catch (e) {
       console.error(e);
+      showStatus("保存失敗");
       alert("物件設定の保存に失敗しました。数値を確認してください。");
     } finally {
       setSavingKey("");
@@ -149,6 +174,7 @@ export default function AdminAutoAssignSettingsPage() {
 
   const saveStaff = async (row: StaffRow) => {
     setSavingKey(`staff-${row.id}`);
+    showStatus("保存中...");
     try {
       const res = await fetch(`${API_BASE}/staffs/upsert`, {
         method: "POST",
@@ -165,19 +191,60 @@ export default function AdminAutoAssignSettingsPage() {
           available_property_ids: row.available_property_ids ?? [],
           unchecked_property_ids: row.unchecked_property_ids ?? [],
           lineworks_channel_id: row.lineworks_channel_id ?? null,
-          daily_capacity_point: row.daily_capacity_point ?? 300,
+          daily_capacity_point: toPositiveNumberOrDefault(row.daily_capacity_point, 300),
           solo_enabled: row.solo_enabled !== false,
           shared_enabled: row.shared_enabled !== false,
         }),
       });
       if (!res.ok) throw new Error(`staff update ${res.status}`);
-      await loadAll();
+      showStatus("✓ 保存済み");
     } catch (e) {
       console.error(e);
+      showStatus("保存失敗");
       alert("スタッフ設定の保存に失敗しました。");
     } finally {
       setSavingKey("");
     }
+  };
+
+  const schedulePropertySave = (row: PropertyRow, delay = 600) => {
+    showStatus("保存待ち");
+    if (propertyTimers.current[row.id]) clearTimeout(propertyTimers.current[row.id]);
+    propertyTimers.current[row.id] = setTimeout(() => void saveProperty(row), delay);
+  };
+
+  const scheduleStaffSave = (row: StaffRow, delay = 600) => {
+    showStatus("保存待ち");
+    if (staffTimers.current[row.id]) clearTimeout(staffTimers.current[row.id]);
+    staffTimers.current[row.id] = setTimeout(() => void saveStaff(row), delay);
+  };
+
+  const updateProperty = (id: string, patch: Partial<PropertyRow>, immediate = false) => {
+    let nextRow: PropertyRow | null = null;
+    setProperties((prev) =>
+      prev.map((x) => {
+        if (x.id !== id) return x;
+        nextRow = { ...x, ...patch };
+        return nextRow;
+      })
+    );
+    setTimeout(() => {
+      if (nextRow) schedulePropertySave(nextRow, immediate ? 0 : 600);
+    }, 0);
+  };
+
+  const updateStaff = (id: string, patch: Partial<StaffRow>, immediate = false) => {
+    let nextRow: StaffRow | null = null;
+    setStaffs((prev) =>
+      prev.map((x) => {
+        if (x.id !== id) return x;
+        nextRow = { ...x, ...patch };
+        return nextRow;
+      })
+    );
+    setTimeout(() => {
+      if (nextRow) scheduleStaffSave(nextRow, immediate ? 0 : 600);
+    }, 0);
   };
 
   const filteredProperties = useMemo(() => {
@@ -215,7 +282,10 @@ export default function AdminAutoAssignSettingsPage() {
             300pt方式、単独・分業・両方可、物件点数、スタッフ上限を管理します。
           </div>
         </div>
-        <Button onClick={() => void loadAll()}>{loading ? "読込中" : "更新"}</Button>
+        <div className="flex items-center gap-3">
+          {saveStatus ? <div className="text-sm font-bold text-slate-500">{saveStatus}</div> : null}
+          <Button onClick={() => void loadAll()}>{loading ? "読込中" : "更新"}</Button>
+        </div>
       </div>
 
       <div className="mb-4 flex flex-wrap gap-2">
@@ -234,7 +304,7 @@ export default function AdminAutoAssignSettingsPage() {
 
       {tab === "properties" ? (
         <div className="overflow-auto rounded-2xl border border-slate-200 bg-white">
-          <table className="w-full min-w-[900px] text-sm">
+          <table className="w-full min-w-[820px] text-sm">
             <thead className="bg-slate-50 text-left text-xs text-slate-500">
               <tr>
                 <th className="px-4 py-3">物件</th>
@@ -242,7 +312,6 @@ export default function AdminAutoAssignSettingsPage() {
                 <th className="px-4 py-3">最大対応数</th>
                 <th className="px-4 py-3">物件点数</th>
                 <th className="px-4 py-3">説明</th>
-                <th className="px-4 py-3">操作</th>
               </tr>
             </thead>
             <tbody>
@@ -252,7 +321,7 @@ export default function AdminAutoAssignSettingsPage() {
                   <td className="px-4 py-3">
                     <Select
                       value={p.assignment_mode || "solo"}
-                      onChange={(v: string) => setProperties((prev) => prev.map((x) => x.id === p.id ? { ...x, assignment_mode: v } : x))}
+                      onChange={(v: string) => updateProperty(p.id, { assignment_mode: v }, true)}
                     >
                       <option value="solo">単独</option>
                       <option value="shared">分業</option>
@@ -263,21 +332,26 @@ export default function AdminAutoAssignSettingsPage() {
                     <NumberInput
                       value={p.max_assignable_count ?? ""}
                       placeholder="制限なし"
-                      onChange={(v: string) => setProperties((prev) => prev.map((x) => x.id === p.id ? { ...x, max_assignable_count: v } : x))}
+                      onChange={(v: string) => updateProperty(p.id, { max_assignable_count: v })}
+                      onBlur={() => schedulePropertySave(p, 0)}
+                      onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
+                        if (e.key === "Enter") (e.currentTarget as HTMLInputElement).blur();
+                      }}
                     />
                   </td>
                   <td className="px-4 py-3">
                     <NumberInput
                       value={p.cleaning_point ?? ""}
                       placeholder="60"
-                      onChange={(v: string) => setProperties((prev) => prev.map((x) => x.id === p.id ? { ...x, cleaning_point: v } : x))}
+                      onChange={(v: string) => updateProperty(p.id, { cleaning_point: v })}
+                      onBlur={() => schedulePropertySave(p, 0)}
+                      onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
+                        if (e.key === "Enter") (e.currentTarget as HTMLInputElement).blur();
+                      }}
                     />
                   </td>
                   <td className="px-4 py-3 text-xs text-slate-500">
                     {modeLabel(p.assignment_mode)} / 物件点数は1部屋あたりの作業pt / 最大対応数は1人がその物件で持てる部屋数
-                  </td>
-                  <td className="px-4 py-3">
-                    <Button disabled={savingKey === `property-${p.id}`} onClick={() => void saveProperty(p)}>保存</Button>
                   </td>
                 </tr>
               ))}
@@ -288,14 +362,13 @@ export default function AdminAutoAssignSettingsPage() {
 
       {tab === "staffs" ? (
         <div className="overflow-auto rounded-2xl border border-slate-200 bg-white">
-          <table className="w-full min-w-[760px] text-sm">
+          <table className="w-full min-w-[680px] text-sm">
             <thead className="bg-slate-50 text-left text-xs text-slate-500">
               <tr>
                 <th className="px-4 py-3">スタッフ</th>
                 <th className="px-4 py-3">1日上限pt</th>
                 <th className="px-4 py-3">単独</th>
                 <th className="px-4 py-3">分業</th>
-                <th className="px-4 py-3">操作</th>
               </tr>
             </thead>
             <tbody>
@@ -304,26 +377,28 @@ export default function AdminAutoAssignSettingsPage() {
                   <td className="px-4 py-3 font-bold">{s.staff_name}<div className="text-xs font-normal text-slate-500">{s.staff_code}</div></td>
                   <td className="px-4 py-3">
                     <NumberInput
-                      value={s.daily_capacity_point ?? 300}
-                      onChange={(v: string) => setStaffs((prev) => prev.map((x) => x.id === s.id ? { ...x, daily_capacity_point: Number(v || 300) } : x))}
+                      value={s.daily_capacity_point ?? ""}
+                      placeholder="300"
+                      onChange={(v: string) => updateStaff(s.id, { daily_capacity_point: v })}
+                      onBlur={() => scheduleStaffSave(s, 0)}
+                      onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
+                        if (e.key === "Enter") (e.currentTarget as HTMLInputElement).blur();
+                      }}
                     />
                   </td>
                   <td className="px-4 py-3">
                     <input
                       type="checkbox"
                       checked={s.solo_enabled !== false}
-                      onChange={(e) => setStaffs((prev) => prev.map((x) => x.id === s.id ? { ...x, solo_enabled: e.target.checked } : x))}
+                      onChange={(e) => updateStaff(s.id, { solo_enabled: e.target.checked }, true)}
                     />
                   </td>
                   <td className="px-4 py-3">
                     <input
                       type="checkbox"
                       checked={s.shared_enabled !== false}
-                      onChange={(e) => setStaffs((prev) => prev.map((x) => x.id === s.id ? { ...x, shared_enabled: e.target.checked } : x))}
+                      onChange={(e) => updateStaff(s.id, { shared_enabled: e.target.checked }, true)}
                     />
-                  </td>
-                  <td className="px-4 py-3">
-                    <Button disabled={savingKey === `staff-${s.id}`} onClick={() => void saveStaff(s)}>保存</Button>
                   </td>
                 </tr>
               ))}
