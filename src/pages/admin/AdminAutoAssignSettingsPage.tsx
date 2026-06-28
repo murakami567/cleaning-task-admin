@@ -10,8 +10,8 @@ type PropertyRow = {
   sort_order?: number | null;
   is_active?: boolean;
   assignment_mode?: "solo" | "shared" | "both" | string | null;
-  max_assignable_count?: number | null;
-  cleaning_point?: number | null;
+  max_assignable_count?: number | string | null;
+  cleaning_point?: number | string | null;
 };
 
 type StaffRow = {
@@ -74,6 +74,12 @@ function modeLabel(mode?: string | null) {
   return "単独";
 }
 
+function toPositiveNumberOrDefault(value: number | string | null | undefined, fallback: number) {
+  if (value === "" || value == null) return fallback;
+  const n = Number(value);
+  return Number.isFinite(n) && n > 0 ? n : fallback;
+}
+
 export default function AdminAutoAssignSettingsPage() {
   const [tab, setTab] = useState<Tab>("properties");
   const [properties, setProperties] = useState<PropertyRow[]>([]);
@@ -124,15 +130,18 @@ export default function AdminAutoAssignSettingsPage() {
           sort_order: row.sort_order ?? 999,
           is_active: row.is_active ?? true,
           assignment_mode: row.assignment_mode || "solo",
-          max_assignable_count: row.max_assignable_count ?? null,
-          cleaning_point: row.cleaning_point ?? 60,
+          max_assignable_count:
+            row.max_assignable_count === "" || row.max_assignable_count == null
+              ? null
+              : Number(row.max_assignable_count),
+          cleaning_point: toPositiveNumberOrDefault(row.cleaning_point, 60),
         }),
       });
       if (!res.ok) throw new Error(`property update ${res.status}`);
       await loadAll();
     } catch (e) {
       console.error(e);
-      alert("物件設定の保存に失敗しました。");
+      alert("物件設定の保存に失敗しました。数値を確認してください。");
     } finally {
       setSavingKey("");
     }
@@ -254,14 +263,14 @@ export default function AdminAutoAssignSettingsPage() {
                     <NumberInput
                       value={p.max_assignable_count ?? ""}
                       placeholder="制限なし"
-                      onChange={(v: string) => setProperties((prev) => prev.map((x) => x.id === p.id ? { ...x, max_assignable_count: v === "" ? null : Number(v) } : x))}
+                      onChange={(v: string) => setProperties((prev) => prev.map((x) => x.id === p.id ? { ...x, max_assignable_count: v } : x))}
                     />
                   </td>
                   <td className="px-4 py-3">
                     <NumberInput
-                      value={p.cleaning_point ?? 60}
+                      value={p.cleaning_point ?? ""}
                       placeholder="60"
-                      onChange={(v: string) => setProperties((prev) => prev.map((x) => x.id === p.id ? { ...x, cleaning_point: Number(v || 60) } : x))}
+                      onChange={(v: string) => setProperties((prev) => prev.map((x) => x.id === p.id ? { ...x, cleaning_point: v } : x))}
                     />
                   </td>
                   <td className="px-4 py-3 text-xs text-slate-500">
