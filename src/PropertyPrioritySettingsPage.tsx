@@ -10,6 +10,8 @@ type Staff = {
   role: string | null;
   is_active: boolean;
   sort_order: number | null;
+  available_property_ids?: string[] | null;
+  unchecked_property_ids?: string[] | null;
 };
 
 type Property = {
@@ -31,6 +33,16 @@ function normalizeRole(role: string | null | undefined) {
   return String(role || "").trim();
 }
 
+function canHandleProperty(staff: Staff, propertyId: string) {
+  const available = Array.isArray(staff.available_property_ids)
+    ? staff.available_property_ids.map(String)
+    : [];
+  const priority = Array.isArray(staff.unchecked_property_ids)
+    ? staff.unchecked_property_ids.map(String)
+    : [];
+  return available.includes(propertyId) || priority.includes(propertyId);
+}
+
 export default function PropertyPrioritySettingsPage() {
   const [staffs, setStaffs] = useState<Staff[]>([]);
   const [properties, setProperties] = useState<Property[]>([]);
@@ -47,6 +59,11 @@ export default function PropertyPrioritySettingsPage() {
       .slice()
       .sort((a, b) => (a.sort_order ?? 999) - (b.sort_order ?? 999));
   }, [staffs]);
+
+  const availableStaffsForSelectedProperty = useMemo(() => {
+    if (!selectedPropertyId) return [];
+    return visibleStaffs.filter((s) => canHandleProperty(s, selectedPropertyId));
+  }, [visibleStaffs, selectedPropertyId]);
 
   const staffMap = useMemo(() => {
     const map = new Map<string, Staff>();
@@ -67,8 +84,8 @@ export default function PropertyPrioritySettingsPage() {
 
   const availableStaffsToAdd = useMemo(() => {
     const used = new Set(selectedPriorityStaffIds);
-    return visibleStaffs.filter((s) => !used.has(s.id));
-  }, [visibleStaffs, selectedPriorityStaffIds]);
+    return availableStaffsForSelectedProperty.filter((s) => !used.has(s.id));
+  }, [availableStaffsForSelectedProperty, selectedPriorityStaffIds]);
 
   const load = async () => {
     try {
@@ -111,6 +128,10 @@ export default function PropertyPrioritySettingsPage() {
   useEffect(() => {
     void load();
   }, []);
+
+  useEffect(() => {
+    setSelectedStaffId("");
+  }, [selectedPropertyId]);
 
   const saveStaffIds = async (staffIds: string[]) => {
     if (!selectedPropertyId) return;
@@ -162,7 +183,7 @@ export default function PropertyPrioritySettingsPage() {
           <div className="text-xs text-slate-500">管理画面 ＞ 優先順位設定</div>
           <div className="text-base font-extrabold mt-1">物件別 スタッフ優先順位</div>
           <div className="text-xs text-slate-500 mt-1">
-            清掃タスクの物件ごとに、上から順にスタッフを割り当てます。
+            清掃タスクの物件ごとに、対応可能スタッフだけを優先順に設定します。
           </div>
         </div>
         <button
@@ -206,7 +227,7 @@ export default function PropertyPrioritySettingsPage() {
                 {selectedProperty ? `${selectedProperty.property_name} の優先スタッフ` : "物件を選択"}
               </div>
               <div className="text-xs text-slate-500 mt-1">
-                1番から順に、物件の最大対応数まで割り当てます。
+                追加候補には、アカウント側でこの物件が対応可能になっているスタッフのみ表示します。
               </div>
             </div>
             <button
@@ -242,6 +263,11 @@ export default function PropertyPrioritySettingsPage() {
               >
                 追加
               </button>
+              {selectedPropertyId && availableStaffsForSelectedProperty.length === 0 ? (
+                <div className="w-full text-xs text-rose-600 font-bold">
+                  この物件に対応可能なスタッフがアカウント側で設定されていません。
+                </div>
+              ) : null}
             </div>
 
             <div className="space-y-2">
@@ -253,17 +279,23 @@ export default function PropertyPrioritySettingsPage() {
                 selectedPriorityStaffIds.map((staffId, index) => {
                   const staff = staffMap.get(staffId);
                   if (!staff) return null;
+                  const notAvailable = selectedPropertyId ? !canHandleProperty(staff, selectedPropertyId) : false;
                   return (
                     <div
                       key={staffId}
-                      className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3"
+                      className={`flex items-center gap-3 rounded-2xl border px-4 py-3 ${
+                        notAvailable ? "border-rose-200 bg-rose-50" : "border-slate-200 bg-white"
+                      }`}
                     >
                       <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-900 text-sm font-extrabold text-white">
                         {index + 1}
                       </div>
                       <div className="min-w-0 flex-1">
                         <div className="truncate text-sm font-extrabold">{staff.staff_name}</div>
-                        <div className="text-xs text-slate-500">{staff.staff_code || ""} / {staff.role || ""}</div>
+                        <div className="text-xs text-slate-500">
+                          {staff.staff_code || ""} / {staff.role || ""}
+                          {notAvailable ? " / 対応可能物件に未設定" : ""}
+                        </div>
                       </div>
                       <div className="flex gap-1">
                         <button
