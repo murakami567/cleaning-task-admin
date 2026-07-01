@@ -35,8 +35,8 @@ export default function PropertyPrioritySettingsPage() {
   const [staffs, setStaffs] = useState<Staff[]>([]);
   const [properties, setProperties] = useState<Property[]>([]);
   const [priorities, setPriorities] = useState<PriorityRow[]>([]);
-  const [selectedStaffId, setSelectedStaffId] = useState("");
   const [selectedPropertyId, setSelectedPropertyId] = useState("");
+  const [selectedStaffId, setSelectedStaffId] = useState("");
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -48,27 +48,27 @@ export default function PropertyPrioritySettingsPage() {
       .sort((a, b) => (a.sort_order ?? 999) - (b.sort_order ?? 999));
   }, [staffs]);
 
-  const propertyMap = useMemo(() => {
-    const map = new Map<string, Property>();
-    properties.forEach((p) => map.set(p.id, p));
+  const staffMap = useMemo(() => {
+    const map = new Map<string, Staff>();
+    visibleStaffs.forEach((s) => map.set(s.id, s));
     return map;
-  }, [properties]);
+  }, [visibleStaffs]);
 
-  const selectedStaff = visibleStaffs.find((s) => s.id === selectedStaffId) || null;
+  const selectedProperty = properties.find((p) => p.id === selectedPropertyId) || null;
 
-  const selectedPriorityPropertyIds = useMemo(() => {
+  const selectedPriorityStaffIds = useMemo(() => {
     return priorities
-      .filter((p) => p.staff_id === selectedStaffId)
+      .filter((p) => p.property_id === selectedPropertyId)
       .slice()
       .sort((a, b) => (a.priority_order ?? 999) - (b.priority_order ?? 999))
-      .map((p) => p.property_id)
-      .filter((id) => propertyMap.has(id));
-  }, [priorities, selectedStaffId, propertyMap]);
+      .map((p) => p.staff_id)
+      .filter((id) => staffMap.has(id));
+  }, [priorities, selectedPropertyId, staffMap]);
 
-  const availableToAdd = useMemo(() => {
-    const used = new Set(selectedPriorityPropertyIds);
-    return properties.filter((p) => p.is_active !== false && !used.has(p.id));
-  }, [properties, selectedPriorityPropertyIds]);
+  const availableStaffsToAdd = useMemo(() => {
+    const used = new Set(selectedPriorityStaffIds);
+    return visibleStaffs.filter((s) => !used.has(s.id));
+  }, [visibleStaffs, selectedPriorityStaffIds]);
 
   const load = async () => {
     try {
@@ -87,9 +87,8 @@ export default function PropertyPrioritySettingsPage() {
       if (!propertyRes.ok) throw new Error(propertyData?.detail || "物件取得に失敗しました。");
       if (!priorityRes.ok) throw new Error(priorityData?.detail || "優先順位取得に失敗しました。");
 
-      const nextStaffs: Staff[] = Array.isArray(staffData) ? staffData : [];
       const nextProperties: Property[] = Array.isArray(propertyData) ? propertyData : [];
-      setStaffs(nextStaffs);
+      setStaffs(Array.isArray(staffData) ? staffData : []);
       setProperties(
         nextProperties
           .filter((p) => p.is_active !== false)
@@ -97,11 +96,10 @@ export default function PropertyPrioritySettingsPage() {
       );
       setPriorities(Array.isArray(priorityData) ? priorityData : []);
 
-      const firstStaff = nextStaffs
-        .filter((s) => s.is_active !== false)
-        .filter((s) => ["staff", "checker"].includes(normalizeRole(s.role)))
+      const firstProperty = nextProperties
+        .filter((p) => p.is_active !== false)
         .sort((a, b) => (a.sort_order ?? 999) - (b.sort_order ?? 999))[0];
-      setSelectedStaffId((prev) => prev || firstStaff?.id || "");
+      setSelectedPropertyId((prev) => prev || firstProperty?.id || "");
     } catch (e) {
       console.error(e);
       alert(e instanceof Error ? e.message : "優先順位設定の取得に失敗しました。");
@@ -114,14 +112,14 @@ export default function PropertyPrioritySettingsPage() {
     void load();
   }, []);
 
-  const savePriorityIds = async (propertyIds: string[]) => {
-    if (!selectedStaffId) return;
+  const saveStaffIds = async (staffIds: string[]) => {
+    if (!selectedPropertyId) return;
     try {
       setSaving(true);
-      const res = await fetch(`${API_BASE}/staff-property-priorities/upsert`, {
+      const res = await fetch(`${API_BASE}/property-staff-priorities/upsert`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ staff_id: selectedStaffId, property_ids: propertyIds }),
+        body: JSON.stringify({ property_id: selectedPropertyId, staff_ids: staffIds }),
       });
       const data = await res.json().catch(() => null);
       if (!res.ok) throw new Error(data?.detail || "優先順位の保存に失敗しました。");
@@ -135,26 +133,26 @@ export default function PropertyPrioritySettingsPage() {
   };
 
   const movePriority = (index: number, diff: number) => {
-    const next = [...selectedPriorityPropertyIds];
+    const next = [...selectedPriorityStaffIds];
     const target = index + diff;
     if (target < 0 || target >= next.length) return;
     const [item] = next.splice(index, 1);
     next.splice(target, 0, item);
-    void savePriorityIds(next);
+    void saveStaffIds(next);
   };
 
-  const removePriority = (propertyId: string) => {
-    void savePriorityIds(selectedPriorityPropertyIds.filter((id) => id !== propertyId));
+  const removePriority = (staffId: string) => {
+    void saveStaffIds(selectedPriorityStaffIds.filter((id) => id !== staffId));
   };
 
   const addPriority = () => {
-    if (!selectedPropertyId) {
-      alert("追加する物件を選択してください。");
+    if (!selectedStaffId) {
+      alert("追加するスタッフを選択してください。");
       return;
     }
-    if (selectedPriorityPropertyIds.includes(selectedPropertyId)) return;
-    void savePriorityIds([...selectedPriorityPropertyIds, selectedPropertyId]);
-    setSelectedPropertyId("");
+    if (selectedPriorityStaffIds.includes(selectedStaffId)) return;
+    void saveStaffIds([...selectedPriorityStaffIds, selectedStaffId]);
+    setSelectedStaffId("");
   };
 
   return (
@@ -162,9 +160,9 @@ export default function PropertyPrioritySettingsPage() {
       <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-4 flex flex-wrap gap-3 items-center justify-between">
         <div>
           <div className="text-xs text-slate-500">管理画面 ＞ 優先順位設定</div>
-          <div className="text-base font-extrabold mt-1">アカウント別 物件優先順位</div>
+          <div className="text-base font-extrabold mt-1">物件別 スタッフ優先順位</div>
           <div className="text-xs text-slate-500 mt-1">
-            自動割り当てで使用する物件優先順。1番が最優先です。
+            清掃タスクの物件ごとに、上から順にスタッフを割り当てます。
           </div>
         </div>
         <button
@@ -179,22 +177,22 @@ export default function PropertyPrioritySettingsPage() {
       <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-4">
         <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
           <div className="p-4 border-b border-slate-200">
-            <div className="text-sm font-extrabold">スタッフ</div>
-            <div className="text-xs text-slate-500 mt-1">staff / checker のみ表示</div>
+            <div className="text-sm font-extrabold">物件</div>
+            <div className="text-xs text-slate-500 mt-1">物件優先度の順に表示</div>
           </div>
           <div className="max-h-[68vh] overflow-auto">
-            {visibleStaffs.map((staff) => (
+            {properties.map((property) => (
               <button
-                key={staff.id}
+                key={property.id}
                 type="button"
-                onClick={() => setSelectedStaffId(staff.id)}
+                onClick={() => setSelectedPropertyId(property.id)}
                 className={`block w-full border-b border-slate-100 px-4 py-3 text-left hover:bg-slate-50 ${
-                  selectedStaffId === staff.id ? "bg-slate-900 text-white hover:bg-slate-900" : "bg-white"
+                  selectedPropertyId === property.id ? "bg-slate-900 text-white hover:bg-slate-900" : "bg-white"
                 }`}
               >
-                <div className="text-sm font-extrabold">{staff.staff_name}</div>
-                <div className={selectedStaffId === staff.id ? "text-xs text-slate-200" : "text-xs text-slate-500"}>
-                  {staff.staff_code || "コードなし"} / {staff.role || ""}
+                <div className="text-sm font-extrabold">{property.property_name}</div>
+                <div className={selectedPropertyId === property.id ? "text-xs text-slate-200" : "text-xs text-slate-500"}>
+                  優先度: {property.sort_order ?? 999} / {property.property_code || "コードなし"}
                 </div>
               </button>
             ))}
@@ -205,16 +203,16 @@ export default function PropertyPrioritySettingsPage() {
           <div className="p-4 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3">
             <div>
               <div className="text-sm font-extrabold">
-                {selectedStaff ? `${selectedStaff.staff_name} の優先物件` : "スタッフを選択"}
+                {selectedProperty ? `${selectedProperty.property_name} の優先スタッフ` : "物件を選択"}
               </div>
               <div className="text-xs text-slate-500 mt-1">
-                上から順に自動割り当ての優先順位として使用します。
+                1番から順に、物件の最大対応数まで割り当てます。
               </div>
             </div>
             <button
               type="button"
-              disabled={!selectedStaffId || saving || selectedPriorityPropertyIds.length === 0}
-              onClick={() => void savePriorityIds([])}
+              disabled={!selectedPropertyId || saving || selectedPriorityStaffIds.length === 0}
+              onClick={() => void saveStaffIds([])}
               className="rounded-full border border-rose-200 bg-rose-50 px-4 py-2 text-sm font-bold text-rose-700 hover:bg-rose-100 disabled:opacity-50"
             >
               全解除
@@ -225,20 +223,20 @@ export default function PropertyPrioritySettingsPage() {
             <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3 flex flex-wrap gap-2 items-center">
               <select
                 className="h-11 min-w-[260px] flex-1 rounded-xl border border-slate-200 bg-white px-3 text-sm outline-none"
-                value={selectedPropertyId}
-                onChange={(e) => setSelectedPropertyId(e.target.value)}
-                disabled={!selectedStaffId || saving}
+                value={selectedStaffId}
+                onChange={(e) => setSelectedStaffId(e.target.value)}
+                disabled={!selectedPropertyId || saving}
               >
-                <option value="">追加する物件を選択</option>
-                {availableToAdd.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.property_name}
+                <option value="">追加するスタッフを選択</option>
+                {availableStaffsToAdd.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.staff_name} {s.staff_code ? `(${s.staff_code})` : ""}
                   </option>
                 ))}
               </select>
               <button
                 type="button"
-                disabled={!selectedStaffId || !selectedPropertyId || saving}
+                disabled={!selectedPropertyId || !selectedStaffId || saving}
                 onClick={addPriority}
                 className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-bold text-white hover:bg-black disabled:opacity-50"
               >
@@ -247,25 +245,25 @@ export default function PropertyPrioritySettingsPage() {
             </div>
 
             <div className="space-y-2">
-              {selectedPriorityPropertyIds.length === 0 ? (
+              {selectedPriorityStaffIds.length === 0 ? (
                 <div className="rounded-2xl border border-dashed border-slate-300 p-6 text-center text-sm text-slate-500">
-                  優先物件は未設定です。
+                  優先スタッフは未設定です。
                 </div>
               ) : (
-                selectedPriorityPropertyIds.map((propertyId, index) => {
-                  const property = propertyMap.get(propertyId);
-                  if (!property) return null;
+                selectedPriorityStaffIds.map((staffId, index) => {
+                  const staff = staffMap.get(staffId);
+                  if (!staff) return null;
                   return (
                     <div
-                      key={propertyId}
+                      key={staffId}
                       className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3"
                     >
                       <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-900 text-sm font-extrabold text-white">
                         {index + 1}
                       </div>
                       <div className="min-w-0 flex-1">
-                        <div className="truncate text-sm font-extrabold">{property.property_name}</div>
-                        <div className="text-xs text-slate-500">{property.property_code || ""}</div>
+                        <div className="truncate text-sm font-extrabold">{staff.staff_name}</div>
+                        <div className="text-xs text-slate-500">{staff.staff_code || ""} / {staff.role || ""}</div>
                       </div>
                       <div className="flex gap-1">
                         <button
@@ -278,7 +276,7 @@ export default function PropertyPrioritySettingsPage() {
                         </button>
                         <button
                           type="button"
-                          disabled={index === selectedPriorityPropertyIds.length - 1 || saving}
+                          disabled={index === selectedPriorityStaffIds.length - 1 || saving}
                           onClick={() => movePriority(index, 1)}
                           className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-bold hover:bg-slate-50 disabled:opacity-40"
                         >
@@ -287,7 +285,7 @@ export default function PropertyPrioritySettingsPage() {
                         <button
                           type="button"
                           disabled={saving}
-                          onClick={() => removePriority(propertyId)}
+                          onClick={() => removePriority(staffId)}
                           className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-bold text-rose-700 hover:bg-rose-100 disabled:opacity-40"
                         >
                           削除
