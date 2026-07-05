@@ -18,8 +18,28 @@ if (!text.includes('setTab("priority")')) {
   );
 }
 
-if (!text.includes('{tab === "priority" ? <PropertyPrioritySettingsPage /> : null}')) {
-  text = text.replace('      {tab === "properties" ? (', '      {tab === "priority" ? <PropertyPrioritySettingsPage /> : null}\n\n      {tab === "properties" ? (');
+// 古いパッチで追加された重複表示を削除し、readOnly対応の1つだけに統一する。
+text = text.replace(
+  '      {tab === "priority" ? <PropertyPrioritySettingsPage /> : null}\n\n      {tab === "priority" ? <PropertyPrioritySettingsPage readOnly={readOnly} /> : null}',
+  '      {tab === "priority" ? <PropertyPrioritySettingsPage readOnly={readOnly} /> : null}'
+);
+text = text.replace(
+  '      {tab === "priority" ? <PropertyPrioritySettingsPage readOnly={readOnly} /> : null}\n\n      {tab === "priority" ? <PropertyPrioritySettingsPage /> : null}',
+  '      {tab === "priority" ? <PropertyPrioritySettingsPage readOnly={readOnly} /> : null}'
+);
+text = text.replace(
+  '      {tab === "priority" ? <PropertyPrioritySettingsPage /> : null}\n\n      {tab === "properties" ? (',
+  '      {tab === "priority" ? <PropertyPrioritySettingsPage readOnly={readOnly} /> : null}\n\n      {tab === "properties" ? ('
+);
+
+if (
+  !text.includes('{tab === "priority" ? <PropertyPrioritySettingsPage readOnly={readOnly} /> : null}') &&
+  !text.includes('{tab === "priority" ? <PropertyPrioritySettingsPage /> : null}')
+) {
+  text = text.replace(
+    '      {tab === "properties" ? (',
+    '      {tab === "priority" ? <PropertyPrioritySettingsPage readOnly={readOnly} /> : null}\n\n      {tab === "properties" ? ('
+  );
 }
 
 fs.writeFileSync(path, text);
