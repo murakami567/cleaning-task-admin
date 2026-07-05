@@ -43,7 +43,7 @@ function canHandleProperty(staff: Staff, propertyId: string) {
   return available.includes(propertyId) || priority.includes(propertyId);
 }
 
-export default function PropertyPrioritySettingsPage() {
+export default function PropertyPrioritySettingsPage({ readOnly = false }: { readOnly?: boolean }) {
   const [staffs, setStaffs] = useState<Staff[]>([]);
   const [properties, setProperties] = useState<Property[]>([]);
   const [priorities, setPriorities] = useState<PriorityRow[]>([]);
@@ -134,12 +134,13 @@ export default function PropertyPrioritySettingsPage() {
   }, [selectedPropertyId]);
 
   const saveStaffIds = async (staffIds: string[]) => {
-    if (!selectedPropertyId) return;
+    if (!selectedPropertyId || readOnly) return;
+    const token = localStorage.getItem("admin_access_token") || "";
     try {
       setSaving(true);
       const res = await fetch(`${API_BASE}/property-staff-priorities/upsert`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ property_id: selectedPropertyId, staff_ids: staffIds }),
       });
       const data = await res.json().catch(() => null);
@@ -154,6 +155,7 @@ export default function PropertyPrioritySettingsPage() {
   };
 
   const movePriority = (index: number, diff: number) => {
+    if (readOnly) return;
     const next = [...selectedPriorityStaffIds];
     const target = index + diff;
     if (target < 0 || target >= next.length) return;
@@ -163,10 +165,12 @@ export default function PropertyPrioritySettingsPage() {
   };
 
   const removePriority = (staffId: string) => {
+    if (readOnly) return;
     void saveStaffIds(selectedPriorityStaffIds.filter((id) => id !== staffId));
   };
 
   const addPriority = () => {
+    if (readOnly) return;
     if (!selectedStaffId) {
       alert("追加するスタッフを選択してください。");
       return;
@@ -185,6 +189,7 @@ export default function PropertyPrioritySettingsPage() {
           <div className="text-xs text-slate-500 mt-1">
             清掃タスクの物件ごとに、対応可能スタッフだけを優先順に設定します。
           </div>
+          {readOnly ? <div className="mt-2 text-xs font-bold text-amber-700">リーダー権限では閲覧のみ可能です。</div> : null}
         </div>
         <button
           type="button"
@@ -230,45 +235,49 @@ export default function PropertyPrioritySettingsPage() {
                 追加候補には、アカウント側でこの物件が対応可能になっているスタッフのみ表示します。
               </div>
             </div>
-            <button
-              type="button"
-              disabled={!selectedPropertyId || saving || selectedPriorityStaffIds.length === 0}
-              onClick={() => void saveStaffIds([])}
-              className="rounded-full border border-rose-200 bg-rose-50 px-4 py-2 text-sm font-bold text-rose-700 hover:bg-rose-100 disabled:opacity-50"
-            >
-              全解除
-            </button>
+            {!readOnly ? (
+              <button
+                type="button"
+                disabled={!selectedPropertyId || saving || selectedPriorityStaffIds.length === 0}
+                onClick={() => void saveStaffIds([])}
+                className="rounded-full border border-rose-200 bg-rose-50 px-4 py-2 text-sm font-bold text-rose-700 hover:bg-rose-100 disabled:opacity-50"
+              >
+                全解除
+              </button>
+            ) : null}
           </div>
 
           <div className="p-4 space-y-4">
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3 flex flex-wrap gap-2 items-center">
-              <select
-                className="h-11 min-w-[260px] flex-1 rounded-xl border border-slate-200 bg-white px-3 text-sm outline-none"
-                value={selectedStaffId}
-                onChange={(e) => setSelectedStaffId(e.target.value)}
-                disabled={!selectedPropertyId || saving}
-              >
-                <option value="">追加するスタッフを選択</option>
-                {availableStaffsToAdd.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.staff_name} {s.staff_code ? `(${s.staff_code})` : ""}
-                  </option>
-                ))}
-              </select>
-              <button
-                type="button"
-                disabled={!selectedPropertyId || !selectedStaffId || saving}
-                onClick={addPriority}
-                className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-bold text-white hover:bg-black disabled:opacity-50"
-              >
-                追加
-              </button>
-              {selectedPropertyId && availableStaffsForSelectedProperty.length === 0 ? (
-                <div className="w-full text-xs text-rose-600 font-bold">
-                  この物件に対応可能なスタッフがアカウント側で設定されていません。
-                </div>
-              ) : null}
-            </div>
+            {!readOnly ? (
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3 flex flex-wrap gap-2 items-center">
+                <select
+                  className="h-11 min-w-[260px] flex-1 rounded-xl border border-slate-200 bg-white px-3 text-sm outline-none"
+                  value={selectedStaffId}
+                  onChange={(e) => setSelectedStaffId(e.target.value)}
+                  disabled={!selectedPropertyId || saving}
+                >
+                  <option value="">追加するスタッフを選択</option>
+                  {availableStaffsToAdd.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.staff_name} {s.staff_code ? `(${s.staff_code})` : ""}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  disabled={!selectedPropertyId || !selectedStaffId || saving}
+                  onClick={addPriority}
+                  className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-bold text-white hover:bg-black disabled:opacity-50"
+                >
+                  追加
+                </button>
+                {selectedPropertyId && availableStaffsForSelectedProperty.length === 0 ? (
+                  <div className="w-full text-xs text-rose-600 font-bold">
+                    この物件に対応可能なスタッフがアカウント側で設定されていません。
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
 
             <div className="space-y-2">
               {selectedPriorityStaffIds.length === 0 ? (
@@ -297,32 +306,34 @@ export default function PropertyPrioritySettingsPage() {
                           {notAvailable ? " / 対応可能物件に未設定" : ""}
                         </div>
                       </div>
-                      <div className="flex gap-1">
-                        <button
-                          type="button"
-                          disabled={index === 0 || saving}
-                          onClick={() => movePriority(index, -1)}
-                          className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-bold hover:bg-slate-50 disabled:opacity-40"
-                        >
-                          ↑
-                        </button>
-                        <button
-                          type="button"
-                          disabled={index === selectedPriorityStaffIds.length - 1 || saving}
-                          onClick={() => movePriority(index, 1)}
-                          className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-bold hover:bg-slate-50 disabled:opacity-40"
-                        >
-                          ↓
-                        </button>
-                        <button
-                          type="button"
-                          disabled={saving}
-                          onClick={() => removePriority(staffId)}
-                          className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-bold text-rose-700 hover:bg-rose-100 disabled:opacity-40"
-                        >
-                          削除
-                        </button>
-                      </div>
+                      {!readOnly ? (
+                        <div className="flex gap-1">
+                          <button
+                            type="button"
+                            disabled={index === 0 || saving}
+                            onClick={() => movePriority(index, -1)}
+                            className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-bold hover:bg-slate-50 disabled:opacity-40"
+                          >
+                            ↑
+                          </button>
+                          <button
+                            type="button"
+                            disabled={index === selectedPriorityStaffIds.length - 1 || saving}
+                            onClick={() => movePriority(index, 1)}
+                            className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-bold hover:bg-slate-50 disabled:opacity-40"
+                          >
+                            ↓
+                          </button>
+                          <button
+                            type="button"
+                            disabled={saving}
+                            onClick={() => removePriority(staffId)}
+                            className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-bold text-rose-700 hover:bg-rose-100 disabled:opacity-40"
+                          >
+                            削除
+                          </button>
+                        </div>
+                      ) : null}
                     </div>
                   );
                 })
