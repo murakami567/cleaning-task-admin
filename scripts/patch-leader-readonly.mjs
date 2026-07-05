@@ -101,7 +101,7 @@ replaceOnce(
 replaceOnce(
   `                        <button
                           type="button"
-                          className={\`rounded-full border px-3 py-1 text-xs font-bold ${
+                          className={\`rounded-full border px-3 py-1 text-xs font-bold \${
                             selected
                               ? "border-white/30 bg-white/10 text-white hover:bg-white/20"
                               : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
@@ -116,7 +116,7 @@ replaceOnce(
   `                        {!readOnly ? (
                           <button
                             type="button"
-                            className={\`rounded-full border px-3 py-1 text-xs font-bold ${
+                            className={\`rounded-full border px-3 py-1 text-xs font-bold \${
                               selected
                                 ? "border-white/30 bg-white/10 text-white hover:bg-white/20"
                                 : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
