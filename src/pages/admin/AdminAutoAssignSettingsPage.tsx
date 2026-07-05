@@ -27,16 +27,17 @@ function Button({ children, className = "", ...props }: any) {
   );
 }
 
-function NumberInput({ value, onChange, placeholder, onBlur, onKeyDown, className = "" }: any) {
+function NumberInput({ value, onChange, placeholder, onBlur, onKeyDown, disabled = false, className = "" }: any) {
   return (
     <input
       type="number"
-      className={`h-10 rounded-xl border border-slate-200 px-3 text-sm outline-none ${className}`}
+      className={`h-10 rounded-xl border border-slate-200 px-3 text-sm outline-none disabled:bg-slate-100 disabled:text-slate-500 ${className}`}
       value={value ?? ""}
       onChange={(e) => onChange(e.target.value)}
       onBlur={onBlur}
       onKeyDown={onKeyDown}
       placeholder={placeholder}
+      disabled={disabled}
     />
   );
 }
@@ -53,6 +54,15 @@ function toPositiveNumberOrDefault(value: number | string | null | undefined, fa
   return Number.isFinite(n) && n > 0 ? n : fallback;
 }
 
+function getAdminRole() {
+  try {
+    const raw = localStorage.getItem("admin_user");
+    return raw ? String(JSON.parse(raw)?.role || "") : "";
+  } catch {
+    return "";
+  }
+}
+
 export default function AdminAutoAssignSettingsPage() {
   const [tab, setTab] = useState<Tab>("properties");
   const [properties, setProperties] = useState<PropertyRow[]>([]);
@@ -62,6 +72,7 @@ export default function AdminAutoAssignSettingsPage() {
   const [query, setQuery] = useState("");
   const propertyTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   const statusTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const readOnly = getAdminRole() === "leader";
 
   const showStatus = (status: SaveStatus) => {
     setSaveStatus(status);
@@ -95,12 +106,14 @@ export default function AdminAutoAssignSettingsPage() {
   }, []);
 
   const saveProperty = async (row: PropertyRow) => {
+    if (readOnly) return;
+    const token = localStorage.getItem("admin_access_token") || "";
     setSavingKey(`property-${row.id}`);
     showStatus("保存中...");
     try {
       const res = await fetch(`${API_BASE}/properties/update`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({
           property_id: row.id,
           property_code: row.property_code ?? "",
@@ -123,12 +136,14 @@ export default function AdminAutoAssignSettingsPage() {
   };
 
   const schedulePropertySave = (row: PropertyRow, delay = 600) => {
+    if (readOnly) return;
     showStatus("保存待ち");
     if (propertyTimers.current[row.id]) clearTimeout(propertyTimers.current[row.id]);
     propertyTimers.current[row.id] = setTimeout(() => void saveProperty(row), delay);
   };
 
   const updateProperty = (id: string, patch: Partial<PropertyRow>, immediate = false) => {
+    if (readOnly) return;
     let nextRow: PropertyRow | null = null;
     setProperties((prev) =>
       prev.map((x) => {
@@ -158,6 +173,7 @@ export default function AdminAutoAssignSettingsPage() {
           <div className="mt-1 text-sm text-slate-500">
             新ロジック: 物件の並び順 → 物件ごとの優先スタッフ → 最大対応数で割り当てます。
           </div>
+          {readOnly ? <div className="mt-2 text-xs font-bold text-amber-700">リーダー権限では閲覧のみ可能です。</div> : null}
         </div>
         <div className="flex items-center gap-3">
           {saveStatus ? <div className="text-sm font-bold text-slate-500">{saveStatus}</div> : null}
@@ -211,6 +227,7 @@ export default function AdminAutoAssignSettingsPage() {
                         className="w-28"
                         value={p.sort_order ?? ""}
                         placeholder="999"
+                        disabled={readOnly}
                         onChange={(v: string) => updateProperty(p.id, { sort_order: v })}
                         onBlur={() => schedulePropertySave(p, 0)}
                         onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -223,6 +240,7 @@ export default function AdminAutoAssignSettingsPage() {
                         className="w-28"
                         value={p.max_assignable_count ?? ""}
                         placeholder="1"
+                        disabled={readOnly}
                         onChange={(v: string) => updateProperty(p.id, { max_assignable_count: v })}
                         onBlur={() => schedulePropertySave(p, 0)}
                         onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -242,7 +260,7 @@ export default function AdminAutoAssignSettingsPage() {
         </>
       ) : null}
 
-      {tab === "priority" ? <PropertyPrioritySettingsPage /> : null}
+      {tab === "priority" ? <PropertyPrioritySettingsPage readOnly={readOnly} /> : null}
     </div>
   );
 }
