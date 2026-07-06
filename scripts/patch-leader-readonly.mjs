@@ -70,13 +70,37 @@ function patchPropertyReorder() {
   if (!text.includes("const savePropertyOrder = async")) {
     rep(
       '  const filteredProperties = useMemo(() => {',
-      '  const savePropertyOrder = async (orderedProperties: PropertyMaster[]) => {\n    if (readOnly) return;\n\n    const next = orderedProperties.map((p, index) => ({\n      ...p,\n      sort_order: index + 1,\n    }));\n    const before = properties;\n    setProperties(next);\n\n    try {\n      await Promise.all(\n        next.map((p) =>\n          fetch(`${API_BASE}/properties/update`, {\n            method: "POST",\n            headers: authJsonHeaders(),\n            body: JSON.stringify({ property_id: p.id, sort_order: p.sort_order }),\n          }).then(async (res) => {\n            if (!res.ok) {\n              throw new Error(`property order update failed: ${res.status} / ${await res.text()}`);\n            }\n          })\n        )\n      );\n      await loadAll();\n    } catch (e) {\n      console.error(e);\n      setProperties(before);\n      alert("物件の並び順保存に失敗しました。管理者で再ログインしてから再度お試しください。");\n    }\n  };\n\n  const movePropertyByDrag = (dragId: string, dropId: string) => {\n    if (readOnly || !dragId || !dropId || dragId === dropId) return;\n    const ordered = [...properties].sort((a, b) => (a.sort_order ?? 999) - (b.sort_order ?? 999));\n    const fromIndex = ordered.findIndex((p) => p.id === dragId);\n    const toIndex = ordered.findIndex((p) => p.id === dropId);\n    if (fromIndex < 0 || toIndex < 0) return;\n    const [moved] = ordered.splice(fromIndex, 1);\n    ordered.splice(toIndex, 0, moved);\n    void savePropertyOrder(ordered);\n  };\n\n  const filteredProperties = useMemo(() => {'
+      '  const savePropertyOrder = async (orderedProperties: PropertyMaster[]) => {\n    if (readOnly) return;\n\n    const next = orderedProperties.map((p, index) => ({\n      ...p,\n      sort_order: index + 1,\n    }));\n    const before = properties;\n    setProperties(next);\n\n    try {\n      await Promise.all(\n        next.map((p) =>\n          fetch(`${API_BASE}/properties/update`, {\n            method: "POST",\n            headers: authJsonHeaders(),\n            body: JSON.stringify({ property_id: p.id, sort_order: p.sort_order }),\n          }).then(async (res) => {\n            if (!res.ok) {\n              throw new Error(`property order update failed: ${res.status} / ${await res.text()}`);\n            }\n          })\n        )\n      );\n      await loadAll();\n    } catch (e) {\n      console.error(e);\n      setProperties(before);\n      alert("物件の並び順保存に失敗しました。管理者で再ログインしてから再度お試しください。");\n    }\n  };\n\n  const movePropertyByDrag = (dragId: string, dropId: string) => {\n    if (readOnly || !dragId || !dropId || dragId === dropId) return;\n    const ordered = [...properties].sort((a, b) => (a.sort_order ?? 999) - (b.sort_order ?? 999));\n    const fromIndex = ordered.findIndex((p) => p.id === dragId);\n    const toIndex = ordered.findIndex((p) => p.id === dropId);\n    if (fromIndex < 0 || toIndex < 0) return;\n    const [moved] = ordered.splice(fromIndex, 1);\n    ordered.splice(toIndex, 0, moved);\n    void savePropertyOrder(ordered);\n  };\n\n  const movePropertyByInputOrder = async (propertyId: string, inputOrder: number) => {\n    if (readOnly || !propertyId) return;\n    const ordered = [...properties].sort((a, b) => (a.sort_order ?? 999) - (b.sort_order ?? 999));\n    const fromIndex = ordered.findIndex((p) => p.id === propertyId);\n    if (fromIndex < 0) return;\n    const [moved] = ordered.splice(fromIndex, 1);\n    const targetIndex = Math.max(0, Math.min(ordered.length, Math.floor(inputOrder || 1) - 1));\n    ordered.splice(targetIndex, 0, moved);\n    await savePropertyOrder(ordered);\n  };\n\n  const filteredProperties = useMemo(() => {'
     );
   }
 
   rep(
     'sort_order: (index + 1) * 10,',
     'sort_order: index + 1,'
+  );
+
+  if (!text.includes("movePropertyByInputOrder")) {
+    rep(
+      '  const filteredProperties = useMemo(() => {',
+      '  const movePropertyByInputOrder = async (propertyId: string, inputOrder: number) => {\n    if (readOnly || !propertyId) return;\n    const ordered = [...properties].sort((a, b) => (a.sort_order ?? 999) - (b.sort_order ?? 999));\n    const fromIndex = ordered.findIndex((p) => p.id === propertyId);\n    if (fromIndex < 0) return;\n    const [moved] = ordered.splice(fromIndex, 1);\n    const targetIndex = Math.max(0, Math.min(ordered.length, Math.floor(inputOrder || 1) - 1));\n    ordered.splice(targetIndex, 0, moved);\n    await savePropertyOrder(ordered);\n  };\n\n  const filteredProperties = useMemo(() => {'
+    );
+  }
+
+  rep(
+    `      await res.json();
+      setEditPropertyDrawerOpen(false);
+      setEditingProperty(null);
+      await loadAll();`,
+    `      await res.json();
+      const requestedOrder = Number(propertyEditForm.sort_order || 999);
+      const currentOrder = properties.find((p) => p.id === propertyEditForm.id)?.sort_order ?? 999;
+      setEditPropertyDrawerOpen(false);
+      setEditingProperty(null);
+      if (Number.isFinite(requestedOrder) && requestedOrder !== currentOrder) {
+        await movePropertyByInputOrder(propertyEditForm.id, requestedOrder);
+      } else {
+        await loadAll();
+      }`
   );
 
   rep(
