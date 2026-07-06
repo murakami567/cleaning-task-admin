@@ -79,10 +79,30 @@ function patchPropertyDragReorder() {
     '                      <div\n                        key={p.id}\n                        draggable={!readOnly}\n                        onDragStart={(e) => {\n                          if (readOnly) return;\n                          setDraggedPropertyId(p.id);\n                          e.dataTransfer.effectAllowed = "move";\n                          e.dataTransfer.setData("text/plain", p.id);\n                        }}\n                        onDragOver={(e) => {\n                          if (readOnly) return;\n                          e.preventDefault();\n                        }}\n                        onDrop={(e) => {\n                          if (readOnly) return;\n                          e.preventDefault();\n                          const dragId = e.dataTransfer.getData("text/plain") || draggedPropertyId;\n                          setDraggedPropertyId("");\n                          movePropertyByDrag(dragId, p.id);\n                        }}\n                        onDragEnd={() => setDraggedPropertyId("")}\n                        onClick={() => setSelectedPropertyId(p.id)}\n                        className={[\n                          "w-full rounded-2xl border px-4 py-3 text-left transition",\n                          !readOnly ? "cursor-grab active:cursor-grabbing" : "",\n                          draggedPropertyId === p.id ? "opacity-50" : "",\n                          selected ? "border-slate-900 bg-slate-900 text-white" : "border-slate-200 bg-white hover:bg-slate-50",\n                        ].join(" ")}\n                      >'
   );
 
-  rep('                      </button>', '                      </div>');
   rep(
     '                            <div className="text-sm font-bold">{p.sort_order ?? 999}. {p.property_name}</div>',
     '                            <div className="text-sm font-bold">{!readOnly ? <span className="mr-2 text-xs opacity-60">↕</span> : null}{p.sort_order ?? 999}. {p.property_name}</div>'
+  );
+
+  // Fix closing tags only after the outer property card has been converted from button to div.
+  rep(
+    `                              >
+                                編集
+                              </div>
+                            ) : (`,
+    `                              >
+                                編集
+                              </button>
+                            ) : (`
+  );
+
+  rep(
+    `                          </div>
+                        </button>
+                      );`,
+    `                          </div>
+                        </div>
+                      );`
   );
 }
 
