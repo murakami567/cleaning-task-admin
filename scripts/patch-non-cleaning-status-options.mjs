@@ -67,7 +67,6 @@ rep(
               <div className="mb-1 text-xs text-black/60">日付</div>`
 );
 
-// Add status column to non-cleaning list if not already present.
 if (!text.includes("<th className=\"bg-white/90 backdrop-blur border-b px-3 py-2 text-left text-xs font-semibold text-black/70 w-[90px]\">\n                        ステータス")) {
   rep(
     `                      <th className="bg-white/90 backdrop-blur border-b px-3 py-2 text-left text-xs font-semibold text-black/70 w-[90px]">
@@ -99,5 +98,36 @@ if (!text.includes("<th className=\"bg-white/90 backdrop-blur border-b px-3 py-2
   );
 }
 
+// 表示対象外の清掃外タスクまで /shifts を取得しない。
+// 古い清掃外タスクの日付分まで毎分取得していたため、APIメモリを押し上げていた。
+rep(
+  `      const uniqueDates = Array.from(
+        new Set(
+          [...tasks.map((t) => t.date), ...nonCleaning.map((t) => t.date)].filter(
+            Boolean
+          )
+        )
+      );`,
+  `      const relevantTasks = tasks.filter((t) => {
+        const d = normalizeIsoDate(t.date);
+        if (viewMode === "TODAY") return d === baseDate;
+        if (viewMode === "FUTURE") return isFutureDate(d);
+        return d === selectedDate;
+      });
+      const relevantNonCleaning = nonCleaning.filter((t) => {
+        const d = normalizeIsoDate(t.date);
+        if (viewMode === "TODAY") return d === baseDate;
+        if (viewMode === "FUTURE") return isFutureDate(d);
+        return d === selectedDate;
+      });
+      const uniqueDates = Array.from(
+        new Set(
+          [...relevantTasks.map((t) => t.date), ...relevantNonCleaning.map((t) => t.date)].filter(
+            Boolean
+          )
+        )
+      );`
+);
+
 fs.writeFileSync(path, text);
-console.log("patched non-cleaning status options");
+console.log("patched non-cleaning status options and attendee date range");
