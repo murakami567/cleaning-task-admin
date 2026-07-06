@@ -7,6 +7,9 @@ function rep(from, to) {
   if (text.includes(from)) text = text.replace(from, to);
 }
 
+// 物件並び順はコード固定ではなく、物件一覧(properties.sort_order)を使う。
+rep(`import { sortTasksByPropertyOrder } from "./utils/propertyOrder";\n`, "");
+
 if (!text.includes("const NON_CLEANING_STATUS_OPTIONS")) {
   rep(
     `const STATUS_OPTIONS = [
@@ -99,7 +102,6 @@ if (!text.includes("<th className=\"bg-white/90 backdrop-blur border-b px-3 py-2
 }
 
 // 表示対象外の清掃外タスクまで /shifts を取得しない。
-// 古い清掃外タスクの日付分まで毎分取得していたため、APIメモリを押し上げていた。
 rep(
   `      const uniqueDates = Array.from(
         new Set(
@@ -129,5 +131,73 @@ rep(
       );`
 );
 
+// 物件一覧の並び順をタスク一覧にも適用する。
+if (!text.includes("const propertyNameToSortOrder = useMemo")) {
+  rep(
+    `  const propertyNameToId = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const p of properties) {
+      if (p.property_name) map.set(p.property_name, p.id);
+      if (p.normalized_name) map.set(p.normalized_name, p.id);
+    }
+    return map;
+  }, [properties]);`,
+    `  const propertyNameToId = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const p of properties) {
+      if (p.property_name) map.set(p.property_name, p.id);
+      if (p.normalized_name) map.set(p.normalized_name, p.id);
+    }
+    return map;
+  }, [properties]);
+
+  const propertyNameToSortOrder = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const p of properties) {
+      const order = p.sort_order ?? 9999;
+      if (p.property_name) map.set(p.property_name, order);
+      if (p.normalized_name) map.set(p.normalized_name, order);
+    }
+    return map;
+  }, [properties]);
+
+  const getPropertySortOrder = (propertyName: string | undefined | null) => {
+    const value = String(propertyName ?? "").trim();
+    if (!value) return 9999;
+    const direct = propertyNameToSortOrder.get(value);
+    if (direct !== undefined) return direct;
+
+    const matched = properties.find((p) => {
+      const name = String(p.property_name ?? "").trim();
+      const normalized = String(p.normalized_name ?? "").trim();
+      return (
+        (!!name && (value === name || value.includes(name) || name.includes(value))) ||
+        (!!normalized && (value === normalized || value.includes(normalized) || normalized.includes(value)))
+      );
+    });
+
+    return matched?.sort_order ?? 9999;
+  };`
+  );
+}
+
+rep(
+  `  return sortTasksByPropertyOrder(tasks, viewMode);
+}, [cleaningTasks, viewMode, selectedDate]);`,
+  `  return [...tasks].sort((a, b) => {
+    const dateA = normalizeIsoDate(a.date);
+    const dateB = normalizeIsoDate(b.date);
+    if (viewMode === "FUTURE" && dateA !== dateB) {
+      return dateA.localeCompare(dateB);
+    }
+
+    const propertyDiff = getPropertySortOrder(a.property) - getPropertySortOrder(b.property);
+    if (propertyDiff !== 0) return propertyDiff;
+
+    return String(a.room ?? "").localeCompare(String(b.room ?? ""), "ja", { numeric: true });
+  });
+}, [cleaningTasks, viewMode, selectedDate, properties, propertyNameToSortOrder]);`
+);
+
 fs.writeFileSync(path, text);
-console.log("patched non-cleaning status options and attendee date range");
+console.log("patched non-cleaning status options, attendee date range, and property master sorting");
