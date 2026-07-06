@@ -7,6 +7,209 @@ function replaceOnce(from, to) {
   if (text.includes(from)) text = text.replace(from, to);
 }
 
+// 物件ごとのタスク管理表示色。DBの properties.task_color を編集する。
+replaceOnce(
+  `  max_assignable_count?: number | null;
+
+  cleaning_point?: number | null;
+};`,
+  `  max_assignable_count?: number | null;
+  task_color?: string | null;
+
+  cleaning_point?: number | null;
+};`
+);
+
+replaceOnce(
+  `   max_assignable_count: "",
+   cleaning_point: "60",
+ });`,
+  `   max_assignable_count: "",
+   task_color: "#ffffff",
+   cleaning_point: "60",
+ });`
+);
+
+replaceOnce(
+  `   max_assignable_count: "",
+   cleaning_point: "60",
+ });
+
+  const [roomForm, setRoomForm] = useState({`,
+  `   max_assignable_count: "",
+   task_color: "#ffffff",
+   cleaning_point: "60",
+ });
+
+  const [roomForm, setRoomForm] = useState({`
+);
+
+replaceOnce(
+  `    max_assignable_count:
+      propertyForm.max_assignable_count === ""
+        ? null
+        : Number(propertyForm.max_assignable_count),
+
+    cleaning_point: Number(propertyForm.cleaning_point || 60),`,
+  `    max_assignable_count:
+      propertyForm.max_assignable_count === ""
+        ? null
+        : Number(propertyForm.max_assignable_count),
+
+    task_color: propertyForm.task_color || "#ffffff",
+    cleaning_point: Number(propertyForm.cleaning_point || 60),`
+);
+
+replaceOnce(
+  `    max_assignable_count: "",
+    cleaning_point: "60",
+    sort_order: "999",
+ });`,
+  `    max_assignable_count: "",
+    task_color: "#ffffff",
+    cleaning_point: "60",
+    sort_order: "999",
+ });`
+);
+
+replaceOnce(
+  `    cleaning_point:
+        property.cleaning_point == null
+            ? "60"
+            : String(property.cleaning_point),
+
+    is_active: property.is_active,`,
+  `    cleaning_point:
+        property.cleaning_point == null
+            ? "60"
+            : String(property.cleaning_point),
+    task_color: property.task_color || "#ffffff",
+
+    is_active: property.is_active,`
+);
+
+replaceOnce(
+  `    cleaning_point:
+      Number(propertyEditForm.cleaning_point || 60),
+
+    is_active: propertyEditForm.is_active,`,
+  `    cleaning_point:
+      Number(propertyEditForm.cleaning_point || 60),
+    task_color: propertyEditForm.task_color || "#ffffff",
+
+    is_active: propertyEditForm.is_active,`
+);
+
+replaceOnce(
+  `  物件点数 {p.cleaning_point ?? 60}pt
+ </div>`,
+  `  物件点数 {p.cleaning_point ?? 60}pt
+  {" / "}
+  <span className="inline-flex items-center gap-1">
+    <span className="inline-block h-3 w-3 rounded border border-slate-300" style={{ backgroundColor: p.task_color || "#ffffff" }} />
+    色 {p.task_color || "#ffffff"}
+  </span>
+ </div>`
+);
+
+const colorFieldAdd = `
+
+          <Field label="タスク表示カラー">
+            <div className="flex items-center gap-3">
+              <input
+                type="color"
+                className="h-11 w-16 rounded-xl border border-slate-200 bg-white p-1"
+                value={propertyForm.task_color || "#ffffff"}
+                onChange={(e) => setPropertyForm((p) => ({ ...p, task_color: e.target.value }))}
+              />
+              <TextInput
+                value={propertyForm.task_color || "#ffffff"}
+                onChange={(v) => setPropertyForm((p) => ({ ...p, task_color: v }))}
+                placeholder="#ffffff"
+              />
+            </div>
+          </Field>`;
+
+replaceOnce(
+  `          <Field label="物件点数">
+    <TextInput
+        type="number"
+        value={propertyForm.cleaning_point}
+        onChange={(v) =>
+            setPropertyForm((p) => ({
+                ...p,
+                cleaning_point: v,
+            }))
+        }
+    />
+ </Field>
+           
+        </div>`,
+  `          <Field label="物件点数">
+    <TextInput
+        type="number"
+        value={propertyForm.cleaning_point}
+        onChange={(v) =>
+            setPropertyForm((p) => ({
+                ...p,
+                cleaning_point: v,
+            }))
+        }
+    />
+ </Field>${colorFieldAdd}
+           
+        </div>`
+);
+
+const colorFieldEdit = `
+
+          <Field label="タスク表示カラー">
+            <div className="flex items-center gap-3">
+              <input
+                type="color"
+                className="h-11 w-16 rounded-xl border border-slate-200 bg-white p-1"
+                value={propertyEditForm.task_color || "#ffffff"}
+                onChange={(e) => setPropertyEditForm((p) => ({ ...p, task_color: e.target.value }))}
+              />
+              <TextInput
+                value={propertyEditForm.task_color || "#ffffff"}
+                onChange={(v) => setPropertyEditForm((p) => ({ ...p, task_color: v }))}
+                placeholder="#ffffff"
+              />
+            </div>
+          </Field>`;
+
+replaceOnce(
+  `          <Field label="物件点数">
+    <TextInput
+        type="number"
+        value={propertyEditForm.cleaning_point}
+        onChange={(v) =>
+            setPropertyEditForm((p) => ({
+                ...p,
+                cleaning_point: v,
+            }))
+        }
+    />
+ </Field>
+
+          <label className="inline-flex items-center gap-2 text-sm font-medium">`,
+  `          <Field label="物件点数">
+    <TextInput
+        type="number"
+        value={propertyEditForm.cleaning_point}
+        onChange={(v) =>
+            setPropertyEditForm((p) => ({
+                ...p,
+                cleaning_point: v,
+            }))
+        }
+    />
+ </Field>${colorFieldEdit}
+
+          <label className="inline-flex items-center gap-2 text-sm font-medium">`
+);
+
 if (!text.includes("function getAdminRole()")) {
   text = text.replace(
     "function Select({\n",
@@ -97,7 +300,6 @@ replaceOnce(
               ) : null}`
 );
 
-// Property edit button becomes a read-only indicator.
 replaceOnce(
   `                        <button
                           type="button"
@@ -152,7 +354,6 @@ replaceOnce(
                           ) : <span className="text-xs text-slate-400">閲覧のみ</span>}`
 );
 
-// Prep memo is also read-only for leaders.
 replaceOnce(
   `                            placeholder="備考を入力"
                             rows={2}
@@ -179,4 +380,4 @@ text = text.replaceAll(
 );
 
 fs.writeFileSync(path, text);
-console.log("leader read-only patch done");
+console.log("leader read-only and property task color patch done");
