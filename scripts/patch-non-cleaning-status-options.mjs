@@ -10,6 +10,15 @@ function rep(from, to) {
 // 物件並び順はコード固定ではなく、物件一覧(properties.sort_order)を使う。
 rep(`import { sortTasksByPropertyOrder } from "./utils/propertyOrder";\n`, "");
 
+// properties.task_color をタスク管理の行背景色に使う。
+rep(
+  `  is_active: boolean;
+};`,
+  `  is_active: boolean;
+  task_color?: string | null;
+};`
+);
+
 if (!text.includes("const NON_CLEANING_STATUS_OPTIONS")) {
   rep(
     `const STATUS_OPTIONS = [
@@ -131,7 +140,7 @@ rep(
       );`
 );
 
-// 物件一覧の並び順をタスク一覧にも適用する。
+// 物件一覧の並び順とタスク表示色をタスク一覧にも適用する。
 if (!text.includes("const propertyNameToSortOrder = useMemo")) {
   rep(
     `  const propertyNameToId = useMemo(() => {
@@ -161,22 +170,43 @@ if (!text.includes("const propertyNameToSortOrder = useMemo")) {
     return map;
   }, [properties]);
 
-  const getPropertySortOrder = (propertyName: string | undefined | null) => {
-    const value = String(propertyName ?? "").trim();
-    if (!value) return 9999;
-    const direct = propertyNameToSortOrder.get(value);
-    if (direct !== undefined) return direct;
+  const propertyNameToTaskColor = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const p of properties) {
+      const color = p.task_color || "#ffffff";
+      if (p.property_name) map.set(p.property_name, color);
+      if (p.normalized_name) map.set(p.normalized_name, color);
+    }
+    return map;
+  }, [properties]);
 
-    const matched = properties.find((p) => {
+  const findPropertyMaster = (propertyName: string | undefined | null) => {
+    const value = String(propertyName ?? "").trim();
+    if (!value) return null;
+    return properties.find((p) => {
       const name = String(p.property_name ?? "").trim();
       const normalized = String(p.normalized_name ?? "").trim();
       return (
         (!!name && (value === name || value.includes(name) || name.includes(value))) ||
         (!!normalized && (value === normalized || value.includes(normalized) || normalized.includes(value)))
       );
-    });
+    }) ?? null;
+  };
 
-    return matched?.sort_order ?? 9999;
+  const getPropertySortOrder = (propertyName: string | undefined | null) => {
+    const value = String(propertyName ?? "").trim();
+    if (!value) return 9999;
+    const direct = propertyNameToSortOrder.get(value);
+    if (direct !== undefined) return direct;
+    return findPropertyMaster(value)?.sort_order ?? 9999;
+  };
+
+  const getPropertyTaskColor = (propertyName: string | undefined | null) => {
+    const value = String(propertyName ?? "").trim();
+    if (!value) return "#ffffff";
+    const direct = propertyNameToTaskColor.get(value);
+    if (direct) return direct;
+    return findPropertyMaster(value)?.task_color || getPropertyColor(value);
   };`
   );
 }
@@ -199,5 +229,10 @@ rep(
 }, [cleaningTasks, viewMode, selectedDate, properties, propertyNameToSortOrder]);`
 );
 
+rep(
+  `const propertyColor = getPropertyColor(t.property);`,
+  `const propertyColor = getPropertyTaskColor(t.property);`
+);
+
 fs.writeFileSync(path, text);
-console.log("patched non-cleaning status options, attendee date range, and property master sorting");
+console.log("patched non-cleaning status options, attendee date range, property master sorting, and task colors");
