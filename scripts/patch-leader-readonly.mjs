@@ -77,17 +77,7 @@ function patchPropertyReorder() {
   // 既に古い実装が入っている場合は、一括reorder APIへ差し替える。
   text = text.replace(
     /await Promise\.all\(\s*next\.map\(\(p\) =>\s*fetch\(`\$\{API_BASE\}\/properties\/update`, \{[\s\S]*?\)\s*\);\s*await loadAll\(\);/,
-    `const res = await fetch(\`${API_BASE}/properties/reorder\`, {
-        method: "POST",
-        headers: authJsonHeaders(),
-        body: JSON.stringify({
-          items: next.map((p) => ({ property_id: p.id, sort_order: p.sort_order })),
-        }),
-      });
-      if (!res.ok) {
-        throw new Error(\`property reorder failed: \${res.status} / \${await res.text()}\`);
-      }
-      await loadAll();`
+    'const res = await fetch(`${API_BASE}/properties/reorder`, {\n        method: "POST",\n        headers: authJsonHeaders(),\n        body: JSON.stringify({\n          items: next.map((p) => ({ property_id: p.id, sort_order: p.sort_order })),\n        }),\n      });\n      if (!res.ok) {\n        throw new Error(`property reorder failed: ${res.status} / ${await res.text()}`);\n      }\n      await loadAll();'
   );
 
   rep(
