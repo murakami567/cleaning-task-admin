@@ -3,7 +3,7 @@ import fs from "node:fs";
 const file = "src/pages/admin/AdminHomePage.tsx";
 let text = fs.readFileSync(file, "utf8");
 
-if (text.includes("VITE_ORDER_SUPABASE_URL")) {
+if (text.includes("orderDueSchedules")) {
   process.exit(0);
 }
 
@@ -20,8 +20,6 @@ replaceOnce(
     'const API_BASE =',
     '  import.meta.env.VITE_API_BASE_URL || "https://cleaning-task-api.onrender.com";',
     '',
-    'const ORDER_SUPABASE_URL = import.meta.env.VITE_ORDER_SUPABASE_URL || "";',
-    'const ORDER_SUPABASE_ANON_KEY = import.meta.env.VITE_ORDER_SUPABASE_ANON_KEY || "";',
     'const ORDER_MANAGEMENT_URL =',
     '  import.meta.env.VITE_ORDER_MANAGEMENT_URL || "https://order-management-hoq5.onrender.com";',
   ].join('\n')
@@ -58,21 +56,6 @@ replaceOnce(
 );
 
 replaceOnce(
-  'function isDateInRange(target: string, start: string, end: string) {\n  return target >= start && target <= end;\n}',
-  [
-    'function isDateInRange(target: string, start: string, end: string) {',
-    '  return target >= start && target <= end;',
-    '}',
-    '',
-    'function getMonthRange(year: number, month: number) {',
-    '  const start = toDateString(new Date(year, month - 1, 1));',
-    '  const end = toDateString(new Date(year, month, 0));',
-    '  return { start, end };',
-    '}',
-  ].join('\n')
-);
-
-replaceOnce(
   '  const [staffs, setStaffs] = useState<Staff[]>([]);\n  const [schedules, setSchedules] = useState<PortalSchedule[]>([]);',
   '  const [staffs, setStaffs] = useState<Staff[]>([]);\n  const [schedules, setSchedules] = useState<PortalSchedule[]>([]);\n  const [orderDueSchedules, setOrderDueSchedules] = useState<OrderDueSchedule[]>([]);'
 );
@@ -84,45 +67,24 @@ replaceOnce(
 
 const orderDueFunction = [
   '  async function fetchOrderDueSchedules() {',
-  '    if (!ORDER_SUPABASE_URL || !ORDER_SUPABASE_ANON_KEY) {',
-  '      setOrderDueSchedules([]);',
-  '      return;',
-  '    }',
-  '',
-  '    const { start, end } = getMonthRange(viewYear, viewMonth);',
-  '    const params = new URLSearchParams();',
-  '    params.set("select", "id,order_no,status,item_name,quantity,unit,usage_place,delivery_place,supplier,due_date");',
-  '    params.set("due_date", `gte.${start}`);',
-  '    params.append("due_date", `lte.${end}`);',
-  '    params.set("status", "neq.キャンセル");',
-  '    params.set("order", "due_date.asc");',
-  '',
   '    try {',
-  '      const res = await fetch(`${ORDER_SUPABASE_URL}/rest/v1/orders?${params.toString()}`, {',
-  '        headers: {',
-  '          apikey: ORDER_SUPABASE_ANON_KEY,',
-  '          Authorization: `Bearer ${ORDER_SUPABASE_ANON_KEY}`,',
-  '        },',
-  '      });',
-  '',
-  '      if (!res.ok) throw new Error("発注納期の取得に失敗しました。");',
-  '',
+  '      const res = await authorizedFetch(',
+  '        `${API_BASE}/api/admin-portal/order-due-schedules?year=${viewYear}&month=${viewMonth}`',
+  '      );',
   '      const data = await res.json();',
-  '      const normalized = Array.isArray(data)',
-  '        ? data',
-  '            .filter((item) => item?.due_date)',
-  '            .map((item) => ({',
-  '              id: String(item.id),',
-  '              order_no: item.order_no || "",',
-  '              status: item.status || "",',
-  '              item_name: item.item_name || "",',
-  '              quantity: item.quantity ?? null,',
-  '              unit: item.unit ?? null,',
-  '              usage_place: item.usage_place ?? null,',
-  '              delivery_place: item.delivery_place ?? null,',
-  '              supplier: item.supplier ?? null,',
-  '              due_date: item.due_date,',
-  '            }))',
+  '      const normalized = Array.isArray(data?.items)',
+  '        ? data.items.map((item: any) => ({',
+  '            id: String(item.id),',
+  '            order_no: item.order_no || "",',
+  '            status: item.status || "",',
+  '            item_name: item.item_name || "",',
+  '            quantity: item.quantity ?? null,',
+  '            unit: item.unit ?? null,',
+  '            usage_place: item.usage_place ?? null,',
+  '            delivery_place: item.delivery_place ?? null,',
+  '            supplier: item.supplier ?? null,',
+  '            due_date: item.due_date,',
+  '          }))',
   '        : [];',
   '      setOrderDueSchedules(normalized);',
   '    } catch (error) {',
