@@ -102,7 +102,13 @@ replaceOnce(
 
 replaceOnce(
   '              const daySchedules = schedules.filter((item) => isDateInRange(cell.date, item.start_date, item.end_date));\n              return (',
-  '              const daySchedules = schedules.filter((item) => isDateInRange(cell.date, item.start_date, item.end_date));\n              const dayOrderDueSchedules = orderDueSchedules.filter((item) => item.due_date === cell.date);\n              return ('
+  [
+    '              const daySchedules = schedules.filter((item) => isDateInRange(cell.date, item.start_date, item.end_date));',
+    '              const dayOrderDueSchedules = orderDueSchedules.filter((item) => item.due_date === cell.date);',
+    '              const visibleOrderDueSchedules = dayOrderDueSchedules.slice(0, 3);',
+    '              const hiddenOrderDueCount = Math.max(dayOrderDueSchedules.length - visibleOrderDueSchedules.length, 0);',
+    '              return ('
+  ].join('\n')
 );
 
 replaceOnce(
@@ -114,7 +120,7 @@ replaceOnce(
     '                        <div className="truncate text-[11px] opacity-80">{item.assignee_names.join(" / ") || "担当なし"}</div>',
     '                      </button>',
     '                    ))}',
-    '                    {dayOrderDueSchedules.map((item) => (',
+    '                    {visibleOrderDueSchedules.map((item) => (',
     '                      <button',
     '                        key={`${cell.date}_order_${item.id}`}',
     '                        onClick={() => window.open(ORDER_MANAGEMENT_URL, "_blank", "noopener,noreferrer")}',
@@ -127,6 +133,14 @@ replaceOnce(
     '                        </div>',
     '                      </button>',
     '                    ))}',
+    '                    {hiddenOrderDueCount > 0 ? (',
+    '                      <button',
+    '                        onClick={() => window.open(ORDER_MANAGEMENT_URL, "_blank", "noopener,noreferrer")}',
+    '                        className="block w-full rounded-lg bg-amber-100 px-2 py-1 text-left text-xs font-bold text-amber-900 hover:bg-amber-200"',
+    '                      >',
+    '                        他 {hiddenOrderDueCount} 件の発注納期',
+    '                      </button>',
+    '                    ) : null}',
   ].join('\n')
 );
 
