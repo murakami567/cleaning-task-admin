@@ -3,15 +3,40 @@ import fs from "node:fs";
 const file = "src/pages/admin/AdminHomePage.tsx";
 let text = fs.readFileSync(file, "utf8");
 
-if (text.includes("scheduleCalendarTab")) {
-  process.exit(0);
-}
-
 function replaceOnce(target, replacement) {
   if (!text.includes(target)) {
     throw new Error(`patch target not found: ${target.slice(0, 120)}`);
   }
   text = text.replace(target, replacement);
+}
+
+function applyPeriodFixOnly() {
+  text = text.replace(
+    [
+      '              const dayConstructionSchedules = constructionSchedules.filter((item) => {',
+      '                const dates = [item.start_date, item.end_date, item.actual_end_date].filter(Boolean);',
+      '                return dates.includes(cell.date);',
+      '              });',
+    ].join('\n'),
+    [
+      '              const dayConstructionSchedules = constructionSchedules.filter((item) => {',
+      '                if (item.start_date && item.end_date) return isDateInRange(cell.date, item.start_date, item.end_date);',
+      '                const dates = [item.start_date, item.end_date, item.actual_end_date].filter(Boolean);',
+      '                return dates.includes(cell.date);',
+      '              });',
+    ].join('\n')
+  );
+
+  text = text.replace(
+    '                          const dateLabel = item.actual_end_date === cell.date ? "実完了" : item.end_date === cell.date ? "完了予定" : "開始";',
+    '                          const dateLabel = item.actual_end_date === cell.date ? "実完了" : item.end_date === cell.date ? "完了予定" : item.start_date === cell.date ? "開始" : "施工中";'
+  );
+}
+
+if (text.includes("scheduleCalendarTab")) {
+  applyPeriodFixOnly();
+  fs.writeFileSync(file, text);
+  process.exit(0);
 }
 
 replaceOnce(
@@ -189,6 +214,7 @@ replaceOnce(
     '              void daySchedules;',
     '              const dayOrderDueSchedules = orderDueSchedules.filter((item) => item.due_date === cell.date);',
     '              const dayConstructionSchedules = constructionSchedules.filter((item) => {',
+    '                if (item.start_date && item.end_date) return isDateInRange(cell.date, item.start_date, item.end_date);',
     '                const dates = [item.start_date, item.end_date, item.actual_end_date].filter(Boolean);',
     '                return dates.includes(cell.date);',
     '              });',
@@ -230,7 +256,7 @@ replaceOnce(
     '                    ) : (',
     '                      <>',
     '                        {visibleConstructionSchedules.map((item) => {',
-    '                          const dateLabel = item.actual_end_date === cell.date ? "実完了" : item.end_date === cell.date ? "完了予定" : "開始";',
+    '                          const dateLabel = item.actual_end_date === cell.date ? "実完了" : item.end_date === cell.date ? "完了予定" : item.start_date === cell.date ? "開始" : "施工中";',
     '                          return (',
     '                            <button',
     '                              key={`${cell.date}_construction_${item.id}_${dateLabel}`}',
