@@ -369,6 +369,18 @@ export default function PayrollAttendancePage() {
     </style>
 
     <div className="mx-auto max-w-7xl space-y-6">
+        <div>
+          <button
+            type="button"
+            onClick={() => {
+              window.location.href = "/admin/home";
+            }}
+            className="mb-4 inline-flex h-10 items-center rounded-xl border border-neutral-200 bg-white px-4 text-sm font-medium text-neutral-700 transition hover:bg-neutral-100"
+          >
+            ← タスク管理に戻る
+          </button>
+        </div>
+
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold">給与・勤怠</h1>
@@ -527,23 +539,12 @@ export default function PayrollAttendancePage() {
                           {yen(r.final_amount)}
                         </td>
                         <td className="px-3 py-3">
-                          <Pill tone={r.status === "確定済" ? "good" : "warn"}>
-                            {r.status}
+                          <Pill tone={r.status === "確定" ? "good" : "warn"}>
+                            {r.status || "未確定"}
                           </Pill>
                         </td>
                       </tr>
                     ))}
-
-                    {rows.length === 0 && (
-                      <tr>
-                        <td
-                          colSpan={13}
-                          className="px-3 py-10 text-center text-neutral-500"
-                        >
-                          給与計算結果がありません。月次計算を実行してください。
-                        </td>
-                      </tr>
-                    )}
                   </tbody>
                 </table>
               </div>
@@ -552,600 +553,558 @@ export default function PayrollAttendancePage() {
         )}
 
         {tab === "settings" && (
-          <div className="space-y-5">
-            <div className="grid gap-5 lg:grid-cols-3">
-              <Card className="p-5">
-                <h2 className="text-lg font-semibold">
-                  スタッフ別給与設定を追加
-                </h2>
-                <p className="text-sm text-neutral-500">
-                  スタッフ一覧は管理側のスタッフマスタを参照します
-                </p>
-                <PayrollStaffSettingForm
-                  staffs={staffs}
-                  onSave={saveStaffPayrollSetting}
-                  disabled={saving}
-                />
-              </Card>
-
-              <Card className="p-5">
-                <h2 className="text-lg font-semibold">部屋別単価を追加</h2>
-                <p className="text-sm text-neutral-500">
-                  物件・部屋は管理側の物件/部屋マスタを参照します
-                </p>
-                <RoomRateForm
-                  properties={properties}
-                  rooms={rooms}
-                  onSave={saveRoomRate}
-                  disabled={saving}
-                />
-              </Card>
-
-              <Card className="p-5">
-                <h2 className="text-lg font-semibold">
-                  物件タイプ単価を追加
-                </h2>
-                <p className="text-sm text-neutral-500">
-                  部屋別単価がない場合に使用されます
-                </p>
-                <PropertyTypeRateForm
-                  properties={properties}
-                  onSave={savePropertyTypeRate}
-                  disabled={saving}
-                />
-              </Card>
-            </div>
-
-            <div className="grid gap-5 lg:grid-cols-2">
-              <Card className="p-5">
-                <h2 className="text-lg font-semibold">スタッフ別給与設定</h2>
-                <p className="mb-4 text-sm text-neutral-500">
-                  計算方式・時給・最低保証・交通費
-                </p>
-
-                <div className="overflow-auto rounded-2xl border">
-                  <table className="w-full min-w-[680px] text-sm">
-                    <thead className="bg-neutral-100 text-xs text-neutral-600">
-                      <tr>
-                        <th className="px-3 py-3 text-left">スタッフ</th>
-                        <th className="px-3 py-3 text-left">計算方式</th>
-                        <th className="px-3 py-3 text-right">時給</th>
-                        <th className="px-3 py-3 text-right">最低保証</th>
-                        <th className="px-3 py-3 text-right">交通費</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {settings.staff_payroll_settings.map((s: any) => (
-                        <tr key={s.id} className="border-t bg-white">
-                          <td className="px-3 py-3 font-medium">
-                            {s.staff_name}
-                          </td>
-                          <td className="px-3 py-3">
-                            <Pill>{typeLabel(s.payroll_type)}</Pill>
-                          </td>
-                          <td className="px-3 py-3 text-right">
-                            {yen(s.hourly_rate)}
-                          </td>
-                          <td className="px-3 py-3 text-right">
-                            {s.minimum_hours
-                              ? `${s.minimum_hours}h / ${yen(
-                                  s.hourly_rate * s.minimum_hours
-                                )}`
-                              : "-"}
-                          </td>
-                          <td className="px-3 py-3 text-right">
-                            {yen(s.transportation_fee)}
-                          </td>
-                        </tr>
-                      ))}
-
-                      {settings.staff_payroll_settings.length === 0 && (
-                        <tr>
-                          <td
-                            colSpan={5}
-                            className="px-3 py-10 text-center text-neutral-500"
-                          >
-                            スタッフ給与設定がありません。
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </Card>
-
-              <Card className="p-5">
-                <h2 className="text-lg font-semibold">物件・部屋単価設定</h2>
-                <p className="mb-4 text-sm text-neutral-500">
-                  部屋別単価を優先し、なければ物件タイプ単価
-                </p>
-
-                <div className="space-y-4">
-                  <div className="overflow-auto rounded-2xl border">
-                    <table className="w-full min-w-[520px] text-sm">
-                      <thead className="bg-neutral-100 text-xs text-neutral-600">
-                        <tr>
-                          <th className="px-3 py-3 text-left">物件</th>
-                          <th className="px-3 py-3 text-left">部屋</th>
-                          <th className="px-3 py-3 text-right">単価</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {settings.room_piece_rates.map((r: any) => (
-                          <tr key={r.id} className="border-t bg-white">
-                            <td className="px-3 py-3 font-medium">
-                              {r.property_name}
-                            </td>
-                            <td className="px-3 py-3">{r.room_name}</td>
-                            <td className="px-3 py-3 text-right font-semibold">
-                              {yen(r.rate)}
-                            </td>
-                          </tr>
-                        ))}
-
-                        {settings.room_piece_rates.length === 0 && (
-                          <tr>
-                            <td
-                              colSpan={3}
-                              className="px-3 py-8 text-center text-neutral-500"
-                            >
-                              部屋別単価がありません。
-                            </td>
-                          </tr>
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-
-                  <div className="overflow-auto rounded-2xl border">
-                    <table className="w-full min-w-[520px] text-sm">
-                      <thead className="bg-neutral-100 text-xs text-neutral-600">
-                        <tr>
-                          <th className="px-3 py-3 text-left">物件</th>
-                          <th className="px-3 py-3 text-left">タイプ</th>
-                          <th className="px-3 py-3 text-right">単価</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {settings.property_type_piece_rates.map((r: any) => (
-                          <tr key={r.id} className="border-t bg-white">
-                            <td className="px-3 py-3 font-medium">
-                              {r.property_name}
-                            </td>
-                            <td className="px-3 py-3">{r.property_type}</td>
-                            <td className="px-3 py-3 text-right font-semibold">
-                              {yen(r.rate)}
-                            </td>
-                          </tr>
-                        ))}
-
-                        {settings.property_type_piece_rates.length === 0 && (
-                          <tr>
-                            <td
-                              colSpan={3}
-                              className="px-3 py-8 text-center text-neutral-500"
-                            >
-                              物件タイプ単価がありません。
-                            </td>
-                          </tr>
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              </Card>
-            </div>
-          </div>
+          <PayrollSettings
+            settings={settings}
+            staffs={staffs}
+            properties={properties}
+            rooms={rooms}
+            saving={saving}
+            onSaveStaff={saveStaffPayrollSetting}
+            onSaveRoom={saveRoomRate}
+            onSavePropertyType={savePropertyTypeRate}
+          />
         )}
 
         {tab === "statement" && (
-          <Card className="p-6">
-            <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <h2 className="text-xl font-semibold">給与明細プレビュー</h2>
-                <p className="text-sm text-neutral-500">
-                  スタッフを選択して1か月分を表形式で表示
-                </p>
-              </div>
-              <Button variant="outline" onClick={() => window.print()}>
-                印刷 / PDF
-              </Button>
-            </div>
-
-            <div className="mb-4 flex flex-wrap gap-2">
-              {staffList.map((s) => (
-                <Button
-                  key={s.staff_id}
-                  variant={
-                    selectedStaff?.staff_id === s.staff_id
-                      ? "default"
-                      : "outline"
-                  }
-                  onClick={() => setSelectedStaffId(s.staff_id)}
-                >
-                  {s.staff_name}
-                </Button>
-              ))}
-            </div>
-
-            <div className="print-area rounded-2xl border bg-white p-6">
-              <div className="border-b pb-4">
-                <h2 className="text-2xl font-bold">給与明細書</h2>
-                <div className="mt-2 grid gap-2 text-sm text-neutral-600 md:grid-cols-3">
-                  <div>
-                    対象月：{year}年{month}月
-                  </div>
-                  <div>氏名：{selectedStaff?.staff_name || "-"}</div>
-                  <div>雇用区分：{typeLabel(selectedStaff?.payroll_type)}</div>
-                </div>
-              </div>
-
-              <div className="mt-5 grid gap-4 md:grid-cols-4">
-                <Metric
-                  label="部屋単価報酬"
-                  value={yen(total("cleaning_amount", selectedRows))}
-                />
-                <Metric
-                  label="時給作業報酬"
-                  value={yen(total("hourly_amount", selectedRows))}
-                />
-                <Metric
-                  label="最低保証調整"
-                  value={yen(total("adjustment_amount", selectedRows))}
-                />
-                <Metric
-                  label="支給合計"
-                  value={yen(total("final_amount", selectedRows))}
-                />
-              </div>
-
-              <div className="mt-6 overflow-auto rounded-2xl border">
-                <table className="w-full min-w-[1040px] text-sm">
-                  <thead className="bg-neutral-100 text-xs text-neutral-600">
-                    <tr>
-                      <th className="px-3 py-3 text-left">日付</th>
-                      <th className="px-3 py-3 text-left">施設</th>
-                      <th className="px-3 py-3 text-right">部屋数</th>
-                      <th className="px-3 py-3 text-right">作業人数</th>
-                      <th className="px-3 py-3 text-right">単価</th>
-                      <th className="px-3 py-3 text-right">合計金額</th>
-                      <th className="px-3 py-3 text-right">作業時間</th>
-                      <th className="px-3 py-3 text-right">実働時間</th>
-                      <th className="px-3 py-3 text-right">時給</th>
-                      <th className="px-3 py-3 text-left">繁忙期手当</th>
-                      <th className="px-3 py-3 text-right">交通費</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {selectedRows.map((r) => {
-                      const showDate = r.target_date !== lastDate;
-                      lastDate = r.target_date;
-
-                      return (
-                        <tr key={r.id} className="border-t bg-white">
-                          <td className="px-3 py-3">
-                            {showDate ? formatMd(r.target_date) : ""}
-                          </td>
-                          <td className="px-3 py-3">{r.facility}</td>
-                          <td className="px-3 py-3 text-right">
-                            {r.room_count || ""}
-                          </td>
-                          <td className="px-3 py-3 text-right">
-                            {r.worker_count || ""}
-                          </td>
-                          <td className="px-3 py-3 text-right">
-                            {r.unit_price ? yen(r.unit_price) : ""}
-                          </td>
-                          <td className="px-3 py-3 text-right font-semibold">
-                            {r.final_amount ? yen(r.final_amount) : ""}
-                          </td>
-                          <td className="px-3 py-3 text-right">
-                            {r.work_hours ? `${r.work_hours}h` : ""}
-                          </td>
-                          <td className="px-3 py-3 text-right">
-                            {r.actual_hours ? `${r.actual_hours}h` : ""}
-                          </td>
-                          <td className="px-3 py-3 text-right">
-                            {r.hourly_rate ? yen(r.hourly_rate) : ""}
-                          </td>
-                          <td className="px-3 py-3">
-                            {r.busy_season_allowance || ""}
-                          </td>
-                          <td className="px-3 py-3 text-right">
-                            {r.transportation_fee
-                              ? yen(r.transportation_fee)
-                              : ""}
-                          </td>
-                        </tr>
-                      );
-                    })}
-
-                    {selectedRows.length === 0 && (
-                      <tr>
-                        <td
-                          colSpan={11}
-                          className="px-3 py-10 text-center text-neutral-500"
-                        >
-                          明細データがありません。
-                        </td>
-                      </tr>
-                    )}
-
-                    {selectedRows.length > 0 && (
-                      <tr className="border-t bg-neutral-100 font-semibold">
-                        <td colSpan={5} className="px-3 py-3">
-                          月合計
-                        </td>
-                        <td className="px-3 py-3 text-right">
-                          {yen(total("final_amount", selectedRows))}
-                        </td>
-                        <td colSpan={5}></td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </Card>
+          <PayrollStatement
+            staffList={staffList}
+            selectedStaffId={selectedStaff?.staff_id || ""}
+            onSelectStaff={setSelectedStaffId}
+            selectedStaff={selectedStaff}
+            rows={selectedRows}
+            total={total}
+            yen={yen}
+            formatMd={formatMd}
+          />
         )}
       </div>
     </div>
   );
 }
 
-function PayrollStaffSettingForm({
+function PayrollSettings({
+  settings,
   staffs,
-  onSave,
-  disabled,
-}: {
-  staffs: StaffMaster[];
-  onSave: (payload: any) => void;
-  disabled?: boolean;
-}) {
-  const [staffId, setStaffId] = useState("");
-  const [payrollType, setPayrollType] = useState("piece");
-  const [hourlyRate, setHourlyRate] = useState("1300");
-  const [minimumHours, setMinimumHours] = useState("6");
-  const [transportationFee, setTransportationFee] = useState("");
-
-  const staff = staffs.find((s) => s.id === staffId);
-
-  return (
-    <div className="mt-4 space-y-3">
-      <div className="grid grid-cols-[110px_1fr] items-center gap-3">
-        <label className="text-sm font-medium text-neutral-600">スタッフ</label>
-        <select
-          className="h-10 rounded-xl border bg-white px-3 text-sm"
-          value={staffId}
-          onChange={(e) => setStaffId(e.target.value)}
-        >
-          <option value="">スタッフ選択</option>
-          {staffs.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.staff_name}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      <div className="grid grid-cols-[110px_1fr] items-center gap-3">
-        <label className="text-sm font-medium text-neutral-600">計算方式</label>
-        <select
-          className="h-10 rounded-xl border bg-white px-3 text-sm"
-          value={payrollType}
-          onChange={(e) => setPayrollType(e.target.value)}
-        >
-          <option value="piece">単価計算</option>
-          <option value="hourly">時給計算</option>
-        </select>
-      </div>
-
-      <div className="grid grid-cols-[110px_1fr] items-center gap-3">
-        <label className="text-sm font-medium text-neutral-600">時給</label>
-        <input
-  className="h-10 rounded-xl border px-3 text-sm"
-  type="number"
-  value={hourlyRate}
-  onChange={(e) => setHourlyRate(e.target.value)}
-  placeholder="例：1300"
-/>
-      </div>
-
-      <div className="grid grid-cols-[110px_1fr] items-center gap-3">
-        <label className="text-sm font-medium text-neutral-600">
-          最低保証時間
-        </label>
-        <input
-          className="h-10 rounded-xl border px-3 text-sm"
-          type="number"
-          value={minimumHours}
-          onChange={(e) => setMinimumHours(Number(e.target.value))}
-          placeholder="例：6"
-        />
-      </div>
-
-      <div className="grid grid-cols-[110px_1fr] items-center gap-3">
-        <label className="text-sm font-medium text-neutral-600">交通費</label>
-        <input
-  className="h-10 rounded-xl border px-3 text-sm"
-  type="number"
-  value={transportationFee}
-  onChange={(e) => setTransportationFee(e.target.value)}
-  placeholder="例：500"
-/>
-      </div>
-
-      <Button
-        className="mt-2 w-full"
-        disabled={disabled}
-        onClick={() => {
-          if (!staff) {
-            window.alert("スタッフを選択してください");
-            return;
-          }
-
-          onSave({
-  staff_id: staff.id,
-  staff_name: staff.staff_name,
-  payroll_type: payrollType,
-  hourly_rate: Number(hourlyRate || 0),
-  minimum_hours: Number(minimumHours || 0),
-  transportation_fee: Number(transportationFee || 0),
-});
-        }}
-      >
-        保存
-      </Button>
-    </div>
-  );
-}
-
-function RoomRateForm({
   properties,
   rooms,
-  onSave,
-  disabled,
-}: {
-  properties: PropertyMaster[];
-  rooms: RoomMaster[];
-  onSave: (payload: any) => void;
-  disabled?: boolean;
-}) {
-  const [propertyId, setPropertyId] = useState("");
-  const [roomId, setRoomId] = useState("");
-  const [rate, setRate] = useState(1500);
+  saving,
+  onSaveStaff,
+  onSaveRoom,
+  onSavePropertyType,
+}: any) {
+  const [staffForm, setStaffForm] = useState({
+    staff_id: "",
+    payroll_type: "piece_rate",
+    hourly_rate: 0,
+    minimum_guarantee: 0,
+    transportation_fee: 0,
+    is_active: true,
+  });
 
-  const property = properties.find((p) => p.id === propertyId);
-  const filteredRooms = rooms.filter((r) => r.property_id === propertyId);
-  const room = rooms.find((r) => r.id === roomId);
+  const [roomForm, setRoomForm] = useState({
+    property_id: "",
+    room_id: "",
+    unit_price: 0,
+    busy_season_allowance: "",
+    is_active: true,
+  });
+
+  const [propertyTypeForm, setPropertyTypeForm] = useState({
+    property_id: "",
+    work_type: "",
+    unit_price: 0,
+    is_active: true,
+  });
+
+  const activeStaffs = staffs.filter((s: StaffMaster) => s.is_active !== false);
+  const activeProperties = properties.filter(
+    (p: PropertyMaster) => p.is_active !== false
+  );
+  const activeRooms = rooms.filter(
+    (r: RoomMaster) =>
+      r.is_active !== false &&
+      (!roomForm.property_id || r.property_id === roomForm.property_id)
+  );
+
+  const staffSettingMap = new Map(
+    (settings.staff_payroll_settings || []).map((x: any) => [x.staff_id, x])
+  );
+
+  const roomRateMap = new Map(
+    (settings.room_piece_rates || []).map((x: any) => [x.room_id, x])
+  );
+
+  const propertyTypeRateMap = new Map(
+    (settings.property_type_piece_rates || []).map((x: any) => [
+      `${x.property_id}::${x.work_type}`,
+      x,
+    ])
+  );
+
+  useEffect(() => {
+    if (!staffForm.staff_id) return;
+    const current = staffSettingMap.get(staffForm.staff_id) as any;
+    setStaffForm((prev) => ({
+      ...prev,
+      payroll_type: current?.payroll_type || "piece_rate",
+      hourly_rate: Number(current?.hourly_rate || 0),
+      minimum_guarantee: Number(current?.minimum_guarantee || 0),
+      transportation_fee: Number(current?.transportation_fee || 0),
+      is_active: current?.is_active !== false,
+    }));
+  }, [staffForm.staff_id]);
+
+  useEffect(() => {
+    if (!roomForm.room_id) return;
+    const current = roomRateMap.get(roomForm.room_id) as any;
+    setRoomForm((prev) => ({
+      ...prev,
+      unit_price: Number(current?.unit_price || 0),
+      busy_season_allowance: current?.busy_season_allowance || "",
+      is_active: current?.is_active !== false,
+    }));
+  }, [roomForm.room_id]);
+
+  useEffect(() => {
+    if (!propertyTypeForm.property_id || !propertyTypeForm.work_type) return;
+    const current = propertyTypeRateMap.get(
+      `${propertyTypeForm.property_id}::${propertyTypeForm.work_type}`
+    ) as any;
+    setPropertyTypeForm((prev) => ({
+      ...prev,
+      unit_price: Number(current?.unit_price || 0),
+      is_active: current?.is_active !== false,
+    }));
+  }, [propertyTypeForm.property_id, propertyTypeForm.work_type]);
 
   return (
-    <div className="mt-4 grid gap-3">
-      <select
-        className="h-10 rounded-xl border bg-white px-3 text-sm"
-        value={propertyId}
-        onChange={(e) => {
-          setPropertyId(e.target.value);
-          setRoomId("");
-        }}
-      >
-        <option value="">物件選択</option>
-        {properties.map((p) => (
-          <option key={p.id} value={p.id}>
-            {p.property_name}
-          </option>
-        ))}
-      </select>
+    <div className="space-y-5">
+      <div className="grid gap-5 lg:grid-cols-3">
+        <Card className="p-5">
+          <h2 className="text-lg font-semibold">スタッフ給与設定</h2>
+          <p className="mt-1 text-sm text-neutral-500">
+            給与形態・時給・最低保証・交通費
+          </p>
 
-      <select
-        className="h-10 rounded-xl border bg-white px-3 text-sm"
-        value={roomId}
-        onChange={(e) => setRoomId(e.target.value)}
-        disabled={!propertyId}
-      >
-        <option value="">部屋選択</option>
-        {filteredRooms.map((r) => (
-          <option key={r.id} value={r.id}>
-            {r.room_name}
-          </option>
-        ))}
-      </select>
+          <div className="mt-5 space-y-4">
+            <label className="block text-sm">
+              <span className="mb-1 block text-neutral-600">スタッフ</span>
+              <select
+                className="h-11 w-full rounded-xl border bg-white px-3"
+                value={staffForm.staff_id}
+                onChange={(e) =>
+                  setStaffForm((prev) => ({
+                    ...prev,
+                    staff_id: e.target.value,
+                  }))
+                }
+              >
+                <option value="">選択してください</option>
+                {activeStaffs.map((s: StaffMaster) => (
+                  <option key={s.id} value={s.id}>
+                    {s.staff_name}
+                    {s.staff_code ? ` (${s.staff_code})` : ""}
+                  </option>
+                ))}
+              </select>
+            </label>
 
-      <input
-        className="h-10 rounded-xl border px-3 text-sm"
-        type="number"
-        value={rate}
-        onChange={(e) => setRate(Number(e.target.value))}
-        placeholder="単価"
-      />
+            <label className="block text-sm">
+              <span className="mb-1 block text-neutral-600">給与形態</span>
+              <select
+                className="h-11 w-full rounded-xl border bg-white px-3"
+                value={staffForm.payroll_type}
+                onChange={(e) =>
+                  setStaffForm((prev) => ({
+                    ...prev,
+                    payroll_type: e.target.value,
+                  }))
+                }
+              >
+                <option value="piece_rate">単価</option>
+                <option value="hourly">時給</option>
+              </select>
+            </label>
 
-      <Button
-        disabled={disabled}
-        onClick={() => {
-          if (!property || !room) {
-            window.alert("物件と部屋を選択してください");
-            return;
-          }
+            <label className="block text-sm">
+              <span className="mb-1 block text-neutral-600">時給</span>
+              <input
+                type="number"
+                className="h-11 w-full rounded-xl border px-3"
+                value={staffForm.hourly_rate}
+                onChange={(e) =>
+                  setStaffForm((prev) => ({
+                    ...prev,
+                    hourly_rate: Number(e.target.value || 0),
+                  }))
+                }
+              />
+            </label>
 
-          onSave({
-            property_id: property.id,
-            property_name: property.property_name,
-            room_id: room.id,
-            room_name: room.room_name,
-            room_key: room.room_key,
-            rate,
-          });
-        }}
-      >
-        保存
-      </Button>
+            <label className="block text-sm">
+              <span className="mb-1 block text-neutral-600">最低保証</span>
+              <input
+                type="number"
+                className="h-11 w-full rounded-xl border px-3"
+                value={staffForm.minimum_guarantee}
+                onChange={(e) =>
+                  setStaffForm((prev) => ({
+                    ...prev,
+                    minimum_guarantee: Number(e.target.value || 0),
+                  }))
+                }
+              />
+            </label>
+
+            <label className="block text-sm">
+              <span className="mb-1 block text-neutral-600">交通費</span>
+              <input
+                type="number"
+                className="h-11 w-full rounded-xl border px-3"
+                value={staffForm.transportation_fee}
+                onChange={(e) =>
+                  setStaffForm((prev) => ({
+                    ...prev,
+                    transportation_fee: Number(e.target.value || 0),
+                  }))
+                }
+              />
+            </label>
+
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={staffForm.is_active}
+                onChange={(e) =>
+                  setStaffForm((prev) => ({
+                    ...prev,
+                    is_active: e.target.checked,
+                  }))
+                }
+              />
+              有効
+            </label>
+
+            <Button
+              className="w-full"
+              disabled={!staffForm.staff_id || saving}
+              onClick={() => onSaveStaff(staffForm)}
+            >
+              {saving ? "保存中..." : "保存"}
+            </Button>
+          </div>
+        </Card>
+
+        <Card className="p-5">
+          <h2 className="text-lg font-semibold">部屋別単価</h2>
+          <p className="mt-1 text-sm text-neutral-500">
+            物件・部屋ごとの清掃単価
+          </p>
+
+          <div className="mt-5 space-y-4">
+            <label className="block text-sm">
+              <span className="mb-1 block text-neutral-600">物件</span>
+              <select
+                className="h-11 w-full rounded-xl border bg-white px-3"
+                value={roomForm.property_id}
+                onChange={(e) =>
+                  setRoomForm((prev) => ({
+                    ...prev,
+                    property_id: e.target.value,
+                    room_id: "",
+                  }))
+                }
+              >
+                <option value="">選択してください</option>
+                {activeProperties.map((p: PropertyMaster) => (
+                  <option key={p.id} value={p.id}>
+                    {p.property_name}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="block text-sm">
+              <span className="mb-1 block text-neutral-600">部屋</span>
+              <select
+                className="h-11 w-full rounded-xl border bg-white px-3"
+                value={roomForm.room_id}
+                onChange={(e) =>
+                  setRoomForm((prev) => ({
+                    ...prev,
+                    room_id: e.target.value,
+                  }))
+                }
+              >
+                <option value="">選択してください</option>
+                {activeRooms.map((r: RoomMaster) => (
+                  <option key={r.id} value={r.id}>
+                    {r.room_name}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="block text-sm">
+              <span className="mb-1 block text-neutral-600">単価</span>
+              <input
+                type="number"
+                className="h-11 w-full rounded-xl border px-3"
+                value={roomForm.unit_price}
+                onChange={(e) =>
+                  setRoomForm((prev) => ({
+                    ...prev,
+                    unit_price: Number(e.target.value || 0),
+                  }))
+                }
+              />
+            </label>
+
+            <label className="block text-sm">
+              <span className="mb-1 block text-neutral-600">繁忙期加算</span>
+              <input
+                type="text"
+                className="h-11 w-full rounded-xl border px-3"
+                value={roomForm.busy_season_allowance}
+                onChange={(e) =>
+                  setRoomForm((prev) => ({
+                    ...prev,
+                    busy_season_allowance: e.target.value,
+                  }))
+                }
+                placeholder="例: 2026-07:300,2026-08:500"
+              />
+            </label>
+
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={roomForm.is_active}
+                onChange={(e) =>
+                  setRoomForm((prev) => ({
+                    ...prev,
+                    is_active: e.target.checked,
+                  }))
+                }
+              />
+              有効
+            </label>
+
+            <Button
+              className="w-full"
+              disabled={!roomForm.room_id || saving}
+              onClick={() => onSaveRoom(roomForm)}
+            >
+              {saving ? "保存中..." : "保存"}
+            </Button>
+          </div>
+        </Card>
+
+        <Card className="p-5">
+          <h2 className="text-lg font-semibold">物件タイプ別単価</h2>
+          <p className="mt-1 text-sm text-neutral-500">
+            物件ごとの清掃以外作業単価
+          </p>
+
+          <div className="mt-5 space-y-4">
+            <label className="block text-sm">
+              <span className="mb-1 block text-neutral-600">物件</span>
+              <select
+                className="h-11 w-full rounded-xl border bg-white px-3"
+                value={propertyTypeForm.property_id}
+                onChange={(e) =>
+                  setPropertyTypeForm((prev) => ({
+                    ...prev,
+                    property_id: e.target.value,
+                  }))
+                }
+              >
+                <option value="">選択してください</option>
+                {activeProperties.map((p: PropertyMaster) => (
+                  <option key={p.id} value={p.id}>
+                    {p.property_name}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="block text-sm">
+              <span className="mb-1 block text-neutral-600">作業種別</span>
+              <input
+                type="text"
+                className="h-11 w-full rounded-xl border px-3"
+                value={propertyTypeForm.work_type}
+                onChange={(e) =>
+                  setPropertyTypeForm((prev) => ({
+                    ...prev,
+                    work_type: e.target.value,
+                  }))
+                }
+                placeholder="例: リネン運搬"
+              />
+            </label>
+
+            <label className="block text-sm">
+              <span className="mb-1 block text-neutral-600">単価</span>
+              <input
+                type="number"
+                className="h-11 w-full rounded-xl border px-3"
+                value={propertyTypeForm.unit_price}
+                onChange={(e) =>
+                  setPropertyTypeForm((prev) => ({
+                    ...prev,
+                    unit_price: Number(e.target.value || 0),
+                  }))
+                }
+              />
+            </label>
+
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={propertyTypeForm.is_active}
+                onChange={(e) =>
+                  setPropertyTypeForm((prev) => ({
+                    ...prev,
+                    is_active: e.target.checked,
+                  }))
+                }
+              />
+              有効
+            </label>
+
+            <Button
+              className="w-full"
+              disabled={
+                !propertyTypeForm.property_id ||
+                !propertyTypeForm.work_type ||
+                saving
+              }
+              onClick={() => onSavePropertyType(propertyTypeForm)}
+            >
+              {saving ? "保存中..." : "保存"}
+            </Button>
+          </div>
+        </Card>
+      </div>
     </div>
   );
 }
 
-function PropertyTypeRateForm({
-  properties,
-  onSave,
-  disabled,
-}: {
-  properties: PropertyMaster[];
-  onSave: (payload: any) => void;
-  disabled?: boolean;
-}) {
-  const [propertyId, setPropertyId] = useState("");
-  const [propertyType, setPropertyType] = useState("通常");
-  const [rate, setRate] = useState(1500);
-
-  const property = properties.find((p) => p.id === propertyId);
-
+function PayrollStatement({
+  staffList,
+  selectedStaffId,
+  onSelectStaff,
+  selectedStaff,
+  rows,
+  total,
+  yen,
+  formatMd,
+}: any) {
+  let previousDate = "";
   return (
-    <div className="mt-4 grid gap-3">
-      <select
-        className="h-10 rounded-xl border bg-white px-3 text-sm"
-        value={propertyId}
-        onChange={(e) => setPropertyId(e.target.value)}
-      >
-        <option value="">物件選択</option>
-        {properties.map((p) => (
-          <option key={p.id} value={p.id}>
-            {p.property_name}
-          </option>
-        ))}
-      </select>
+    <Card className="print-area p-5">
+      <div className="mb-5 flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h2 className="text-lg font-semibold">個別給与明細</h2>
+          <p className="mt-1 text-sm text-neutral-500">
+            スタッフを選択して印刷できます
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <select
+            className="h-10 rounded-xl border bg-white px-3 text-sm print:hidden"
+            value={selectedStaffId}
+            onChange={(e) => onSelectStaff(e.target.value)}
+          >
+            {staffList.map((staff: PayrollDailyResult) => (
+              <option key={staff.staff_id} value={staff.staff_id}>
+                {staff.staff_name}
+              </option>
+            ))}
+          </select>
+          <Button
+            variant="outline"
+            className="print:hidden"
+            onClick={() => window.print()}
+          >
+            印刷
+          </Button>
+        </div>
+      </div>
 
-      <input
-        className="h-10 rounded-xl border px-3 text-sm"
-        value={propertyType}
-        onChange={(e) => setPropertyType(e.target.value)}
-        placeholder="タイプ名"
-      />
+      {!selectedStaff ? (
+        <div className="rounded-2xl border bg-neutral-50 p-6 text-sm text-neutral-500">
+          対象スタッフがありません
+        </div>
+      ) : (
+        <>
+          <div className="mb-5 grid gap-4 md:grid-cols-4">
+            <Metric label="スタッフ" value={selectedStaff.staff_name} />
+            <Metric label="計算方式" value={typeLabel(selectedStaff.payroll_type)} />
+            <Metric label="対象日数" value={`${new Set(rows.map((r: PayrollDailyResult) => r.target_date)).size}日`} />
+            <Metric label="支給合計" value={yen(total("final_amount", rows))} />
+          </div>
 
-      <input
-        className="h-10 rounded-xl border px-3 text-sm"
-        type="number"
-        value={rate}
-        onChange={(e) => setRate(Number(e.target.value))}
-        placeholder="単価"
-      />
-
-      <Button
-        disabled={disabled}
-        onClick={() => {
-          if (!property) {
-            window.alert("物件を選択してください");
-            return;
-          }
-
-          onSave({
-            property_id: property.id,
-            property_name: property.property_name,
-            property_type: propertyType,
-            rate,
-          });
-        }}
-      >
-        保存
-      </Button>
-    </div>
+          <div className="overflow-auto rounded-2xl border">
+            <table className="w-full min-w-[900px] text-sm">
+              <thead className="bg-neutral-100 text-xs text-neutral-600">
+                <tr>
+                  <th className="px-3 py-3 text-left">日付</th>
+                  <th className="px-3 py-3 text-left">施設</th>
+                  <th className="px-3 py-3 text-right">部屋数</th>
+                  <th className="px-3 py-3 text-right">清掃報酬</th>
+                  <th className="px-3 py-3 text-right">作業時間</th>
+                  <th className="px-3 py-3 text-right">実働</th>
+                  <th className="px-3 py-3 text-right">時給報酬</th>
+                  <th className="px-3 py-3 text-right">保証調整</th>
+                  <th className="px-3 py-3 text-right">交通費</th>
+                  <th className="px-3 py-3 text-right">支給額</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((r: PayrollDailyResult) => {
+                  const displayDate = previousDate !== r.target_date;
+                  previousDate = r.target_date;
+                  return (
+                    <tr key={r.id} className="border-t bg-white">
+                      <td className="px-3 py-3 font-medium">
+                        {displayDate ? formatMd(r.target_date) : ""}
+                      </td>
+                      <td className="px-3 py-3">{r.facility}</td>
+                      <td className="px-3 py-3 text-right">{r.room_count || ""}</td>
+                      <td className="px-3 py-3 text-right">{yen(r.cleaning_amount)}</td>
+                      <td className="px-3 py-3 text-right">
+                        {r.work_hours ? `${r.work_hours}h` : ""}
+                      </td>
+                      <td className="px-3 py-3 text-right">
+                        {r.actual_hours ? `${r.actual_hours}h` : ""}
+                      </td>
+                      <td className="px-3 py-3 text-right">{yen(r.hourly_amount)}</td>
+                      <td className="px-3 py-3 text-right">{yen(r.adjustment_amount)}</td>
+                      <td className="px-3 py-3 text-right">{yen(r.transportation_fee)}</td>
+                      <td className="px-3 py-3 text-right font-semibold">{yen(r.final_amount)}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+              <tfoot className="border-t-2 bg-neutral-50 font-semibold">
+                <tr>
+                  <td className="px-3 py-3" colSpan={2}>合計</td>
+                  <td className="px-3 py-3 text-right">{total("room_count", rows)}</td>
+                  <td className="px-3 py-3 text-right">{yen(total("cleaning_amount", rows))}</td>
+                  <td className="px-3 py-3 text-right">{total("work_hours", rows).toFixed(2)}h</td>
+                  <td className="px-3 py-3 text-right">{total("actual_hours", rows).toFixed(2)}h</td>
+                  <td className="px-3 py-3 text-right">{yen(total("hourly_amount", rows))}</td>
+                  <td className="px-3 py-3 text-right">{yen(total("adjustment_amount", rows))}</td>
+                  <td className="px-3 py-3 text-right">{yen(total("transportation_fee", rows))}</td>
+                  <td className="px-3 py-3 text-right">{yen(total("final_amount", rows))}</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </>
+      )}
+    </Card>
   );
 }
