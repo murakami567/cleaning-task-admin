@@ -27,6 +27,13 @@ if (!text.includes('keybox_number: "",')) {
   );
 }
 
+if (!text.includes("roomDetailOpen")) {
+  rep(
+    '  const [editingRoom, setEditingRoom] = useState<RoomMaster | null>(null);',
+    '  const [editingRoom, setEditingRoom] = useState<RoomMaster | null>(null);\n  const [roomDetailOpen, setRoomDetailOpen] = useState(false);\n  const [detailRoom, setDetailRoom] = useState<RoomMaster | null>(null);'
+  );
+}
+
 rep(
   '          is_active: true,\n        }),',
   '          is_active: true,\n          keybox_number: roomForm.keybox_number.trim(),\n          spare_key_number: roomForm.spare_key_number.trim(),\n          mailbox_number: roomForm.mailbox_number.trim(),\n          note: roomForm.note.trim(),\n        }),'
@@ -58,18 +65,18 @@ rep(
 );
 
 rep(
-  '                          <th className="border-b bg-slate-50 px-4 py-3 text-left font-bold">定員</th>',
-  '                          <th className="border-b bg-slate-50 px-4 py-3 text-left font-bold">キーボックス番号</th>\n                          <th className="border-b bg-slate-50 px-4 py-3 text-left font-bold">スペア番号</th>\n                          <th className="border-b bg-slate-50 px-4 py-3 text-left font-bold">ポスト番号</th>\n                          <th className="border-b bg-slate-50 px-4 py-3 text-left font-bold">備考</th>\n                          <th className="border-b bg-slate-50 px-4 py-3 text-left font-bold">定員</th>'
+  '                        <tr>\n                          <th className="border-b bg-slate-50 px-4 py-3 text-left font-bold">部屋名</th>\n                          <th className="border-b bg-slate-50 px-4 py-3 text-left font-bold">部屋コード</th>\n                          <th className="border-b bg-slate-50 px-4 py-3 text-left font-bold">room_key</th>\n                          <th className="border-b bg-slate-50 px-4 py-3 text-left font-bold">定員</th>\n                          <th className="border-b bg-slate-50 px-4 py-3 text-left font-bold">並び順</th>\n                          <th className="border-b bg-slate-50 px-4 py-3 text-left font-bold">有効</th>\n                          <th className="border-b bg-slate-50 px-4 py-3 text-left font-bold">操作</th>\n                        </tr>',
+  '                        <tr>\n                          <th className="border-b bg-slate-50 px-4 py-3 text-left font-bold">部屋名</th>\n                          <th className="border-b bg-slate-50 px-4 py-3 text-left font-bold">room_key</th>\n                          <th className="border-b bg-slate-50 px-4 py-3 text-left font-bold">キーボックス番号</th>\n                          <th className="border-b bg-slate-50 px-4 py-3 text-left font-bold">スペア番号</th>\n                          <th className="border-b bg-slate-50 px-4 py-3 text-left font-bold">ポスト番号</th>\n                          <th className="border-b bg-slate-50 px-4 py-3 text-left font-bold">定員</th>\n                          <th className="border-b bg-slate-50 px-4 py-3 text-left font-bold">操作</th>\n                        </tr>'
 );
 
 rep(
-  '                            <td className="border-b px-4 py-3">{r.room_key}</td>\n                            <td className="border-b px-4 py-3">{r.capacity ?? ""}</td>',
-  '                            <td className="border-b px-4 py-3">{r.room_key}</td>\n                            <td className="border-b px-4 py-3">{r.keybox_number ?? ""}</td>\n                            <td className="border-b px-4 py-3">{r.spare_key_number ?? ""}</td>\n                            <td className="border-b px-4 py-3">{r.mailbox_number ?? ""}</td>\n                            <td className="border-b px-4 py-3 max-w-[260px] whitespace-pre-wrap">{r.note ?? ""}</td>\n                            <td className="border-b px-4 py-3">{r.capacity ?? ""}</td>'
+  '                          <tr key={r.id} className="hover:bg-slate-50">\n                            <td className="border-b px-4 py-3 font-medium">{r.room_name}</td>\n                            <td className="border-b px-4 py-3">{r.room_code}</td>\n                            <td className="border-b px-4 py-3">{r.room_key}</td>\n                            <td className="border-b px-4 py-3">{r.capacity ?? ""}</td>\n                            <td className="border-b px-4 py-3">{r.room_sort_order ?? ""}</td>\n                            <td className="border-b px-4 py-3"><Badge on={r.is_active} /></td>\n                            <td className="border-b px-4 py-3">\n                              {!readOnly ? (\n                                <button type="button" className="rounded-full border border-slate-200 px-3 py-1 text-xs font-bold hover:bg-slate-50" onClick={() => openEditRoom(r)}>編集</button>\n                              ) : <span className="text-xs text-slate-400">閲覧のみ</span>}\n                            </td>\n                          </tr>',
+  '                          <tr key={r.id} className="cursor-pointer hover:bg-slate-50" onClick={() => { setDetailRoom(r); setRoomDetailOpen(true); }}>\n                            <td className="border-b px-4 py-3 font-medium">{r.room_name}</td>\n                            <td className="border-b px-4 py-3">{r.room_key}</td>\n                            <td className="border-b px-4 py-3">{r.keybox_number ?? ""}</td>\n                            <td className="border-b px-4 py-3">{r.spare_key_number ?? ""}</td>\n                            <td className="border-b px-4 py-3">{r.mailbox_number ?? ""}</td>\n                            <td className="border-b px-4 py-3">{r.capacity ?? ""}</td>\n                            <td className="border-b px-4 py-3">\n                              {!readOnly ? (\n                                <button type="button" className="rounded-full border border-slate-200 px-3 py-1 text-xs font-bold hover:bg-slate-50" onClick={(e) => { e.stopPropagation(); openEditRoom(r); }}>編集</button>\n                              ) : <span className="text-xs text-slate-400">閲覧のみ</span>}\n                            </td>\n                          </tr>'
 );
 
 rep(
   '<tr><td colSpan={7} className="px-4 py-10 text-center text-sm text-slate-500">表示できる部屋がありません。</td></tr>',
-  '<tr><td colSpan={11} className="px-4 py-10 text-center text-sm text-slate-500">表示できる部屋がありません。</td></tr>'
+  '<tr><td colSpan={7} className="px-4 py-10 text-center text-sm text-slate-500">表示できる部屋がありません。</td></tr>'
 );
 
 rep(
@@ -82,7 +89,13 @@ rep(
   '          <Field label="並び順"><TextInput type="number" value={roomEditForm.room_sort_order} onChange={(v) => setRoomEditForm((p) => ({ ...p, room_sort_order: v }))} /></Field>\n          <Field label="キーボックス番号"><TextInput value={roomEditForm.keybox_number} onChange={(v) => setRoomEditForm((p) => ({ ...p, keybox_number: v }))} /></Field>\n          <Field label="スペア番号"><TextInput value={roomEditForm.spare_key_number} onChange={(v) => setRoomEditForm((p) => ({ ...p, spare_key_number: v }))} /></Field>\n          <Field label="ポスト番号"><TextInput value={roomEditForm.mailbox_number} onChange={(v) => setRoomEditForm((p) => ({ ...p, mailbox_number: v }))} /></Field>\n          <Field label="備考"><textarea rows={4} value={roomEditForm.note} onChange={(e) => setRoomEditForm((p) => ({ ...p, note: e.target.value }))} className="w-full rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-slate-300" /></Field>'
 );
 
-// Migrate previously patched field names to the actual database/API column names.
+if (!text.includes('title="部屋詳細"')) {
+  rep(
+    '      <Drawer\n        open={editRoomDrawerOpen}',
+    '      <Drawer\n        open={roomDetailOpen}\n        title="部屋詳細"\n        subtitle={detailRoom ? `${detailRoom.room_key}` : ""}\n        onClose={() => { setRoomDetailOpen(false); setDetailRoom(null); }}\n        footer={<div className="flex justify-end"><Button onClick={() => { setRoomDetailOpen(false); setDetailRoom(null); }}>閉じる</Button></div>}\n      >\n        {detailRoom ? (\n          <div className="space-y-4">\n            <Field label="部屋名"><div className="rounded-2xl bg-slate-50 px-4 py-3 text-sm">{detailRoom.room_name}</div></Field>\n            <Field label="部屋コード"><div className="rounded-2xl bg-slate-50 px-4 py-3 text-sm">{detailRoom.room_code ?? ""}</div></Field>\n            <Field label="room_key"><div className="rounded-2xl bg-slate-50 px-4 py-3 text-sm">{detailRoom.room_key}</div></Field>\n            <Field label="キーボックス番号"><div className="rounded-2xl bg-slate-50 px-4 py-3 text-sm">{detailRoom.keybox_number ?? ""}</div></Field>\n            <Field label="スペア番号"><div className="rounded-2xl bg-slate-50 px-4 py-3 text-sm">{detailRoom.spare_key_number ?? ""}</div></Field>\n            <Field label="ポスト番号"><div className="rounded-2xl bg-slate-50 px-4 py-3 text-sm">{detailRoom.mailbox_number ?? ""}</div></Field>\n            <Field label="定員"><div className="rounded-2xl bg-slate-50 px-4 py-3 text-sm">{detailRoom.capacity ?? ""}</div></Field>\n            <Field label="並び順"><div className="rounded-2xl bg-slate-50 px-4 py-3 text-sm">{detailRoom.room_sort_order ?? ""}</div></Field>\n            <Field label="有効"><div className="rounded-2xl bg-slate-50 px-4 py-3 text-sm"><Badge on={detailRoom.is_active} /></div></Field>\n            <Field label="準備物"><div className="rounded-2xl bg-slate-50 px-4 py-3 text-sm">D {detailRoom.prep_d ?? 0} / S {detailRoom.prep_s ?? 0} / 予備S {detailRoom.prep_spare_s ?? 0} / タ {detailRoom.prep_ta ?? 0}</div></Field>\n            <Field label="備考"><div className="min-h-[88px] whitespace-pre-wrap rounded-2xl bg-slate-50 px-4 py-3 text-sm">{detailRoom.note ?? ""}</div></Field>\n          </div>\n        ) : null}\n      </Drawer>\n\n      <Drawer\n        open={editRoomDrawerOpen}'
+  );
+}
+
 text = text
   .replaceAll("spare_number", "spare_key_number")
   .replaceAll("room_note", "note");
