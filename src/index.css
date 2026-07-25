@@ -9,11 +9,11 @@ html, body, #root {
 }
 
 @media (min-width: 1280px) {
-  body:has(input[placeholder="物件名・物件コード・キーで検索"]) {
+  body:has(input[placeholder="物件名・物件コード・住所・エントランス番号で検索"]) {
     overflow: hidden;
   }
 
-  body:has(input[placeholder="物件名・物件コード・キーで検索"]) #root > div {
+  body:has(input[placeholder="物件名・物件コード・住所・エントランス番号で検索"]) #root > div {
     display: flex;
     flex-direction: column;
     height: 100vh;
@@ -21,7 +21,7 @@ html, body, #root {
     overflow: hidden;
   }
 
-  body:has(input[placeholder="物件名・物件コード・キーで検索"]) #root > div > div:last-child {
+  body:has(input[placeholder="物件名・物件コード・住所・エントランス番号で検索"]) #root > div > div:last-child {
     display: flex;
     flex: 1;
     flex-direction: column;
@@ -29,38 +29,45 @@ html, body, #root {
     overflow: hidden;
   }
 
-  body:has(input[placeholder="物件名・物件コード・キーで検索"]) div[class*="xl:grid-cols-[420px_minmax(0,1fr)]"] {
+  body:has(input[placeholder="物件名・物件コード・住所・エントランス番号で検索"]) div[class*="xl:grid-cols-[420px_minmax(0,1fr)]"] {
     flex: 1;
     min-height: 0;
     overflow: hidden;
   }
 
-  body:has(input[placeholder="物件名・物件コード・キーで検索"]) div[class*="xl:grid-cols-[420px_minmax(0,1fr)]"] > div[class*="rounded-[24px]"] {
-    display: flex;
+  body:has(input[placeholder="物件名・物件コード・住所・エントランス番号で検索"]) div[class*="xl:grid-cols-[420px_minmax(0,1fr)]"] > div {
     min-height: 0;
   }
 
-  body:has(input[placeholder="物件名・物件コード・キーで検索"]) div[class*="xl:grid-cols-[420px_minmax(0,1fr)]"] > div[class*="rounded-[24px]"] > div {
+  body:has(input[placeholder="物件名・物件コード・住所・エントランス番号で検索"]) div[class*="xl:grid-cols-[420px_minmax(0,1fr)]"] > div > div[class*="rounded-[24px]"] {
+    display: flex;
+    height: 100%;
+    min-height: 0;
+  }
+
+  body:has(input[placeholder="物件名・物件コード・住所・エントランス番号で検索"]) div[class*="xl:grid-cols-[420px_minmax(0,1fr)]"] > div > div[class*="rounded-[24px]"] > div {
     display: flex;
     flex: 1;
     flex-direction: column;
     min-height: 0;
   }
 
-  body:has(input[placeholder="物件名・物件コード・キーで検索"]) div[class*="xl:grid-cols-[420px_minmax(0,1fr)]"] > div[class*="rounded-[24px]"]:first-child > div > .space-y-2 {
+  body:has(input[placeholder="物件名・物件コード・住所・エントランス番号で検索"]) div[class*="xl:grid-cols-[420px_minmax(0,1fr)]"] > div:first-child div.space-y-2 {
     flex: 1;
     min-height: 0;
     overflow-y: auto;
+    overscroll-behavior: contain;
     padding-right: 4px;
   }
 
-  body:has(input[placeholder="物件名・物件コード・キーで検索"]) div[class*="xl:grid-cols-[420px_minmax(0,1fr)]"] > div[class*="rounded-[24px]"]:nth-child(2) > div > .overflow-auto {
+  body:has(input[placeholder="物件名・物件コード・住所・エントランス番号で検索"]) div[class*="xl:grid-cols-[420px_minmax(0,1fr)]"] > div:nth-child(2) div.overflow-auto {
     flex: 1;
     min-height: 0;
     overflow: auto;
+    overscroll-behavior: contain;
   }
 
-  body:has(input[placeholder="物件名・物件コード・キーで検索"]) div[class*="xl:grid-cols-[420px_minmax(0,1fr)]"] thead {
+  body:has(input[placeholder="物件名・物件コード・住所・エントランス番号で検索"]) div[class*="xl:grid-cols-[420px_minmax(0,1fr)]"] thead {
     position: sticky;
     top: 0;
     z-index: 10;
