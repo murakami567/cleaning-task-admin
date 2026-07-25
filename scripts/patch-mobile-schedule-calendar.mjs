@@ -3,7 +3,129 @@ import fs from "node:fs";
 const file = "src/pages/admin/AdminHomePage.tsx";
 let text = fs.readFileSync(file, "utf8");
 
+function addMobileState() {
+  if (text.includes("mobileScheduleDate")) return;
+  const target = '  const [scheduleCalendarTab, setScheduleCalendarTab] = useState<ScheduleCalendarTab>("orders");';
+  const replacement = `${target}\n  const [mobileScheduleDate, setMobileScheduleDate] = useState<string | null>(null);`;
+  if (!text.includes(target)) throw new Error("mobile schedule state target not found");
+  text = text.replace(target, replacement);
+}
+
+function replaceExistingMobileCalendar() {
+  text = text.replace(
+    'onClick={() => count > 0 && window.open(targetUrl, "_blank", "noopener,noreferrer")}',
+    'onClick={() => count > 0 && setMobileScheduleDate(cell.date)}'
+  );
+  text = text.replace(
+    '                const targetUrl = scheduleCalendarTab === "orders" ? ORDER_MANAGEMENT_URL : GUSK_PROPERTY_MANAGEMENT_URL;\n',
+    ''
+  );
+  text = text.replace(
+    '予定のある日をタップすると管理画面を開きます',
+    '予定のある日をタップすると、その日の一覧を表示します'
+  );
+}
+
+function addMobileModal() {
+  if (text.includes("mobile-schedule-detail-modal")) return;
+  const target = '          <div className="mt-4 hidden grid-cols-7 gap-2 md:grid">';
+  const modal = `          {/* mobile-schedule-detail-modal */}
+          {mobileScheduleDate ? (
+            <div
+              className="fixed inset-0 z-[1000] flex items-end bg-black/40 md:hidden"
+              onMouseDown={(e) => { if (e.target === e.currentTarget) setMobileScheduleDate(null); }}
+            >
+              <div className="max-h-[82vh] w-full overflow-hidden rounded-t-3xl bg-white shadow-2xl">
+                <div className="flex items-center justify-between border-b border-slate-200 px-4 py-4">
+                  <div>
+                    <div className="text-lg font-bold text-slate-900">
+                      {Number(mobileScheduleDate.slice(5, 7))}月{Number(mobileScheduleDate.slice(8, 10))}日
+                    </div>
+                    <div className="mt-1 text-xs font-semibold text-slate-500">
+                      {scheduleCalendarTab === "orders" ? "発注納期一覧" : "工事予定一覧"}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setMobileScheduleDate(null)}
+                    className="h-10 w-10 rounded-full border border-slate-200 text-xl font-bold text-slate-600"
+                  >
+                    ×
+                  </button>
+                </div>
+
+                <div className="max-h-[calc(82vh-76px)] space-y-3 overflow-y-auto p-4">
+                  {scheduleCalendarTab === "orders" ? (
+                    <>
+                      {orderDueSchedules
+                        .filter((item) => item.due_date === mobileScheduleDate)
+                        .map((item) => (
+                          <button
+                            type="button"
+                            key={\`mobile_order_\${item.id}\`}
+                            onClick={() => window.open(ORDER_MANAGEMENT_URL, "_blank", "noopener,noreferrer")}
+                            className="block w-full rounded-2xl border border-amber-200 bg-amber-50 p-4 text-left"
+                          >
+                            <div className="font-bold text-amber-950">{item.item_name || "品名未設定"}</div>
+                            <div className="mt-2 grid grid-cols-[72px_1fr] gap-x-2 gap-y-1 text-sm text-slate-700">
+                              <span className="text-slate-500">数量</span>
+                              <span>{item.quantity ?? "-"}{item.unit || ""}</span>
+                              <span className="text-slate-500">配送先</span>
+                              <span>{item.delivery_place || item.usage_place || "未設定"}</span>
+                              <span className="text-slate-500">発注先</span>
+                              <span>{item.supplier || "未設定"}</span>
+                              <span className="text-slate-500">発注番号</span>
+                              <span>{item.order_no || "-"}</span>
+                            </div>
+                          </button>
+                        ))}
+                    </>
+                  ) : (
+                    <>
+                      {constructionSchedules
+                        .filter((item) => {
+                          if (item.start_date && item.end_date) return isDateInRange(mobileScheduleDate, item.start_date, item.end_date);
+                          return [item.start_date, item.end_date, item.actual_end_date].filter(Boolean).includes(mobileScheduleDate);
+                        })
+                        .map((item) => (
+                          <button
+                            type="button"
+                            key={\`mobile_construction_\${item.id}\`}
+                            onClick={() => window.open(GUSK_PROPERTY_MANAGEMENT_URL, "_blank", "noopener,noreferrer")}
+                            className="block w-full rounded-2xl border border-sky-200 bg-sky-50 p-4 text-left"
+                          >
+                            <div className="font-bold text-sky-950">{item.property_name || "物件未設定"}</div>
+                            <div className="mt-2 grid grid-cols-[72px_1fr] gap-x-2 gap-y-1 text-sm text-slate-700">
+                              <span className="text-slate-500">工事内容</span>
+                              <span>{item.work_content || "未設定"}</span>
+                              <span className="text-slate-500">業者</span>
+                              <span>{item.contractor || "未設定"}</span>
+                              <span className="text-slate-500">状態</span>
+                              <span>{item.status || "未設定"}</span>
+                              <span className="text-slate-500">期間</span>
+                              <span>{item.start_date || "-"} ～ {item.end_date || "-"}</span>
+                            </div>
+                          </button>
+                        ))}
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+          ) : null}
+
+${target}`;
+  if (!text.includes(target)) throw new Error("mobile schedule modal target not found");
+  text = text.replace(target, modal);
+}
+
+addMobileState();
+
 if (text.includes("mobile-schedule-calendar")) {
+  replaceExistingMobileCalendar();
+  addMobileModal();
+  fs.writeFileSync(file, text);
+  console.log("updated mobile schedule calendar detail modal");
   process.exit(0);
 }
 
@@ -72,12 +194,11 @@ const mobileGrid = `          <div className="mt-3 md:hidden">
                   return [item.start_date, item.end_date, item.actual_end_date].filter(Boolean).includes(cell.date);
                 }).length;
                 const count = scheduleCalendarTab === "orders" ? orderCount : constructionCount;
-                const targetUrl = scheduleCalendarTab === "orders" ? ORDER_MANAGEMENT_URL : GUSK_PROPERTY_MANAGEMENT_URL;
                 return (
                   <button
                     key={cell.date}
                     type="button"
-                    onClick={() => count > 0 && window.open(targetUrl, "_blank", "noopener,noreferrer")}
+                    onClick={() => count > 0 && setMobileScheduleDate(cell.date)}
                     className={\`relative min-h-[58px] rounded-xl border px-1 py-2 text-left \${cell.inMonth ? "border-slate-200 bg-white" : "border-slate-100 bg-slate-50 text-slate-300"} \${count > 0 ? "active:scale-[0.98]" : ""}\`}
                   >
                     <div className="text-sm font-bold">{cell.day}</div>
@@ -90,7 +211,7 @@ const mobileGrid = `          <div className="mt-3 md:hidden">
                 );
               })}
             </div>
-            <div className="mt-3 text-center text-xs text-slate-400">予定のある日をタップすると管理画面を開きます</div>
+            <div className="mt-3 text-center text-xs text-slate-400">予定のある日をタップすると、その日の一覧を表示します</div>
           </div>
           <div className="mt-4 hidden grid-cols-7 gap-2 md:grid">`;
 
@@ -102,5 +223,7 @@ text = text.replace(
   '<section className="rounded-3xl border border-slate-200 bg-white p-3 shadow-sm md:p-6">\n          {/* mobile-schedule-calendar */}'
 );
 
+addMobileModal();
+
 fs.writeFileSync(file, text);
-console.log("patched mobile schedule calendar");
+console.log("patched mobile schedule calendar with detail modal");
