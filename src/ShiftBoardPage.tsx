@@ -32,11 +32,25 @@ type ShiftDay = {
 };
 
 type ShiftMark = "出勤" | "定休" | "休み" | "欠勤" | "遅刻";
+type MainTab = "shift" | "account" | "mate";
+type ViewMode = "month" | "week";
 
 const WEEKDAYS = ["日", "月", "火", "水", "木", "金", "土"];
+const SHIFT_OPTIONS: { value: ShiftMark; label: string }[] = [
+  { value: "出勤", label: "出勤" },
+  { value: "定休", label: "定休" },
+  { value: "休み", label: "休み" },
+  { value: "欠勤", label: "欠勤" },
+  { value: "遅刻", label: "遅刻" },
+];
 
-function pad2(n: number) {
-  return String(n).padStart(2, "0");
+function pad2(value: number) {
+  return String(value).padStart(2, "0");
+}
+
+function parseIsoDate(iso: string) {
+  const [year, month, day] = iso.split("-").map(Number);
+  return new Date(year, month - 1, day);
 }
 
 function formatIsoDate(date: Date) {
@@ -44,26 +58,24 @@ function formatIsoDate(date: Date) {
 }
 
 function formatDateLabel(iso: string) {
-  const dt = new Date(iso);
-  return `${dt.getMonth() + 1}/${dt.getDate()}`;
+  const date = parseIsoDate(iso);
+  return `${date.getMonth() + 1}/${date.getDate()}`;
 }
 
 function weekdayLabel(iso: string) {
-  const dt = new Date(iso);
-  return WEEKDAYS[dt.getDay()];
+  return WEEKDAYS[parseIsoDate(iso).getDay()];
 }
 
 function addDays(iso: string, diff: number) {
-  const dt = new Date(iso);
-  dt.setDate(dt.getDate() + diff);
-  return formatIsoDate(dt);
+  const date = parseIsoDate(iso);
+  date.setDate(date.getDate() + diff);
+  return formatIsoDate(date);
 }
 
 function startOfWeek(iso: string) {
-  const dt = new Date(iso);
-  const day = dt.getDay();
-  dt.setDate(dt.getDate() - day);
-  return formatIsoDate(dt);
+  const date = parseIsoDate(iso);
+  date.setDate(date.getDate() - date.getDay());
+  return formatIsoDate(date);
 }
 
 function endOfWeek(iso: string) {
@@ -72,15 +84,22 @@ function endOfWeek(iso: string) {
 
 function buildMonthDates(year: number, month: number) {
   const lastDay = new Date(year, month, 0).getDate();
-  return Array.from({ length: lastDay }, (_, i) => {
-    const day = i + 1;
-    return `${year}-${pad2(month)}-${pad2(day)}`;
-  });
+  return Array.from({ length: lastDay }, (_, index) =>
+    `${year}-${pad2(month)}-${pad2(index + 1)}`
+  );
 }
 
 function buildWeekDates(baseIso: string) {
   const start = startOfWeek(baseIso);
-  return Array.from({ length: 7 }, (_, i) => addDays(start, i));
+  return Array.from({ length: 7 }, (_, index) => addDays(start, index));
+}
+
+function authHeaders(contentType = true) {
+  const token = localStorage.getItem("admin_access_token") || "";
+  return {
+    ...(contentType ? { "Content-Type": "application/json" } : {}),
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  };
 }
 
 function TabButton({
@@ -94,11 +113,12 @@ function TabButton({
 }) {
   return (
     <button
+      type="button"
       onClick={onClick}
-      className={`rounded-2xl px-4 py-2 text-sm font-bold border transition ${
+      className={`rounded-2xl border px-4 py-2 text-sm font-bold transition ${
         active
-          ? "bg-black text-white border-black"
-          : "bg-white text-slate-700 border-slate-200 hover:bg-slate-50"
+          ? "border-slate-950 bg-slate-950 text-white"
+          : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
       }`}
     >
       {children}
@@ -117,11 +137,12 @@ function SmallToggle({
 }) {
   return (
     <button
+      type="button"
       onClick={onClick}
-      className={`rounded-xl px-4 py-2 text-sm font-bold border transition ${
+      className={`rounded-xl border px-4 py-2 text-sm font-bold transition ${
         active
-          ? "bg-black text-white border-black"
-          : "bg-white text-slate-700 border-slate-200 hover:bg-slate-50"
+          ? "border-slate-950 bg-slate-950 text-white"
+          : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
       }`}
     >
       {children}
@@ -130,29 +151,26 @@ function SmallToggle({
 }
 
 function markClass(value: ShiftMark) {
-  if (value === "出勤") return "bg-emerald-50 text-emerald-700 border-emerald-200";
-  if (value === "定休") return "bg-blue-50 text-blue-600 border-blue-200";
-  if (value === "休み") return "bg-slate-100 text-slate-500 border-slate-200";
-  if (value === "欠勤") return "bg-rose-50 text-rose-700 border-rose-200";
-  return "bg-amber-50 text-amber-700 border-amber-200";
+  if (value === "出勤") return "border-emerald-200 bg-emerald-50 text-emerald-700";
+  if (value === "定休") return "border-blue-200 bg-blue-50 text-blue-700";
+  if (value === "休み") return "border-slate-200 bg-slate-100 text-slate-600";
+  if (value === "欠勤") return "border-rose-200 bg-rose-50 text-rose-700";
+  return "border-amber-200 bg-amber-50 text-amber-700";
 }
 
-const SHIFT_OPTIONS: { value: ShiftMark; label: string }[] = [
-  { value: "出勤", label: "出勤" },
-  { value: "定休", label: "定休" },
-  { value: "休み", label: "休み" },
-  { value: "欠勤", label: "欠勤" },
-  { value: "遅刻", label: "遅刻" },
-];
+function workloadLabel(cleanCount: number, attendanceCount: number) {
+  if (attendanceCount <= 0) return cleanCount > 0 ? "要員不足" : "-";
+  return (cleanCount / attendanceCount).toFixed(1);
+}
 
 export default function ShiftBoardPage() {
-  const today = new Date();
-  const todayIso = formatIsoDate(today);
+  const now = new Date();
+  const todayIso = formatIsoDate(now);
 
-  const [mainTab, setMainTab] = useState<"shift" | "account" | "mate">("shift");
-  const [viewMode, setViewMode] = useState<"month" | "week">("month");
-  const [year, setYear] = useState(today.getFullYear());
-  const [month, setMonth] = useState(today.getMonth() + 1);
+  const [mainTab, setMainTab] = useState<MainTab>("shift");
+  const [viewMode, setViewMode] = useState<ViewMode>("month");
+  const [year, setYear] = useState(now.getFullYear());
+  const [month, setMonth] = useState(now.getMonth() + 1);
   const [weekBaseDate, setWeekBaseDate] = useState(todayIso);
 
   const [staffs, setStaffs] = useState<Staff[]>([]);
@@ -160,120 +178,77 @@ export default function ShiftBoardPage() {
   const [cleanCounts, setCleanCounts] = useState<Record<string, number>>({});
   const [attendanceCounts, setAttendanceCounts] = useState<Record<string, number>>({});
   const [workloadMap, setWorkloadMap] = useState<Record<string, number>>({});
+
+  const [staffSearch, setStaffSearch] = useState("");
+  const [activeOnly, setActiveOnly] = useState(true);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
   const [savingKey, setSavingKey] = useState("");
   const [jinjerSyncing, setJinjerSyncing] = useState(false);
   const [shiftUploadFile, setShiftUploadFile] = useState<File | null>(null);
   const [shiftUploading, setShiftUploading] = useState(false);
 
-  const syncJinjer = async () => {
-    if (jinjerSyncing) return;
-    if (!confirm(`${year}年${month}月のシフトを Jinjer から取り込みます。よろしいですか？`)) {
-      return;
-    }
-    try {
-      setJinjerSyncing(true);
-      const token = localStorage.getItem("admin_access_token") || "";
-      const res = await fetch(`${API_BASE}/jinjer/shifts/sync`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ month: `${year}-${pad2(month)}` }),
+  const allDates = useMemo(() => buildMonthDates(year, month), [year, month]);
+  const weekDates = useMemo(() => buildWeekDates(weekBaseDate), [weekBaseDate]);
+  const visibleDates = viewMode === "month" ? allDates : weekDates;
+
+  const filteredStaffs = useMemo(() => {
+    const query = staffSearch.trim().toLowerCase();
+    return [...staffs]
+      .filter((staff) => !activeOnly || staff.is_active)
+      .filter((staff) => {
+        if (!query) return true;
+        return `${staff.staff_name} ${staff.staff_code || ""}`.toLowerCase().includes(query);
+      })
+      .sort((a, b) => {
+        const order = (a.sort_order ?? 999) - (b.sort_order ?? 999);
+        return order !== 0 ? order : a.staff_name.localeCompare(b.staff_name, "ja");
       });
-      const body = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        throw new Error(body?.detail || `${res.status}`);
-      }
-      const skipped = Array.isArray(body?.skipped_no_staff) ? body.skipped_no_staff : [];
-      const errors = Array.isArray(body?.errors) ? body.errors : [];
-      const msg = [
-        `Jinjer同期 完了`,
-        `取得: ${body.fetched ?? 0} 件`,
-        `保存: ${body.saved ?? 0} 件`,
-        skipped.length > 0
-          ? `未マッチ社員番号: ${skipped.length} 件 (${skipped.slice(0, 5).join(", ")}${skipped.length > 5 ? " ほか" : ""})`
-          : "",
-        errors.length > 0 ? `エラー: ${errors.length} 件` : "",
-      ].filter(Boolean).join("\n");
-      alert(msg);
-      await loadBoard(year, month);
-    } catch (e: any) {
-      console.error(e);
-      alert(`Jinjer同期に失敗しました: ${e?.message || ""}`);
-    } finally {
-      setJinjerSyncing(false);
-    }
+  }, [staffs, staffSearch, activeOnly]);
+
+  const dayMap = useMemo(() => {
+    const map = new Map<string, ShiftDay>();
+    days.forEach((day) => {
+      map.set(day.shift_date, {
+        ...day,
+        shift_entries: Array.isArray(day.shift_entries) ? day.shift_entries : [],
+      });
+    });
+    return map;
+  }, [days]);
+
+  const getShiftMark = (date: string, staffId: string): ShiftMark => {
+    const entry = dayMap.get(date)?.shift_entries.find((item) => item.staff_id === staffId);
+    const status = entry?.status as ShiftMark | undefined;
+    return SHIFT_OPTIONS.some((option) => option.value === status) ? status! : "休み";
   };
 
-  const uploadShiftFile = async () => {
-    if (shiftUploading) return;
-    if (!shiftUploadFile) {
-      alert("取り込むExcelまたはCSVファイルを選択してください。");
-      return;
-    }
-    if (!confirm(`${year}年${month}月のシフトをファイルから取り込みます。よろしいですか？`)) {
-      return;
-    }
-
-    try {
-      setShiftUploading(true);
-      const token = localStorage.getItem("admin_access_token") || "";
-      const formData = new FormData();
-      formData.append("file", shiftUploadFile);
-      formData.append("month", `${year}-${pad2(month)}`);
-
-      const res = await fetch(`${API_BASE}/jinjer/shifts/upload`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        body: formData,
-      });
-      const body = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        throw new Error(body?.detail || `${res.status}`);
-      }
-
-      const skipped = Array.isArray(body?.skipped_no_staff) ? body.skipped_no_staff : [];
-      const errors = Array.isArray(body?.errors) ? body.errors : [];
-      const msg = [
-        `シフト取込 完了`,
-        `対象月: ${body.month || `${year}-${pad2(month)}`}`,
-        `読取: ${body.fetched ?? 0} 件`,
-        `保存: ${body.saved ?? 0} 件`,
-        skipped.length > 0
-          ? `未マッチ: ${skipped.length} 件 (${skipped.slice(0, 5).join(", ")}${skipped.length > 5 ? " ほか" : ""})`
-          : "",
-        errors.length > 0 ? `エラー: ${errors.length} 件` : "",
-      ].filter(Boolean).join("\n");
-      alert(msg);
-      setShiftUploadFile(null);
-      await loadBoard(year, month);
-    } catch (e: any) {
-      console.error(e);
-      alert(`シフト取込に失敗しました: ${e?.message || ""}`);
-    } finally {
-      setShiftUploading(false);
-    }
+  const getCleanCount = (date: string) => Number(cleanCounts[date] || 0);
+  const getAttendanceCount = (date: string) => Number(attendanceCounts[date] || 0);
+  const getWorkload = (date: string) => {
+    const value = workloadMap[date];
+    if (value !== undefined && value !== null) return value;
+    return workloadLabel(getCleanCount(date), getAttendanceCount(date));
   };
 
   const loadBoard = async (targetYear = year, targetMonth = month) => {
     try {
       setLoading(true);
-      const res = await fetch(`${API_BASE}/shift-board?year=${targetYear}&month=${targetMonth}`);
-      if (!res.ok) throw new Error(`shift-board failed: ${res.status}`);
-      const data = await res.json();
-
+      setError("");
+      const response = await fetch(
+        `${API_BASE}/shift-board?year=${targetYear}&month=${targetMonth}`,
+        { headers: authHeaders(false) }
+      );
+      if (!response.ok) throw new Error(`shift-board failed: ${response.status}`);
+      const data = await response.json();
       setStaffs(Array.isArray(data.staffs) ? data.staffs : []);
       setDays(Array.isArray(data.days) ? data.days : []);
       setCleanCounts(data.cleaning_counts || {});
       setAttendanceCounts(data.attendance_counts || {});
       setWorkloadMap(data.workload || {});
-    } catch (e) {
-      console.error(e);
-      alert("シフト表の取得に失敗しました。");
+    } catch (loadError) {
+      console.error(loadError);
+      setError("シフト表の取得に失敗しました。時間をおいて再読み込みしてください。");
     } finally {
       setLoading(false);
     }
@@ -287,63 +262,31 @@ export default function ShiftBoardPage() {
     setWeekBaseDate(`${year}-${pad2(month)}-01`);
   }, [year, month]);
 
-  const allDates = useMemo(() => buildMonthDates(year, month), [year, month]);
-  const weekDates = useMemo(() => buildWeekDates(weekBaseDate), [weekBaseDate]);
-  const visibleDates = viewMode === "month" ? allDates : weekDates;
-
-  const dayMap = useMemo(() => {
-    const map = new Map<string, ShiftDay>();
-
-    (Array.isArray(days) ? days : []).forEach((d) => {
-      map.set(d.shift_date, {
-        ...d,
-        shift_entries: Array.isArray(d.shift_entries) ? d.shift_entries : [],
-      });
-    });
-
-    return map;
-  }, [days]);
-
-  const getShiftMark = (date: string, staffId: string): ShiftMark => {
-    const day = dayMap.get(date);
-    if (!day) return "休み";
-
-    const entries = Array.isArray(day.shift_entries) ? day.shift_entries : [];
-    const entry = entries.find((x) => x.staff_id === staffId);
-    const status = entry?.status as ShiftMark | undefined;
-
-    return status || "休み";
-  };
-
-  const getCleanCount = (date: string) => cleanCounts?.[date] || 0;
-  const getAttendanceCount = (date: string) => attendanceCounts?.[date] || 0;
-  const getWorkload = (date: string) => workloadMap?.[date] || 0;
-
   const getOrCreateDay = async (date: string) => {
     const existing = dayMap.get(date);
     if (existing) return existing;
 
-    const dayRes = await fetch(`${API_BASE}/shifts/get_or_create_day`, {
+    const response = await fetch(`${API_BASE}/shifts/get_or_create_day`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: authHeaders(),
       body: JSON.stringify({ shift_date: date, note: "" }),
     });
-
-    if (!dayRes.ok) throw new Error(`get_or_create_day failed: ${dayRes.status}`);
-    return await dayRes.json();
+    if (!response.ok) throw new Error(`get_or_create_day failed: ${response.status}`);
+    return (await response.json()) as ShiftDay;
   };
 
   const saveCell = async (date: string, staffId: string, nextStatus: ShiftMark) => {
+    const key = `${date}-${staffId}`;
+    if (savingKey) return;
+
     try {
-      const key = `${date}-${staffId}`;
       setSavingKey(key);
-
+      setError("");
       const day = await getOrCreateDay(date);
-      const isOff = nextStatus === "休み" || nextStatus === "定休" || nextStatus === "欠勤";
-
-      const saveRes = await fetch(`${API_BASE}/shifts/upsert_entry`, {
+      const isOff = ["休み", "定休", "欠勤"].includes(nextStatus);
+      const response = await fetch(`${API_BASE}/shifts/upsert_entry`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: authHeaders(),
         body: JSON.stringify({
           shift_day_id: day.id,
           staff_id: staffId,
@@ -354,28 +297,99 @@ export default function ShiftBoardPage() {
           note: "",
         }),
       });
-
-      if (!saveRes.ok) throw new Error(`upsert_entry failed: ${saveRes.status}`);
+      if (!response.ok) throw new Error(`upsert_entry failed: ${response.status}`);
       await loadBoard(year, month);
-    } catch (e) {
-      console.error(e);
-      alert("シフト保存に失敗しました。");
+    } catch (saveError) {
+      console.error(saveError);
+      setError("シフト保存に失敗しました。再度お試しください。");
     } finally {
       setSavingKey("");
     }
   };
 
-  return (
-    <div className="min-h-screen bg-slate-50 px-4 py-6 lg:px-6">
-      <div className="w-full space-y-4">
-        <div className="rounded-[22px] border border-slate-200 bg-white shadow-sm">
-          <div className="flex items-start justify-between gap-4 p-4">
-            <div>
-              <div className="text-[18px] font-extrabold">管理ページ | シフト</div>
-              <div className="mt-1 text-sm text-slate-500">
-                3タブ構成（シフト / アカウント管理 / メイトカルテ）
-              </div>
+  const syncJinjer = async () => {
+    if (jinjerSyncing) return;
+    if (!window.confirm(`${year}年${month}月のシフトをJinjerから取り込みます。`)) return;
 
+    try {
+      setJinjerSyncing(true);
+      setError("");
+      const response = await fetch(`${API_BASE}/jinjer/shifts/sync`, {
+        method: "POST",
+        headers: authHeaders(),
+        body: JSON.stringify({ month: `${year}-${pad2(month)}` }),
+      });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(body?.detail || `${response.status}`);
+
+      const skipped = Array.isArray(body?.skipped_no_staff) ? body.skipped_no_staff : [];
+      const errors = Array.isArray(body?.errors) ? body.errors : [];
+      window.alert(
+        [
+          "Jinjer同期 完了",
+          `取得: ${body.fetched ?? 0}件`,
+          `保存: ${body.saved ?? 0}件`,
+          skipped.length ? `未マッチ: ${skipped.length}件` : "",
+          errors.length ? `エラー: ${errors.length}件` : "",
+        ]
+          .filter(Boolean)
+          .join("\n")
+      );
+      await loadBoard(year, month);
+    } catch (syncError: any) {
+      console.error(syncError);
+      setError(`Jinjer同期に失敗しました: ${syncError?.message || "不明なエラー"}`);
+    } finally {
+      setJinjerSyncing(false);
+    }
+  };
+
+  const uploadShiftFile = async () => {
+    if (!shiftUploadFile || shiftUploading) return;
+    if (!window.confirm(`${year}年${month}月のシフトをファイルから取り込みます。`)) return;
+
+    try {
+      setShiftUploading(true);
+      setError("");
+      const formData = new FormData();
+      formData.append("file", shiftUploadFile);
+      formData.append("month", `${year}-${pad2(month)}`);
+      const response = await fetch(`${API_BASE}/jinjer/shifts/upload`, {
+        method: "POST",
+        headers: authHeaders(false),
+        body: formData,
+      });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(body?.detail || `${response.status}`);
+
+      window.alert(
+        [
+          "シフト取込 完了",
+          `対象月: ${body.month || `${year}-${pad2(month)}`}`,
+          `読取: ${body.fetched ?? 0}件`,
+          `保存: ${body.saved ?? 0}件`,
+        ].join("\n")
+      );
+      setShiftUploadFile(null);
+      await loadBoard(year, month);
+    } catch (uploadError: any) {
+      console.error(uploadError);
+      setError(`シフト取込に失敗しました: ${uploadError?.message || "不明なエラー"}`);
+    } finally {
+      setShiftUploading(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-slate-50 px-3 py-4 sm:px-4 lg:px-6">
+      <div className="w-full space-y-4">
+        <section className="rounded-[22px] border border-slate-200 bg-white shadow-sm">
+          <div className="flex flex-col justify-between gap-4 p-4 lg:flex-row lg:items-start">
+            <div>
+              <div className="text-[18px] font-extrabold">管理ページ｜シフト</div>
+              <div className="mt-1 text-sm text-slate-500">
+                シフト・アカウント・メイト情報をまとめて管理
+              </div>
               <div className="mt-4 flex flex-wrap gap-2">
                 <TabButton active={mainTab === "shift"} onClick={() => setMainTab("shift")}>
                   シフト
@@ -388,208 +402,199 @@ export default function ShiftBoardPage() {
                 </TabButton>
               </div>
             </div>
-
-            <div className="pt-2 text-sm text-slate-500">
-              {loading ? "Loading..." : "DB Connected"}
+            <div className="text-sm font-semibold text-slate-500">
+              {loading ? "読み込み中" : error ? "接続エラー" : "DB接続済み"}
             </div>
           </div>
-        </div>
+        </section>
 
-        {mainTab === "shift" && (
-          <div className="rounded-[22px] border border-slate-200 bg-white shadow-sm overflow-hidden">
-            <div className="flex items-start justify-between gap-4 border-b border-slate-200 p-4">
-              <div>
-                <div className="text-[18px] font-extrabold">シフト</div>
-                <div className="mt-1 text-sm text-slate-500">
-                  出勤状況に加えて、総清掃数・出勤人数・1人当たり清掃数を表示
+        {error ? (
+          <div className="flex flex-col gap-3 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700 sm:flex-row sm:items-center sm:justify-between">
+            <span>{error}</span>
+            <button
+              type="button"
+              className="rounded-xl border border-rose-200 bg-white px-3 py-2 font-bold"
+              onClick={() => void loadBoard(year, month)}
+            >
+              再読み込み
+            </button>
+          </div>
+        ) : null}
+
+        {mainTab === "shift" ? (
+          <section className="overflow-hidden rounded-[22px] border border-slate-200 bg-white shadow-sm">
+            <div className="border-b border-slate-200 p-4">
+              <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+                <div>
+                  <div className="text-[18px] font-extrabold">シフトボード</div>
+                  <div className="mt-1 text-sm text-slate-500">
+                    清掃件数・出勤人数・1人当たり清掃数を日別に確認
+                  </div>
                 </div>
-                <div className="mt-2 text-xs text-slate-400">
-                  当月以前はJinjer同期、未来月はExcel/CSV取込を使用
+
+                <div className="flex flex-wrap items-center gap-2">
+                  <select
+                    aria-label="年"
+                    className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
+                    value={year}
+                    onChange={(event) => setYear(Number(event.target.value))}
+                  >
+                    {Array.from({ length: 5 }, (_, index) => now.getFullYear() - 2 + index).map((item) => (
+                      <option key={item} value={item}>{item}年</option>
+                    ))}
+                  </select>
+                  <select
+                    aria-label="月"
+                    className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
+                    value={month}
+                    onChange={(event) => setMonth(Number(event.target.value))}
+                  >
+                    {Array.from({ length: 12 }, (_, index) => index + 1).map((item) => (
+                      <option key={item} value={item}>{item}月</option>
+                    ))}
+                  </select>
+                  <div className="flex gap-1 rounded-2xl border border-slate-200 p-1">
+                    <SmallToggle active={viewMode === "month"} onClick={() => setViewMode("month")}>月</SmallToggle>
+                    <SmallToggle active={viewMode === "week"} onClick={() => setViewMode("week")}>週</SmallToggle>
+                  </div>
+                  {viewMode === "week" ? (
+                    <>
+                      <button type="button" className="rounded-xl border border-slate-200 px-3 py-2 text-sm" onClick={() => setWeekBaseDate((prev) => addDays(prev, -7))}>前週</button>
+                      <button type="button" className="rounded-xl border border-slate-200 px-3 py-2 text-sm" onClick={() => setWeekBaseDate((prev) => addDays(prev, 7))}>次週</button>
+                    </>
+                  ) : null}
                 </div>
               </div>
 
-              <div className="flex items-center gap-2 flex-wrap">
-                <select
-                  className="rounded-xl border border-slate-200 px-3 py-2 text-sm bg-white"
-                  value={year}
-                  onChange={(e) => setYear(Number(e.target.value))}
-                >
-                  {[2025, 2026, 2027].map((y) => (
-                    <option key={y} value={y}>
-                      {y}年
-                    </option>
-                  ))}
-                </select>
-
-                <select
-                  className="rounded-xl border border-slate-200 px-3 py-2 text-sm bg-white"
-                  value={month}
-                  onChange={(e) => setMonth(Number(e.target.value))}
-                >
-                  {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
-                    <option key={m} value={m}>
-                      {m}月
-                    </option>
-                  ))}
-                </select>
-
-                {viewMode === "week" && (
-                  <>
-                    <button
-                      type="button"
-                      className="rounded-xl border border-slate-200 px-3 py-2 text-sm bg-white hover:bg-slate-50"
-                      onClick={() => setWeekBaseDate((prev) => addDays(prev, -7))}
-                    >
-                      前週
-                    </button>
-                    <button
-                      type="button"
-                      className="rounded-xl border border-slate-200 px-3 py-2 text-sm bg-white hover:bg-slate-50"
-                      onClick={() => setWeekBaseDate((prev) => addDays(prev, 7))}
-                    >
-                      次週
-                    </button>
-                  </>
-                )}
-
-                <div className="rounded-2xl border border-slate-200 p-1 flex gap-1">
-                  <SmallToggle active={viewMode === "month"} onClick={() => setViewMode("month")}>
-                    月
-                  </SmallToggle>
-                  <SmallToggle active={viewMode === "week"} onClick={() => setViewMode("week")}>
-                    週
-                  </SmallToggle>
+              <div className="mt-4 grid gap-3 lg:grid-cols-[minmax(220px,1fr)_auto]">
+                <div className="flex flex-wrap gap-2">
+                  <input
+                    value={staffSearch}
+                    onChange={(event) => setStaffSearch(event.target.value)}
+                    placeholder="スタッフ名・社員番号で検索"
+                    className="min-w-0 flex-1 rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-slate-400 sm:min-w-[240px]"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setActiveOnly((prev) => !prev)}
+                    className={`rounded-xl border px-3 py-2 text-sm font-bold ${
+                      activeOnly ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-slate-200 bg-white text-slate-600"
+                    }`}
+                  >
+                    {activeOnly ? "有効のみ" : "全員表示"}
+                  </button>
+                  <span className="self-center text-xs text-slate-500">{filteredStaffs.length}名表示</span>
                 </div>
 
-                <button
-                  type="button"
-                  disabled={jinjerSyncing}
-                  onClick={() => void syncJinjer()}
-                  className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-bold text-emerald-700 hover:bg-emerald-100 disabled:opacity-50"
-                  title={`${year}年${month}月分を Jinjer から取り込みます`}
-                >
-                  {jinjerSyncing ? "同期中..." : "Jinjerから同期"}
-                </button>
-
-                <label className="cursor-pointer rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-700 hover:bg-slate-50">
-                  {shiftUploadFile ? shiftUploadFile.name : "Excel/CSV選択"}
-                  <input
-                    type="file"
-                    accept=".xlsx,.xls,.csv"
-                    className="hidden"
-                    onChange={(e) => setShiftUploadFile(e.target.files?.[0] ?? null)}
-                  />
-                </label>
-
-                <button
-                  type="button"
-                  disabled={!shiftUploadFile || shiftUploading}
-                  onClick={() => void uploadShiftFile()}
-                  className="rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-sm font-bold text-blue-700 hover:bg-blue-100 disabled:opacity-50"
-                  title={`${year}年${month}月分を Excel/CSV から取り込みます`}
-                >
-                  {shiftUploading ? "取込中..." : "Excel取込"}
-                </button>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    disabled={jinjerSyncing}
+                    onClick={() => void syncJinjer()}
+                    className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-bold text-emerald-700 disabled:opacity-50"
+                  >
+                    {jinjerSyncing ? "同期中..." : "Jinjer同期"}
+                  </button>
+                  <label className="cursor-pointer rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-700">
+                    {shiftUploadFile ? shiftUploadFile.name : "Excel/CSV選択"}
+                    <input
+                      type="file"
+                      accept=".xlsx,.xls,.csv"
+                      className="hidden"
+                      onChange={(event) => setShiftUploadFile(event.target.files?.[0] ?? null)}
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    disabled={!shiftUploadFile || shiftUploading}
+                    onClick={() => void uploadShiftFile()}
+                    className="rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-sm font-bold text-blue-700 disabled:opacity-50"
+                  >
+                    {shiftUploading ? "取込中..." : "ファイル取込"}
+                  </button>
+                </div>
               </div>
             </div>
 
-            <div className="p-4">
-              <div className="mb-2 text-[16px] font-extrabold">
-                {year}年{month}月
+            <div className="p-3 sm:p-4">
+              <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                <div className="text-[16px] font-extrabold">{year}年{month}月</div>
+                {viewMode === "week" ? (
+                  <div className="text-sm text-slate-500">{startOfWeek(weekBaseDate)} ～ {endOfWeek(weekBaseDate)}</div>
+                ) : null}
               </div>
 
-              {viewMode === "week" && weekDates.length > 0 && (
-                <div className="mb-3 text-sm text-slate-500">
-                  {startOfWeek(weekBaseDate)} ～ {endOfWeek(weekBaseDate)}
-                </div>
-              )}
+              <div className="space-y-3 md:hidden">
+                {visibleDates.map((date) => {
+                  const isToday = date === todayIso;
+                  return (
+                    <article key={date} className={`rounded-2xl border p-3 ${isToday ? "border-rose-200 bg-rose-50" : "border-slate-200 bg-white"}`}>
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="font-extrabold">{formatDateLabel(date)}（{weekdayLabel(date)}）</div>
+                        <div className="text-xs text-slate-500">清掃 {getCleanCount(date)}件 / 出勤 {getAttendanceCount(date)}名</div>
+                      </div>
+                      <div className="mt-2 text-xs font-semibold text-slate-500">1人当たり {String(getWorkload(date))}件</div>
+                      <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                        {filteredStaffs.map((staff) => {
+                          const current = getShiftMark(date, staff.id);
+                          const key = `${date}-${staff.id}`;
+                          return (
+                            <label key={staff.id} className="grid grid-cols-[1fr_auto] items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2">
+                              <span className="truncate text-sm font-semibold">{staff.staff_name}</span>
+                              <select
+                                value={current}
+                                disabled={savingKey === key}
+                                onChange={(event) => void saveCell(date, staff.id, event.target.value as ShiftMark)}
+                                className={`rounded-lg border px-2 py-1 text-sm font-semibold ${markClass(current)}`}
+                              >
+                                {SHIFT_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                              </select>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
 
-              <div className="overflow-auto rounded-[18px] border border-slate-200 max-h-[70vh] w-full">
-                <table className="min-w-full w-max border-separate border-spacing-0 text-sm">
+              <div className="hidden max-h-[70vh] w-full overflow-auto rounded-[18px] border border-slate-200 md:block">
+                <table className="w-max min-w-full border-separate border-spacing-0 text-sm">
                   <thead>
-                    <tr className="border-b border-slate-200">
-                      <th className="sticky top-0 left-0 z-50 w-[72px] min-w-[72px] bg-slate-50 px-4 py-3 text-left font-extrabold shadow-[2px_0_0_#e2e8f0]">
-                        日付
-                      </th>
-
-                      <th className="sticky top-0 left-[72px] z-40 w-[64px] min-w-[64px] bg-slate-50 px-4 py-3 text-left font-extrabold shadow-[2px_0_0_#e2e8f0]">
-                        曜日
-                      </th>
-
-                      <th className="sticky top-0 left-[136px] z-40 w-[96px] min-w-[96px] bg-slate-50 px-4 py-3 text-left font-extrabold shadow-[2px_0_0_#e2e8f0]">
-                        総清掃数
-                      </th>
-
-                      <th className="sticky top-0 left-[232px] z-40 w-[96px] min-w-[96px] bg-slate-50 px-4 py-3 text-left font-extrabold shadow-[2px_0_0_#e2e8f0]">
-                        出勤人数
-                      </th>
-
-                      <th className="sticky top-0 left-[328px] z-40 w-[140px] min-w-[140px] bg-slate-50 px-4 py-3 text-left font-extrabold shadow-[2px_0_0_#e2e8f0]">
-                        1人当たり清掃数
-                      </th>
-
-                      {staffs.map((staff) => (
-                        <th
-                          key={staff.id}
-                          className="sticky top-0 z-30 min-w-[118px] bg-slate-50 px-3 py-3 text-left font-extrabold"
-                        >
-                          {staff.staff_name}
-                        </th>
+                    <tr>
+                      <th className="sticky left-0 top-0 z-50 min-w-[72px] bg-slate-50 px-4 py-3 text-left font-extrabold shadow-[2px_0_0_#e2e8f0]">日付</th>
+                      <th className="sticky left-[72px] top-0 z-40 min-w-[64px] bg-slate-50 px-4 py-3 text-left font-extrabold shadow-[2px_0_0_#e2e8f0]">曜日</th>
+                      <th className="sticky left-[136px] top-0 z-40 min-w-[96px] bg-slate-50 px-4 py-3 text-left font-extrabold shadow-[2px_0_0_#e2e8f0]">総清掃数</th>
+                      <th className="sticky left-[232px] top-0 z-40 min-w-[96px] bg-slate-50 px-4 py-3 text-left font-extrabold shadow-[2px_0_0_#e2e8f0]">出勤人数</th>
+                      <th className="sticky left-[328px] top-0 z-40 min-w-[140px] bg-slate-50 px-4 py-3 text-left font-extrabold shadow-[2px_0_0_#e2e8f0]">1人当たり</th>
+                      {filteredStaffs.map((staff) => (
+                        <th key={staff.id} className="sticky top-0 z-30 min-w-[118px] bg-slate-50 px-3 py-3 text-left font-extrabold">{staff.staff_name}</th>
                       ))}
                     </tr>
                   </thead>
-
                   <tbody>
                     {visibleDates.map((date) => {
                       const isToday = date === todayIso;
                       const stickyBg = isToday ? "bg-rose-50" : "bg-white";
                       return (
-                        <tr
-                          key={date}
-                          className={`border-b border-slate-100 last:border-b-0 ${isToday ? "bg-rose-50" : ""}`}
-                        >
-                          <td className={`sticky left-0 z-30 w-[72px] min-w-[72px] ${stickyBg} px-4 py-3 shadow-[2px_0_0_#e2e8f0]`}>
-                            {formatDateLabel(date)}
-                          </td>
-
-                          <td className={`sticky left-[72px] z-30 w-[64px] min-w-[64px] ${stickyBg} px-4 py-3 shadow-[2px_0_0_#e2e8f0]`}>
-                            {weekdayLabel(date)}
-                          </td>
-
-                          <td className={`sticky left-[136px] z-30 w-[96px] min-w-[96px] ${stickyBg} px-4 py-3 font-semibold shadow-[2px_0_0_#e2e8f0]`}>
-                            {getCleanCount(date)}
-                          </td>
-
-                          <td className={`sticky left-[232px] z-30 w-[96px] min-w-[96px] ${stickyBg} px-4 py-3 shadow-[2px_0_0_#e2e8f0]`}>
-                            {getAttendanceCount(date)}
-                          </td>
-
-                          <td className={`sticky left-[328px] z-30 w-[140px] min-w-[140px] ${stickyBg} px-4 py-3 shadow-[2px_0_0_#e2e8f0]`}>
-                            {getWorkload(date)}
-                          </td>
-
-                          {staffs.map((staff) => {
+                        <tr key={date} className={isToday ? "bg-rose-50" : "bg-white"}>
+                          <td className={`sticky left-0 z-30 min-w-[72px] ${stickyBg} px-4 py-3 shadow-[2px_0_0_#e2e8f0]`}>{formatDateLabel(date)}</td>
+                          <td className={`sticky left-[72px] z-30 min-w-[64px] ${stickyBg} px-4 py-3 shadow-[2px_0_0_#e2e8f0]`}>{weekdayLabel(date)}</td>
+                          <td className={`sticky left-[136px] z-30 min-w-[96px] ${stickyBg} px-4 py-3 font-semibold shadow-[2px_0_0_#e2e8f0]`}>{getCleanCount(date)}</td>
+                          <td className={`sticky left-[232px] z-30 min-w-[96px] ${stickyBg} px-4 py-3 shadow-[2px_0_0_#e2e8f0]`}>{getAttendanceCount(date)}</td>
+                          <td className={`sticky left-[328px] z-30 min-w-[140px] ${stickyBg} px-4 py-3 shadow-[2px_0_0_#e2e8f0]`}>{String(getWorkload(date))}</td>
+                          {filteredStaffs.map((staff) => {
                             const current = getShiftMark(date, staff.id);
                             const key = `${date}-${staff.id}`;
-                            const saving = savingKey === key;
-
                             return (
                               <td key={staff.id} className={`min-w-[118px] ${stickyBg} px-3 py-3`}>
                                 <select
                                   value={current}
-                                  disabled={saving}
-                                  onChange={(e) =>
-                                    void saveCell(date, staff.id, e.target.value as ShiftMark)
-                                  }
-                                  className={`h-10 min-w-[92px] rounded-xl border px-3 text-sm font-medium outline-none bg-white ${markClass(
-                                    current
-                                  )} ${saving ? "opacity-50" : ""}`}
+                                  disabled={savingKey === key}
+                                  onChange={(event) => void saveCell(date, staff.id, event.target.value as ShiftMark)}
+                                  className={`h-10 min-w-[92px] rounded-xl border px-3 text-sm font-medium outline-none ${markClass(current)} ${savingKey === key ? "opacity-50" : ""}`}
                                 >
-                                  {SHIFT_OPTIONS.map((opt) => (
-                                    <option key={opt.value} value={opt.value}>
-                                      {saving && opt.value === current ? "保存中..." : opt.label}
-                                    </option>
-                                  ))}
+                                  {SHIFT_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
                                 </select>
                               </td>
                             );
@@ -601,18 +606,19 @@ export default function ShiftBoardPage() {
                 </table>
               </div>
             </div>
-          </div>
-        )}
+          </section>
+        ) : null}
 
-        {mainTab === "account" && <AccountManagementPage />}
+        {mainTab === "account" ? <AccountManagementPage /> : null}
 
-        {mainTab === "mate" && (
-          <div className="rounded-[22px] border border-slate-200 bg-white shadow-sm p-6">
+        {mainTab === "mate" ? (
+          <section className="rounded-[22px] border border-slate-200 bg-white p-6 shadow-sm">
             <div className="text-[18px] font-extrabold">メイトカルテ</div>
-            <div className="mt-2 text-sm text-slate-500">次段階で追加します。</div>
-          </div>
-        )}
+            <div className="mt-2 text-sm text-slate-500">メイトカルテ機能は既存画面への接続準備中です。</div>
+          </section>
+        ) : null}
       </div>
     </div>
   );
 }
+
