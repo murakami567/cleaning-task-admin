@@ -859,7 +859,7 @@ function MultiAssignSelect({
  * ========================= */
 
 const baseDate = todayIso();
-const UI_VERSION = "v7-carry-over-2026-04-24";
+const UI_VERSION = "v8-phase4-2026-07-26";
 
 function isFutureDate(isoDate: string) {
   return normalizeIsoDate(isoDate) > baseDate;
@@ -1333,6 +1333,54 @@ export default function AdminTasksPagePreview() {
     }
   };
 
+  const exportCleaningCsv = () => {
+    const escapeCsv = (value: unknown) => {
+      const text = String(value ?? "");
+      return `"${text.replace(/"/g, '""')}"`;
+    };
+
+    const rows = visibleCleaningTasks.map((task) => {
+      const attendees = attendeesByDate[task.date] ?? [];
+      const assignees = assigneeLabels(task.assigneeIds ?? [], attendees);
+      return [
+        statusLabel(task.status),
+        extractPropertyName(task.property),
+        task.room || "",
+        assignees,
+        normalizeIsoDate(task.date),
+        dueLabel(computeDueLabel(task.checkoutDate ?? task.date, task.nextCheckinDate ?? "")),
+        task.towelCount ?? "",
+        task.luggage || "",
+        task.checkerName || "",
+        task.note || "",
+      ];
+    });
+
+    const header = [
+      "ステータス",
+      "物件",
+      "部屋",
+      "担当",
+      "清掃日",
+      "期限",
+      "タオル",
+      "荷物預かり",
+      "チェッカー",
+      "備考",
+    ];
+    const csv = [header, ...rows].map((row) => row.map(escapeCsv).join(",")).join("\r\n");
+    const blob = new Blob(["\ufeff", csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    const suffix = viewMode === "DATE" ? selectedDate : viewMode === "TODAY" ? baseDate : "future";
+    anchor.href = url;
+    anchor.download = `cleaning-tasks-${suffix}.csv`;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    URL.revokeObjectURL(url);
+  };
+
   const removeNonCleaning = async (id: string) => {
     try {
       await deleteNonCleaningTaskApi(id);
@@ -1344,8 +1392,8 @@ export default function AdminTasksPagePreview() {
   };
 
   return (
-    <div className="min-h-screen bg-neutral-50 p-6">
-      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+    <div className="min-h-screen bg-neutral-50 p-3 sm:p-6">
+      <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div className="space-y-1">
           <div className="text-2xl font-semibold">タスク管理</div>
           <div className="mt-1 inline-flex items-center gap-2 text-xs text-black/60">
@@ -1360,7 +1408,7 @@ export default function AdminTasksPagePreview() {
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex w-full flex-wrap items-center gap-2 lg:w-auto">
           <Segmented
   value={viewMode}
   onChange={(v) => setViewMode(v as ViewMode)}
@@ -1413,7 +1461,7 @@ export default function AdminTasksPagePreview() {
                       ＋清掃タスク追加
                     </Button>
 
-                    <Button variant="outline">CSV出力</Button>
+                    <Button variant="outline" onClick={exportCleaningCsv}>CSV出力</Button>
                   </>
                 }
               />
@@ -1777,7 +1825,9 @@ export default function AdminTasksPagePreview() {
                         >
                           {viewMode === "TODAY"
                             ? "当日の清掃外タスクがありません。"
-                            : "翌日以降の清掃外タスクがありません。"}
+                            : viewMode === "FUTURE"
+                            ? "翌日以降の清掃外タスクがありません。"
+                            : "指定日の清掃外タスクがありません。"}
                         </td>
                       </tr>
                     ) : null}
@@ -2355,44 +2405,4 @@ export default function AdminTasksPagePreview() {
       ) : null}
     </div>
   );
-}
-
-/* =========================
- * Lightweight self-tests
- * ========================= */
-
-function __assert(name: string, cond: boolean) {
-  if (!cond) {
-    console.error(`❌ ${name}`);
-    throw new Error(`Test failed: ${name}`);
-  }
-  console.log(`✅ ${name}`);
-}
-
-function __runTests() {
-  const d0 = "2025-01-01";
-
-  __assert("addDaysIso +1", addDaysIso(d0, 1) === "2025-01-02");
-  __assert("addDaysIso +31", addDaysIso(d0, 31) === "2025-02-01");
-
-  __assert("statusLabel existing", statusLabel("未着手") === "未着手");
-  __assert("statusLabel carry over", statusLabel("持越") === "持越");
-  __assert("dueLabel TODAY", dueLabel("DUE_TODAY") === "当日");
-  __assert("formatMd 2025-12-09", formatMd("2025-12-09") === "12/9");
-  __assert("categoryLabel TRANSPORT", categoryLabel("TRANSPORT") === "運搬");
-  __assert("date string compare", "2025-01-02" > "2025-01-01");
-
-  __assert("normalize date", normalizeIsoDate("2025-01-01T00:00:00") === "2025-01-01");
-
-  __assert("towel 1-2 nights", getTowelCount("住吉", 3, 2) === 3);
-  __assert("towel 3-7 nights", getTowelCount("住吉", 4, 5) === 8);
-  __assert("towel 8+ nights", getTowelCount("住吉", 2, 8) === 6);
-  __assert("towel excluded FFF", getTowelCount("FFFホテル", 2, 2) === "");
-}
-
-try {
-  const env = (import.meta as any).env?.MODE || "development";
-  if (env !== "production") __runTests();
-} catch (error) {
-  void error;
 }
