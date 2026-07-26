@@ -19,6 +19,10 @@ function replaceMasterReadUrl(url: string): string {
   return url;
 }
 
+function isPropertyManagementPage() {
+  return window.location.pathname === "/admin/properties";
+}
+
 export function installAdminMasterFetch() {
   if (installed || typeof window === "undefined") return;
   installed = true;
@@ -27,6 +31,13 @@ export function installAdminMasterFetch() {
 
   window.fetch = async (input: RequestInfo | URL, init: RequestInit = {}) => {
     const originalUrl = normalizeUrl(input);
+
+    // Only the property management screen should use the protected master API.
+    // Other screens still use the legacy endpoints until their requests are migrated.
+    if (!isPropertyManagementPage()) {
+      return originalFetch(input, init);
+    }
+
     const rewrittenUrl = replaceMasterReadUrl(originalUrl);
     const isProtectedMasterRead = rewrittenUrl !== originalUrl;
 
@@ -35,8 +46,17 @@ export function installAdminMasterFetch() {
     }
 
     const token = localStorage.getItem("admin_access_token") || "";
+    if (!token) {
+      localStorage.removeItem("admin_user");
+      window.location.assign("/admin/login");
+      return new Response(JSON.stringify({ detail: "Not authenticated" }), {
+        status: 401,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
     const headers = new Headers(init.headers || {});
-    if (token) headers.set("Authorization", `Bearer ${token}`);
+    headers.set("Authorization", `Bearer ${token}`);
 
     const response = await originalFetch(rewrittenUrl, {
       ...init,
