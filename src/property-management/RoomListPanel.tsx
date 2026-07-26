@@ -31,6 +31,7 @@ type RoomListPanelProps = {
   roomSearch: string;
   readOnly: boolean;
   onRoomSearchChange: (value: string) => void;
+  onViewRoom: (room: RoomMaster) => void;
   onEditRoom: (room: RoomMaster) => void;
 };
 
@@ -40,6 +41,7 @@ export default function RoomListPanel({
   roomSearch,
   readOnly,
   onRoomSearchChange,
+  onViewRoom,
   onEditRoom,
 }: RoomListPanelProps) {
   return (
@@ -119,17 +121,8 @@ export default function RoomListPanel({
                 {rooms.map((room) => (
                   <tr
                     key={room.id}
-                    onClick={() => {
-                      if (!readOnly) {
-                        onEditRoom(room);
-                      }
-                    }}
-                    className={[
-                      "hover:bg-slate-50",
-                      readOnly
-                        ? "cursor-default"
-                        : "cursor-pointer active:bg-slate-100",
-                    ].join(" ")}
+                    onClick={() => onViewRoom(room)}
+                    className="cursor-pointer hover:bg-slate-50 active:bg-slate-100"
                   >
                     <td className="border-b px-4 py-3 font-medium">
                       {room.room_name}
