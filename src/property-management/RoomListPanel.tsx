@@ -19,7 +19,6 @@ function StatusBadge({ on }: { on: boolean }) {
           on ? "bg-emerald-500" : "bg-rose-500",
         ].join(" ")}
       />
-
       {on ? "ON" : "OFF"}
     </span>
   );
@@ -51,15 +50,10 @@ export default function RoomListPanel({
           <div>
             <div className="text-xl font-extrabold">
               部屋一覧
-              {selectedProperty
-                ? ` / ${selectedProperty.property_name}`
-                : ""}
+              {selectedProperty ? ` / ${selectedProperty.property_name}` : ""}
             </div>
-
             <div className="mt-1 text-xs text-slate-500">
-              {selectedProperty
-                ? `${rooms.length} 件`
-                : "物件を選択してください"}
+              {selectedProperty ? `${rooms.length} 件` : "物件を選択してください"}
             </div>
           </div>
 
@@ -67,10 +61,8 @@ export default function RoomListPanel({
             <input
               type="search"
               value={roomSearch}
-              onChange={(event) =>
-                onRoomSearchChange(event.target.value)
-              }
-              placeholder="部屋名・部屋コード・room_keyで検索"
+              onChange={(event) => onRoomSearchChange(event.target.value)}
+              placeholder="部屋名・コード・鍵・ポスト・Wi-Fi・備考で検索"
               className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-slate-300"
             />
           </div>
@@ -84,36 +76,17 @@ export default function RoomListPanel({
           </div>
         ) : (
           <div className="min-w-max overflow-hidden rounded-2xl border border-slate-200">
-            <table className="w-full min-w-[860px] text-sm">
+            <table className="w-full min-w-[980px] text-sm">
               <thead className="sticky top-0 z-10">
                 <tr>
-                  <th className="border-b bg-slate-50 px-4 py-3 text-left font-bold">
-                    部屋名
-                  </th>
-
-                  <th className="border-b bg-slate-50 px-4 py-3 text-left font-bold">
-                    部屋コード
-                  </th>
-
-                  <th className="border-b bg-slate-50 px-4 py-3 text-left font-bold">
-                    room_key
-                  </th>
-
-                  <th className="border-b bg-slate-50 px-4 py-3 text-left font-bold">
-                    定員
-                  </th>
-
-                  <th className="border-b bg-slate-50 px-4 py-3 text-left font-bold">
-                    並び順
-                  </th>
-
-                  <th className="border-b bg-slate-50 px-4 py-3 text-left font-bold">
-                    有効
-                  </th>
-
-                  <th className="border-b bg-slate-50 px-4 py-3 text-left font-bold">
-                    操作
-                  </th>
+                  <th className="border-b bg-slate-50 px-4 py-3 text-left font-bold">部屋名</th>
+                  <th className="border-b bg-slate-50 px-4 py-3 text-left font-bold">room_key</th>
+                  <th className="border-b bg-slate-50 px-4 py-3 text-left font-bold">キーボックス番号</th>
+                  <th className="border-b bg-slate-50 px-4 py-3 text-left font-bold">スペア番号</th>
+                  <th className="border-b bg-slate-50 px-4 py-3 text-left font-bold">ポスト番号</th>
+                  <th className="border-b bg-slate-50 px-4 py-3 text-left font-bold">定員</th>
+                  <th className="border-b bg-slate-50 px-4 py-3 text-left font-bold">有効</th>
+                  <th className="border-b bg-slate-50 px-4 py-3 text-left font-bold">操作</th>
                 </tr>
               </thead>
 
@@ -124,30 +97,13 @@ export default function RoomListPanel({
                     onClick={() => onViewRoom(room)}
                     className="cursor-pointer hover:bg-slate-50 active:bg-slate-100"
                   >
-                    <td className="border-b px-4 py-3 font-medium">
-                      {room.room_name}
-                    </td>
-
-                    <td className="border-b px-4 py-3">
-                      {room.room_code}
-                    </td>
-
-                    <td className="border-b px-4 py-3">
-                      {room.room_key}
-                    </td>
-
-                    <td className="border-b px-4 py-3">
-                      {room.capacity ?? ""}
-                    </td>
-
-                    <td className="border-b px-4 py-3">
-                      {room.room_sort_order ?? ""}
-                    </td>
-
-                    <td className="border-b px-4 py-3">
-                      <StatusBadge on={room.is_active} />
-                    </td>
-
+                    <td className="border-b px-4 py-3 font-medium">{room.room_name}</td>
+                    <td className="border-b px-4 py-3">{room.room_key}</td>
+                    <td className="border-b px-4 py-3">{room.keybox_number ?? ""}</td>
+                    <td className="border-b px-4 py-3">{room.spare_key_number ?? ""}</td>
+                    <td className="border-b px-4 py-3">{room.mailbox_number ?? ""}</td>
+                    <td className="border-b px-4 py-3">{room.capacity ?? ""}</td>
+                    <td className="border-b px-4 py-3"><StatusBadge on={room.is_active} /></td>
                     <td className="border-b px-4 py-3">
                       {!readOnly ? (
                         <button
@@ -161,9 +117,7 @@ export default function RoomListPanel({
                           編集
                         </button>
                       ) : (
-                        <span className="text-xs text-slate-400">
-                          閲覧のみ
-                        </span>
+                        <span className="text-xs text-slate-400">閲覧のみ</span>
                       )}
                     </td>
                   </tr>
@@ -171,10 +125,7 @@ export default function RoomListPanel({
 
                 {rooms.length === 0 ? (
                   <tr>
-                    <td
-                      colSpan={7}
-                      className="px-4 py-10 text-center text-sm text-slate-500"
-                    >
+                    <td colSpan={8} className="px-4 py-10 text-center text-sm text-slate-500">
                       表示できる部屋がありません。
                     </td>
                   </tr>
