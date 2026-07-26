@@ -37,6 +37,14 @@ function unique(values: string[]) {
   return Array.from(new Set(values.filter(Boolean)));
 }
 
+function adminJsonHeaders() {
+  const token = localStorage.getItem("admin_access_token") || "";
+  return {
+    "Content-Type": "application/json",
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  };
+}
+
 function Button({ children, className = "", ...props }: any) {
   return (
     <button
@@ -344,12 +352,20 @@ export default function AccountManagementPage() {
 
       const res = await fetch(`${API_BASE}/staffs/upsert`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: adminJsonHeaders(),
         body: JSON.stringify(payload),
       });
 
       const data = await res.json().catch(() => null);
-      if (!res.ok) throw new Error(data?.detail || "保存に失敗しました。");
+      if (!res.ok) {
+        if (res.status === 401) {
+          throw new Error("ログイン情報の有効期限が切れています。管理画面へ再ログインしてください。");
+        }
+        if (res.status === 403) {
+          throw new Error("このアカウントにはスタッフ情報を変更する権限がありません。");
+        }
+        throw new Error(data?.detail || "保存に失敗しました。");
+      }
 
       setDrawerOpen(false);
       await loadStaffs();
@@ -520,27 +536,7 @@ export default function AccountManagementPage() {
             />
           </Field>
 
-          <Field label="パスワード">
-            <TextInput
-              type="text"
-              value={form.password}
-              onChange={(v: string) => setForm((s) => ({ ...s, password: v }))}
-              placeholder={selected ? "未入力なら変更なし" : "パスワードを入力"}
-            />
-          </Field>
-
-          <div className="sm:col-span-2">
-            <label className="inline-flex items-center gap-2 text-sm font-medium">
-              <input
-                type="checkbox"
-                checked={form.is_active}
-                onChange={(e) => setForm((s) => ({ ...s, is_active: e.target.checked }))}
-              />
-              有効
-            </label>
-          </div>
-
-          <Field label="対応エリア">
+          <Field label="エリア">
             <Select
               value={form.area}
               onChange={(v: string) => setForm((s) => ({ ...s, area: v }))}
@@ -548,145 +544,82 @@ export default function AccountManagementPage() {
             />
           </Field>
 
-          <Field label="LINE WORKS チャンネルID">
+          <Field label="LINE WORKSチャンネルID">
             <TextInput
               value={form.lineworks_channel_id}
-              onChange={(v: string) =>
-                setForm((s) => ({ ...s, lineworks_channel_id: v }))
-              }
-              placeholder="翌日連絡の送り先 (例: 01x-xxxxxxxx)"
+              onChange={(v: string) => setForm((s) => ({ ...s, lineworks_channel_id: v }))}
             />
           </Field>
 
-          <div className="sm:col-span-2">
-            <Field
-              label={`物件対応設定 / チェック解除済み ${form.unchecked_property_ids.length} 件・対応可能 ${form.available_property_ids.length} 件`}
-            >
-              <div className="rounded-xl border border-slate-200 bg-white">
-                <div className="p-2 border-b border-slate-100 flex items-center gap-2">
-                  <input
-                    className="flex-1 h-9 rounded-lg border border-slate-200 px-3 text-sm outline-none"
-                    placeholder="物件名で絞り込み"
-                    value={propertyQuery}
-                    onChange={(e) => setPropertyQuery(e.target.value)}
-                  />
-                  <button
-                    type="button"
-                    className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold hover:bg-slate-50"
-                    onClick={() =>
-                      setForm((s) => ({
-                        ...s,
-                        unchecked_property_ids: [],
-                        available_property_ids: [],
-                      }))
-                    }
-                  >
-                    全解除
-                  </button>
-                </div>
+          <Field label="パスワード（変更時のみ入力）">
+            <TextInput
+              type="password"
+              value={form.password}
+              onChange={(v: string) => setForm((s) => ({ ...s, password: v }))}
+            />
+          </Field>
 
-                <div className="p-2 space-y-3">
-                  <div className="rounded-xl border border-rose-200 bg-rose-50/40">
-                    <div className="border-b border-rose-100 px-3 py-2 flex items-center justify-between gap-2">
-                      <div>
-                        <div className="text-xs font-extrabold text-rose-800">
-                          チェック解除済み物件（最優先）
-                        </div>
-                        <div className="mt-0.5 text-[11px] text-rose-700">
-                          清掃可能。割当・表示判定ではこのグループを最上位として扱います。
-                        </div>
-                      </div>
-                      <button
-                        type="button"
-                        className="shrink-0 rounded-lg border border-rose-200 bg-white px-2 py-1 text-[11px] font-semibold text-rose-700 hover:bg-rose-50"
-                        onClick={() =>
-                          setForm((s) => ({
-                            ...s,
-                            unchecked_property_ids: unique([
-                              ...s.unchecked_property_ids,
-                              ...filteredProperties.map((p) => p.id),
-                            ]),
-                            available_property_ids: s.available_property_ids.filter(
-                              (id) => !filteredProperties.some((p) => p.id === id)
-                            ),
-                          }))
-                        }
-                      >
-                        表示中を全選択
-                      </button>
-                    </div>
-                    <div className="max-h-[210px] overflow-y-auto p-2 grid grid-cols-1 sm:grid-cols-2 gap-1">
-                      {filteredProperties.map((p) => (
-                        <PropertyCheckCard
-                          key={`priority-${p.id}`}
-                          property={p}
-                          tone="priority"
-                          checked={prioritySet.has(p.id)}
-                          onChange={(checked) => setPriorityProperty(p.id, checked)}
-                        />
-                      ))}
-                    </div>
-                  </div>
+          <Field label="備考">
+            <TextInput
+              value={form.note}
+              onChange={(v: string) => setForm((s) => ({ ...s, note: v }))}
+            />
+          </Field>
 
-                  <div className="rounded-xl border border-sky-200 bg-sky-50/40">
-                    <div className="border-b border-sky-100 px-3 py-2 flex items-center justify-between gap-2">
-                      <div>
-                        <div className="text-xs font-extrabold text-sky-800">
-                          対応可能物件（通常）
-                        </div>
-                        <div className="mt-0.5 text-[11px] text-sky-700">
-                          清掃可能。チェック解除済み物件の下位グループとして扱います。
-                        </div>
-                      </div>
-                      <button
-                        type="button"
-                        className="shrink-0 rounded-lg border border-sky-200 bg-white px-2 py-1 text-[11px] font-semibold text-sky-700 hover:bg-sky-50"
-                        onClick={() =>
-                          setForm((s) => ({
-                            ...s,
-                            available_property_ids: unique([
-                              ...s.available_property_ids,
-                              ...filteredProperties
-                                .map((p) => p.id)
-                                .filter((id) => !s.unchecked_property_ids.includes(id)),
-                            ]),
-                          }))
-                        }
-                      >
-                        表示中を全選択
-                      </button>
-                    </div>
-                    <div className="max-h-[210px] overflow-y-auto p-2 grid grid-cols-1 sm:grid-cols-2 gap-1">
-                      {filteredProperties.map((p) => (
-                        <PropertyCheckCard
-                          key={`normal-${p.id}`}
-                          property={p}
-                          tone="normal"
-                          checked={normalSet.has(p.id)}
-                          onChange={(checked) => setNormalProperty(p.id, checked)}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                </div>
+          <label className="flex items-center gap-2 text-sm font-semibold sm:col-span-2">
+            <input
+              type="checkbox"
+              checked={form.is_active}
+              onChange={(e) => setForm((s) => ({ ...s, is_active: e.target.checked }))}
+            />
+            有効
+          </label>
+        </div>
 
-                {properties.length === 0 ? (
-                  <div className="px-3 pb-3 text-xs text-slate-500">
-                    物件が登録されていません。物件管理から追加してください。
-                  </div>
-                ) : null}
-              </div>
-            </Field>
+        <div className="mt-5 space-y-3">
+          <div>
+            <div className="text-sm font-extrabold">物件割当設定</div>
+            <div className="mt-1 text-xs text-slate-500">
+              「チェック解除済み」は優先割当、「対応可能」は通常割当として保存します。
+            </div>
           </div>
 
-          <div className="sm:col-span-2">
-            <Field label="備考">
-              <textarea
-                className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none min-h-[88px]"
-                value={form.note}
-                onChange={(e) => setForm((s) => ({ ...s, note: e.target.value }))}
-              />
-            </Field>
+          <TextInput
+            value={propertyQuery}
+            onChange={setPropertyQuery}
+            placeholder="物件名で検索"
+          />
+
+          <div className="grid gap-4 lg:grid-cols-2">
+            <div className="rounded-2xl border border-rose-200 bg-rose-50/40 p-3">
+              <div className="mb-2 text-sm font-extrabold text-rose-700">チェック解除済み・優先</div>
+              <div className="grid max-h-[300px] gap-2 overflow-y-auto pr-1">
+                {filteredProperties.map((property) => (
+                  <PropertyCheckCard
+                    key={`priority-${property.id}`}
+                    property={property}
+                    checked={prioritySet.has(property.id)}
+                    tone="priority"
+                    onChange={(checked) => setPriorityProperty(property.id, checked)}
+                  />
+                ))}
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-sky-200 bg-sky-50/40 p-3">
+              <div className="mb-2 text-sm font-extrabold text-sky-700">対応可能</div>
+              <div className="grid max-h-[300px] gap-2 overflow-y-auto pr-1">
+                {filteredProperties.map((property) => (
+                  <PropertyCheckCard
+                    key={`normal-${property.id}`}
+                    property={property}
+                    checked={normalSet.has(property.id)}
+                    tone="normal"
+                    onChange={(checked) => setNormalProperty(property.id, checked)}
+                  />
+                ))}
+              </div>
+            </div>
           </div>
         </div>
       </Drawer>
