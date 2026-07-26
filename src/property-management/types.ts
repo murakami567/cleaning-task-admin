@@ -8,6 +8,9 @@ export type PropertyMaster = {
   max_assignable_count?: number | null;
   cleaning_point?: number | null;
   task_color?: string | null;
+  address?: string | null;
+  google_maps_url?: string | null;
+  entrance_number?: string | null;
 };
 
 export type RoomMaster = {
@@ -24,6 +27,12 @@ export type RoomMaster = {
   prep_s?: number | null;
   prep_spare_s?: number | null;
   prep_ta?: number | null;
+  keybox_number?: string | null;
+  spare_key_number?: string | null;
+  mailbox_number?: string | null;
+  wifi_ssid?: string | null;
+  wifi_password?: string | null;
+  note?: string | null;
 };
 
 export type ActiveFilter = "active" | "all";
