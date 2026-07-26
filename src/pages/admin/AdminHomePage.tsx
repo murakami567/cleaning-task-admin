@@ -4,6 +4,12 @@ import { useNavigate } from "react-router-dom";
 const API_BASE =
   import.meta.env.VITE_API_BASE_URL || "https://cleaning-task-api.onrender.com";
 
+const ORDER_MANAGEMENT_URL =
+  import.meta.env.VITE_ORDER_MANAGEMENT_URL || "https://order-management-hoq5.onrender.com";
+
+const GUSK_PROPERTY_MANAGEMENT_URL =
+  import.meta.env.VITE_GUSK_PROPERTY_MANAGEMENT_URL || "https://gusk-property-management.onrender.com";
+
 const WEEK_LABELS = ["日", "月", "火", "水", "木", "金", "土"];
 
 const MISSING_CLOCK_IN_HOUR = 10;
@@ -78,6 +84,35 @@ type ScheduleDraft = {
   title: string;
   description: string;
 };
+
+type OrderDueSchedule = {
+  id: string;
+  order_no: string;
+  status: string;
+  item_name: string;
+  quantity: number | null;
+  unit: string | null;
+  usage_place: string | null;
+  delivery_place: string | null;
+  supplier: string | null;
+  due_date: string;
+};
+
+type ConstructionSchedule = {
+  id: string;
+  property_id?: number | string;
+  property_name: string;
+  contractor: string;
+  work_content: string;
+  status: string;
+  progress?: number;
+  start_date?: string | null;
+  end_date?: string | null;
+  actual_end_date?: string | null;
+  note?: string;
+};
+
+type ScheduleCalendarTab = "orders" | "constructions";
 
 function pad2(n: number) {
   return String(n).padStart(2, "0");
@@ -180,6 +215,10 @@ export default function AdminHomePage() {
 
   const [staffs, setStaffs] = useState<Staff[]>([]);
   const [schedules, setSchedules] = useState<PortalSchedule[]>([]);
+  const [orderDueSchedules, setOrderDueSchedules] = useState<OrderDueSchedule[]>([]);
+  const [constructionSchedules, setConstructionSchedules] = useState<ConstructionSchedule[]>([]);
+  const [scheduleCalendarTab, setScheduleCalendarTab] = useState<ScheduleCalendarTab>("orders");
+  const [mobileScheduleDate, setMobileScheduleDate] = useState<string | null>(null);
 
   const [loadingHome, setLoadingHome] = useState(true);
   const [loadingCalendar, setLoadingCalendar] = useState(true);
@@ -246,6 +285,8 @@ export default function AdminHomePage() {
   useEffect(() => {
     if (!token) return;
     void fetchSchedules();
+    void fetchOrderDueSchedules();
+    void fetchConstructionSchedules();
   }, [token, viewYear, viewMonth]);
 
   async function authorizedFetch(input: string, init?: RequestInit) {
@@ -310,6 +351,63 @@ export default function AdminHomePage() {
       setSchedules(normalized);
     } finally {
       setLoadingCalendar(false);
+    }
+  }
+
+  async function fetchOrderDueSchedules() {
+    try {
+      const res = await authorizedFetch(
+        `${API_BASE}/api/admin-portal/order-due-schedules?year=${viewYear}&month=${viewMonth}`
+      );
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.detail || "発注予定の取得に失敗しました。");
+      const normalized = Array.isArray(data?.items)
+        ? data.items.map((item: any) => ({
+            id: String(item.id),
+            order_no: item.order_no || "",
+            status: item.status || "",
+            item_name: item.item_name || "",
+            quantity: item.quantity ?? null,
+            unit: item.unit ?? null,
+            usage_place: item.usage_place ?? null,
+            delivery_place: item.delivery_place ?? null,
+            supplier: item.supplier ?? null,
+            due_date: item.due_date || "",
+          })).filter((item: OrderDueSchedule) => item.due_date)
+        : [];
+      setOrderDueSchedules(normalized);
+    } catch (error) {
+      console.error(error);
+      setOrderDueSchedules([]);
+    }
+  }
+
+  async function fetchConstructionSchedules() {
+    try {
+      const res = await authorizedFetch(
+        `${API_BASE}/api/admin-portal/construction-schedules?year=${viewYear}&month=${viewMonth}`
+      );
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.detail || "工事予定の取得に失敗しました。");
+      const normalized = Array.isArray(data?.items)
+        ? data.items.map((item: any) => ({
+            id: String(item.id),
+            property_id: item.property_id,
+            property_name: item.property_name || "",
+            contractor: item.contractor || "",
+            work_content: item.work_content || "",
+            status: item.status || "",
+            progress: item.progress ?? 0,
+            start_date: item.start_date || null,
+            end_date: item.end_date || null,
+            actual_end_date: item.actual_end_date || null,
+            note: item.note || "",
+          }))
+        : [];
+      setConstructionSchedules(normalized);
+    } catch (error) {
+      console.error(error);
+      setConstructionSchedules([]);
     }
   }
 
@@ -671,40 +769,156 @@ export default function AdminHomePage() {
           </div>
         </section>
 
-        <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-          <div className="flex items-center justify-between gap-4">
-            <h2 className="text-xl font-bold text-slate-900">社内スケジュールカレンダー</h2>
-            <div className="flex items-center gap-2">
-              <button onClick={prevMonth} className="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">前月</button>
-              <div className="min-w-[140px] text-center text-sm font-bold text-slate-800">{viewYear}年 {viewMonth}月</div>
-              <button onClick={nextMonth} className="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">次月</button>
+        <section className="rounded-3xl border border-slate-200 bg-white p-3 shadow-sm md:p-6">
+          <div className="md:hidden">
+            <h2 className="text-lg font-bold text-slate-900">スケジュール</h2>
+            <div className="mt-3 flex items-center justify-between gap-2">
+              <button type="button" onClick={prevMonth} className="h-10 w-10 rounded-xl border border-slate-200 bg-white text-lg font-bold text-slate-700">‹</button>
+              <div className="text-base font-bold text-slate-900">{viewYear}年 {viewMonth}月</div>
+              <button type="button" onClick={nextMonth} className="h-10 w-10 rounded-xl border border-slate-200 bg-white text-lg font-bold text-slate-700">›</button>
+            </div>
+            <div className="mt-3 grid grid-cols-2 rounded-xl bg-slate-100 p-1">
+              <button type="button" onClick={() => setScheduleCalendarTab("orders")} className={`rounded-lg px-3 py-2 text-sm font-bold ${scheduleCalendarTab === "orders" ? "bg-white text-amber-800 shadow-sm" : "text-slate-500"}`}>発注</button>
+              <button type="button" onClick={() => setScheduleCalendarTab("constructions")} className={`rounded-lg px-3 py-2 text-sm font-bold ${scheduleCalendarTab === "constructions" ? "bg-white text-sky-800 shadow-sm" : "text-slate-500"}`}>工事</button>
             </div>
           </div>
-          <div className="mt-4 grid grid-cols-7 gap-2">
+
+          <div className="hidden items-center justify-between gap-4 md:flex">
+            <div className="flex flex-wrap items-center gap-2">
+              <h2 className="mr-2 text-xl font-bold text-slate-900">スケジュールカレンダー</h2>
+              <button type="button" onClick={() => setScheduleCalendarTab("orders")} className={`rounded-2xl border px-4 py-2 text-sm font-bold ${scheduleCalendarTab === "orders" ? "border-amber-200 bg-amber-100 text-amber-900" : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"}`}>発注</button>
+              <button type="button" onClick={() => setScheduleCalendarTab("constructions")} className={`rounded-2xl border px-4 py-2 text-sm font-bold ${scheduleCalendarTab === "constructions" ? "border-sky-200 bg-sky-100 text-sky-900" : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"}`}>工事</button>
+            </div>
+            <div className="flex items-center gap-2">
+              <button type="button" onClick={prevMonth} className="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">前月</button>
+              <div className="min-w-[140px] text-center text-sm font-bold text-slate-800">{viewYear}年 {viewMonth}月</div>
+              <button type="button" onClick={nextMonth} className="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">次月</button>
+            </div>
+          </div>
+
+          <div className="mt-3 md:hidden">
+            <div className="grid grid-cols-7 gap-1">
+              {WEEK_LABELS.map((label) => (
+                <div key={label} className="py-1 text-center text-xs font-bold text-slate-500">{label}</div>
+              ))}
+              {calendarCells.map((cell) => {
+                const orderCount = orderDueSchedules.filter((item) => item.due_date === cell.date).length;
+                const constructionCount = constructionSchedules.filter((item) => {
+                  if (item.start_date && item.end_date) return isDateInRange(cell.date, item.start_date, item.end_date);
+                  return [item.start_date, item.end_date, item.actual_end_date].filter(Boolean).includes(cell.date);
+                }).length;
+                const count = scheduleCalendarTab === "orders" ? orderCount : constructionCount;
+                return (
+                  <button
+                    key={cell.date}
+                    type="button"
+                    onClick={() => count > 0 && setMobileScheduleDate(cell.date)}
+                    className={`relative min-h-[58px] rounded-xl border px-1 py-2 text-left ${cell.inMonth ? "border-slate-200 bg-white" : "border-slate-100 bg-slate-50 text-slate-300"} ${count > 0 ? "active:scale-[0.98]" : ""}`}
+                  >
+                    <div className="text-sm font-bold">{cell.day}</div>
+                    {count > 0 ? (
+                      <div className={`mt-1 inline-flex min-w-5 items-center justify-center rounded-full px-1.5 py-0.5 text-[10px] font-bold ${scheduleCalendarTab === "orders" ? "bg-amber-100 text-amber-800" : "bg-sky-100 text-sky-800"}`}>
+                        {count}件
+                      </div>
+                    ) : null}
+                  </button>
+                );
+              })}
+            </div>
+            <div className="mt-3 text-center text-xs text-slate-400">予定のある日をタップすると、その日の一覧を表示します</div>
+          </div>
+
+          <div className="mt-4 hidden grid-cols-7 gap-2 md:grid">
             {WEEK_LABELS.map((label) => (
               <div key={label} className="rounded-xl bg-slate-100 px-2 py-2 text-center text-sm font-bold text-slate-600">{label}</div>
             ))}
             {calendarCells.map((cell) => {
-              const daySchedules = schedules.filter((item) => isDateInRange(cell.date, item.start_date, item.end_date));
+              const dayOrderDueSchedules = orderDueSchedules.filter((item) => item.due_date === cell.date);
+              const dayConstructionSchedules = constructionSchedules.filter((item) => {
+                if (item.start_date && item.end_date) return isDateInRange(cell.date, item.start_date, item.end_date);
+                return [item.start_date, item.end_date, item.actual_end_date].filter(Boolean).includes(cell.date);
+              });
+              const visibleOrders = dayOrderDueSchedules.slice(0, 3);
+              const visibleConstructions = dayConstructionSchedules.slice(0, 3);
+              const hiddenCount = scheduleCalendarTab === "orders"
+                ? Math.max(dayOrderDueSchedules.length - visibleOrders.length, 0)
+                : Math.max(dayConstructionSchedules.length - visibleConstructions.length, 0);
               return (
                 <div key={cell.date} className={`min-h-[140px] rounded-2xl border p-2 ${cell.inMonth ? "bg-white" : "bg-slate-50 text-slate-400"}`}>
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="text-sm font-bold">{cell.day}</div>
-                    <button onClick={() => openCreateScheduleModal(cell.date)} className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50">＋</button>
-                  </div>
+                  <div className="text-sm font-bold">{cell.day}</div>
                   <div className="mt-2 space-y-1">
-                    {daySchedules.map((item) => (
-                      <button key={`${cell.date}_${item.id}`} onClick={() => openEditScheduleModal(item)} className="block w-full rounded-lg bg-sky-50 px-2 py-1 text-left text-xs text-sky-800 hover:bg-sky-100">
-                        <div className="truncate font-semibold">{item.title}</div>
-                        <div className="truncate text-[11px] opacity-80">{item.assignee_names.join(" / ") || "担当なし"}</div>
-                      </button>
-                    ))}
+                    {scheduleCalendarTab === "orders" ? (
+                      <>
+                        {visibleOrders.map((item) => (
+                          <button key={`${cell.date}_order_${item.id}`} type="button" onClick={() => window.open(ORDER_MANAGEMENT_URL, "_blank", "noopener,noreferrer")} className="block w-full rounded-lg bg-amber-50 px-2 py-1 text-left text-xs text-amber-900 hover:bg-amber-100" title={`${item.order_no} ${item.item_name}`}>
+                            <div className="truncate font-bold">発注納期：{item.item_name || "品名未設定"}</div>
+                            <div className="truncate text-[11px] opacity-80">{item.quantity ?? "-"}{item.unit || ""} / {item.delivery_place || item.usage_place || "配送先未設定"}</div>
+                          </button>
+                        ))}
+                      </>
+                    ) : (
+                      <>
+                        {visibleConstructions.map((item) => (
+                          <button key={`${cell.date}_construction_${item.id}`} type="button" onClick={() => window.open(GUSK_PROPERTY_MANAGEMENT_URL, "_blank", "noopener,noreferrer")} className="block w-full rounded-lg bg-sky-50 px-2 py-1 text-left text-xs text-sky-900 hover:bg-sky-100" title={`${item.property_name} ${item.work_content}`}>
+                            <div className="truncate font-bold">工事：{item.property_name || "物件未設定"}</div>
+                            <div className="truncate text-[11px] opacity-80">{item.work_content || "工事内容未設定"} / {item.status || item.contractor || "-"}</div>
+                          </button>
+                        ))}
+                      </>
+                    )}
+                    {hiddenCount > 0 ? (
+                      <button type="button" onClick={() => setMobileScheduleDate(cell.date)} className={`block w-full rounded-lg px-2 py-1 text-left text-xs font-bold ${scheduleCalendarTab === "orders" ? "bg-amber-100 text-amber-900 hover:bg-amber-200" : "bg-sky-100 text-sky-900 hover:bg-sky-200"}`}>他 {hiddenCount} 件</button>
+                    ) : null}
                   </div>
                 </div>
               );
             })}
           </div>
           {loadingCalendar ? <div className="mt-4 text-sm text-slate-500">カレンダーを読み込み中...</div> : null}
+
+          {mobileScheduleDate ? (
+            <div className="fixed inset-0 z-[1000] flex items-end bg-black/40 md:items-center md:justify-center md:px-4" onMouseDown={(e) => { if (e.target === e.currentTarget) setMobileScheduleDate(null); }}>
+              <div className="max-h-[82vh] w-full overflow-hidden rounded-t-3xl bg-white shadow-2xl md:max-w-xl md:rounded-3xl">
+                <div className="flex items-center justify-between border-b border-slate-200 px-4 py-4">
+                  <div>
+                    <div className="text-lg font-bold text-slate-900">{Number(mobileScheduleDate.slice(5, 7))}月{Number(mobileScheduleDate.slice(8, 10))}日</div>
+                    <div className="mt-1 text-xs font-semibold text-slate-500">{scheduleCalendarTab === "orders" ? "発注納期一覧" : "工事予定一覧"}</div>
+                  </div>
+                  <button type="button" onClick={() => setMobileScheduleDate(null)} className="h-10 w-10 rounded-full border border-slate-200 text-xl font-bold text-slate-600">×</button>
+                </div>
+                <div className="max-h-[calc(82vh-76px)] space-y-3 overflow-y-auto p-4">
+                  {scheduleCalendarTab === "orders" ? (
+                    orderDueSchedules.filter((item) => item.due_date === mobileScheduleDate).map((item) => (
+                      <button type="button" key={`mobile_order_${item.id}`} onClick={() => window.open(ORDER_MANAGEMENT_URL, "_blank", "noopener,noreferrer")} className="block w-full rounded-2xl border border-amber-200 bg-amber-50 p-4 text-left">
+                        <div className="font-bold text-amber-950">{item.item_name || "品名未設定"}</div>
+                        <div className="mt-2 grid grid-cols-[72px_1fr] gap-x-2 gap-y-1 text-sm text-slate-700">
+                          <span className="text-slate-500">数量</span><span>{item.quantity ?? "-"}{item.unit || ""}</span>
+                          <span className="text-slate-500">配送先</span><span>{item.delivery_place || item.usage_place || "未設定"}</span>
+                          <span className="text-slate-500">発注先</span><span>{item.supplier || "未設定"}</span>
+                          <span className="text-slate-500">発注番号</span><span>{item.order_no || "-"}</span>
+                        </div>
+                      </button>
+                    ))
+                  ) : (
+                    constructionSchedules.filter((item) => {
+                      if (item.start_date && item.end_date) return isDateInRange(mobileScheduleDate, item.start_date, item.end_date);
+                      return [item.start_date, item.end_date, item.actual_end_date].filter(Boolean).includes(mobileScheduleDate);
+                    }).map((item) => (
+                      <button type="button" key={`mobile_construction_${item.id}`} onClick={() => window.open(GUSK_PROPERTY_MANAGEMENT_URL, "_blank", "noopener,noreferrer")} className="block w-full rounded-2xl border border-sky-200 bg-sky-50 p-4 text-left">
+                        <div className="font-bold text-sky-950">{item.property_name || "物件未設定"}</div>
+                        <div className="mt-2 grid grid-cols-[72px_1fr] gap-x-2 gap-y-1 text-sm text-slate-700">
+                          <span className="text-slate-500">工事内容</span><span>{item.work_content || "未設定"}</span>
+                          <span className="text-slate-500">業者</span><span>{item.contractor || "未設定"}</span>
+                          <span className="text-slate-500">状態</span><span>{item.status || "未設定"}</span>
+                          <span className="text-slate-500">期間</span><span>{item.start_date || "-"} ～ {item.end_date || "-"}</span>
+                        </div>
+                      </button>
+                    ))
+                  )}
+                </div>
+              </div>
+            </div>
+          ) : null}
         </section>
       </div>
 
