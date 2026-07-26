@@ -119,7 +119,17 @@ export default function RoomListPanel({
                 {rooms.map((room) => (
                   <tr
                     key={room.id}
-                    className="hover:bg-slate-50"
+                    onClick={() => {
+                      if (!readOnly) {
+                        onEditRoom(room);
+                      }
+                    }}
+                    className={[
+                      "hover:bg-slate-50",
+                      readOnly
+                        ? "cursor-default"
+                        : "cursor-pointer active:bg-slate-100",
+                    ].join(" ")}
                   >
                     <td className="border-b px-4 py-3 font-medium">
                       {room.room_name}
@@ -149,7 +159,10 @@ export default function RoomListPanel({
                       {!readOnly ? (
                         <button
                           type="button"
-                          onClick={() => onEditRoom(room)}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            onEditRoom(room);
+                          }}
                           className="rounded-full border border-slate-200 px-3 py-1 text-xs font-bold hover:bg-slate-50"
                         >
                           編集
