@@ -1,4 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
+import PropertyListPanel from "./property-management/PropertyListPanel";
+import RoomListPanel from "./property-management/RoomListPanel";
 
 const API_BASE =
   (import.meta as any).env?.VITE_API_BASE_URL || "https://cleaning-task-api.onrender.com";
@@ -800,132 +802,28 @@ export default function PropertyManagementPage() {
           {error ? <div className="mb-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</div> : null}
           {loading ? <div className="mb-4 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-500">読み込み中...</div> : null}
 
-          <div className="grid grid-cols-1 gap-4 xl:grid-cols-[420px_minmax(0,1fr)]">
-            <Card>
-              <CardBody>
-                <div className="mb-4 flex items-center justify-between gap-3">
-                  <div>
-                    <div className="text-xl font-extrabold">物件一覧</div>
-                    <div className="text-xs text-slate-500 mt-1">{filteredProperties.length} 件</div>
-                  </div>
-                  <div className="flex gap-2">
-                    <ChipButton active={activeFilter === "active"} onClick={() => setActiveFilter("active")}>有効のみ</ChipButton>
-                    <ChipButton active={activeFilter === "all"} onClick={() => setActiveFilter("all")}>すべて</ChipButton>
-                  </div>
-                </div>
+                    <div className="grid grid-cols-1 gap-4 xl:h-[calc(100vh-230px)] xl:min-h-[520px] xl:grid-cols-[420px_minmax(0,1fr)] xl:overflow-hidden">
+            <PropertyListPanel
+              properties={filteredProperties}
+              rooms={rooms}
+              selectedPropertyId={selectedPropertyId}
+              propertySearch={propertySearch}
+              activeFilter={activeFilter}
+              readOnly={readOnly}
+              onPropertySearchChange={setPropertySearch}
+              onActiveFilterChange={setActiveFilter}
+              onSelectProperty={setSelectedPropertyId}
+              onEditProperty={openEditProperty}
+            />
 
-                <div className="mb-4">
-                  <TextInput value={propertySearch} onChange={setPropertySearch} placeholder="物件名・物件コード・キーで検索" />
-                </div>
-
-                <div className="space-y-2">
-                  {filteredProperties.map((p) => {
-                    const selected = p.id === selectedPropertyId;
-                    const roomCount = rooms.filter((r) => r.property_id === p.id).length;
-                    const taskColor = normalizeColor(p.task_color);
-                    return (
-                      <button
-                        key={p.id}
-                        type="button"
-                        onClick={() => setSelectedPropertyId(p.id)}
-                        className={[
-                          "w-full rounded-2xl border px-4 py-3 text-left transition",
-                          selected ? "border-slate-900 bg-slate-900 text-white" : "border-slate-200 bg-white hover:bg-slate-50",
-                        ].join(" ")}
-                      >
-                        <div className="flex items-start justify-between gap-3">
-                          <div>
-                            <div className="text-sm font-bold">{p.sort_order ?? 999}. {p.property_name}</div>
-                            <div className={`mt-1 text-xs ${selected ? "text-white/70" : "text-slate-500"}`}>
-                              {p.property_code} / {p.normalized_name ?? p.property_name}
-                            </div>
-                            <div className={`mt-1 text-xs ${selected ? "text-white/70" : "text-slate-500"}`}>
-                              {roomCount} 室 / 最大対応可能 {p.max_assignable_count ?? "制限なし"} / 物件点数 {p.cleaning_point ?? 60}pt
-                            </div>
-                            <div className={`mt-1 flex items-center gap-2 text-xs ${selected ? "text-white/70" : "text-slate-500"}`}>
-                              <span className="inline-block h-3 w-5 rounded border border-slate-300" style={{ backgroundColor: taskColor }} />
-                              タスク表示色 {taskColor}
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Badge on={p.is_active} />
-                            {!readOnly ? (
-                              <button
-                                type="button"
-                                className={`rounded-full border px-3 py-1 text-xs font-bold ${selected ? "border-white/30 bg-white/10 text-white hover:bg-white/20" : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"}`}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  openEditProperty(p);
-                                }}
-                              >
-                                編集
-                              </button>
-                            ) : (
-                              <span className={selected ? "text-xs text-white/70" : "text-xs text-slate-400"}>閲覧のみ</span>
-                            )}
-                          </div>
-                        </div>
-                      </button>
-                    );
-                  })}
-                  {filteredProperties.length === 0 ? <div className="rounded-2xl border border-slate-200 bg-white px-4 py-8 text-center text-sm text-slate-500">表示できる物件がありません。</div> : null}
-                </div>
-              </CardBody>
-            </Card>
-
-            <Card>
-              <CardBody>
-                <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-                  <div>
-                    <div className="text-xl font-extrabold">部屋一覧{selectedProperty ? ` / ${selectedProperty.property_name}` : ""}</div>
-                    <div className="text-xs text-slate-500 mt-1">{selectedProperty ? `${filteredRooms.length} 件` : "物件を選択してください"}</div>
-                  </div>
-                  <div className="w-full max-w-sm">
-                    <TextInput value={roomSearch} onChange={setRoomSearch} placeholder="部屋名・部屋コード・room_keyで検索" />
-                  </div>
-                </div>
-
-                {!selectedProperty ? (
-                  <div className="rounded-2xl border border-slate-200 bg-white px-4 py-10 text-center text-sm text-slate-500">左の物件一覧から対象物件を選択してください。</div>
-                ) : (
-                  <div className="overflow-auto rounded-2xl border border-slate-200">
-                    <table className="w-full min-w-[860px] text-sm">
-                      <thead>
-                        <tr>
-                          <th className="border-b bg-slate-50 px-4 py-3 text-left font-bold">部屋名</th>
-                          <th className="border-b bg-slate-50 px-4 py-3 text-left font-bold">部屋コード</th>
-                          <th className="border-b bg-slate-50 px-4 py-3 text-left font-bold">room_key</th>
-                          <th className="border-b bg-slate-50 px-4 py-3 text-left font-bold">定員</th>
-                          <th className="border-b bg-slate-50 px-4 py-3 text-left font-bold">並び順</th>
-                          <th className="border-b bg-slate-50 px-4 py-3 text-left font-bold">有効</th>
-                          <th className="border-b bg-slate-50 px-4 py-3 text-left font-bold">操作</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {filteredRooms.map((r) => (
-                          <tr key={r.id} className="hover:bg-slate-50">
-                            <td className="border-b px-4 py-3 font-medium">{r.room_name}</td>
-                            <td className="border-b px-4 py-3">{r.room_code}</td>
-                            <td className="border-b px-4 py-3">{r.room_key}</td>
-                            <td className="border-b px-4 py-3">{r.capacity ?? ""}</td>
-                            <td className="border-b px-4 py-3">{r.room_sort_order ?? ""}</td>
-                            <td className="border-b px-4 py-3"><Badge on={r.is_active} /></td>
-                            <td className="border-b px-4 py-3">
-                              {!readOnly ? (
-                                <button type="button" className="rounded-full border border-slate-200 px-3 py-1 text-xs font-bold hover:bg-slate-50" onClick={() => openEditRoom(r)}>編集</button>
-                              ) : <span className="text-xs text-slate-400">閲覧のみ</span>}
-                            </td>
-                          </tr>
-                        ))}
-                        {filteredRooms.length === 0 ? (
-                          <tr><td colSpan={7} className="px-4 py-10 text-center text-sm text-slate-500">表示できる部屋がありません。</td></tr>
-                        ) : null}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </CardBody>
-            </Card>
+            <RoomListPanel
+              selectedProperty={selectedProperty}
+              rooms={filteredRooms}
+              roomSearch={roomSearch}
+              readOnly={readOnly}
+              onRoomSearchChange={setRoomSearch}
+              onEditRoom={openEditRoom}
+            />
           </div>
         </>
       ) : null}
