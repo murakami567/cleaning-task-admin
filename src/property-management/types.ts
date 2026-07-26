@@ -1,3 +1,5 @@
+export type ActiveFilter = "active" | "all";
+
 export type PropertyMaster = {
   id: string;
   property_code: string;
@@ -35,4 +37,16 @@ export type RoomMaster = {
   note?: string | null;
 };
 
-export type ActiveFilter = "active" | "all";
+export type PrepItem = {
+  task_id: string;
+  task_date: string;
+  property_name: string;
+  room_name: string;
+  room_key: string;
+  towel_count: number | string;
+  prep_d: number;
+  prep_s: number;
+  prep_spare_s: number;
+  prep_ta: number;
+  note: string;
+};
