@@ -1,24 +1,9 @@
-import React from "react";
+import type {
+  PropertyMaster,
+  RoomMaster,
+} from "./types";
 
-export type RoomListItem = {
-  id: string;
-  property_id: string;
-  room_name: string;
-  room_code: string | null;
-  room_key: string;
-  capacity: number | null;
-  room_sort_order: number | null;
-  is_active: boolean;
-};
-
-type Props = {
-  rooms: RoomListItem[];
-  hasSelectedProperty: boolean;
-  readOnly: boolean;
-  onEdit: (room: RoomListItem) => void;
-};
-
-function Badge({ on }: { on: boolean }) {
+function StatusBadge({ on }: { on: boolean }) {
   return (
     <span
       className={[
@@ -28,68 +13,171 @@ function Badge({ on }: { on: boolean }) {
           : "border-rose-200 bg-rose-50 text-rose-700",
       ].join(" ")}
     >
-      <span className={["h-2 w-2 rounded-full", on ? "bg-emerald-500" : "bg-rose-500"].join(" ")} />
+      <span
+        className={[
+          "h-2 w-2 rounded-full",
+          on ? "bg-emerald-500" : "bg-rose-500",
+        ].join(" ")}
+      />
+
       {on ? "ON" : "OFF"}
     </span>
   );
 }
 
-export default function RoomListPanel({ rooms, hasSelectedProperty, readOnly, onEdit }: Props) {
-  if (!hasSelectedProperty) {
-    return (
-      <div className="rounded-2xl border border-slate-200 bg-white px-4 py-10 text-center text-sm text-slate-500">
-        左の物件一覧から対象物件を選択してください。
-      </div>
-    );
-  }
+type RoomListPanelProps = {
+  selectedProperty: PropertyMaster | null;
+  rooms: RoomMaster[];
+  roomSearch: string;
+  readOnly: boolean;
+  onRoomSearchChange: (value: string) => void;
+  onEditRoom: (room: RoomMaster) => void;
+};
 
+export default function RoomListPanel({
+  selectedProperty,
+  rooms,
+  roomSearch,
+  readOnly,
+  onRoomSearchChange,
+  onEditRoom,
+}: RoomListPanelProps) {
   return (
-    <div className="min-h-0 flex-1 overflow-auto overscroll-contain rounded-2xl border border-slate-200">
-      <table className="w-full min-w-[860px] text-sm">
-        <thead className="sticky top-0 z-10 bg-slate-50">
-          <tr>
-            <th className="border-b px-4 py-3 text-left font-bold">部屋名</th>
-            <th className="border-b px-4 py-3 text-left font-bold">部屋コード</th>
-            <th className="border-b px-4 py-3 text-left font-bold">room_key</th>
-            <th className="border-b px-4 py-3 text-left font-bold">定員</th>
-            <th className="border-b px-4 py-3 text-left font-bold">並び順</th>
-            <th className="border-b px-4 py-3 text-left font-bold">有効</th>
-            <th className="border-b px-4 py-3 text-left font-bold">操作</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rooms.map((room) => (
-            <tr key={room.id} className="hover:bg-slate-50">
-              <td className="border-b px-4 py-3 font-medium">{room.room_name}</td>
-              <td className="border-b px-4 py-3">{room.room_code}</td>
-              <td className="border-b px-4 py-3">{room.room_key}</td>
-              <td className="border-b px-4 py-3">{room.capacity ?? ""}</td>
-              <td className="border-b px-4 py-3">{room.room_sort_order ?? ""}</td>
-              <td className="border-b px-4 py-3"><Badge on={room.is_active} /></td>
-              <td className="border-b px-4 py-3">
-                {!readOnly ? (
-                  <button
-                    type="button"
-                    className="rounded-full border border-slate-200 px-3 py-1 text-xs font-bold hover:bg-slate-50"
-                    onClick={() => onEdit(room)}
+    <section className="flex min-h-0 min-w-0 flex-col overflow-hidden rounded-[24px] border border-slate-200 bg-white shadow-sm">
+      <div className="shrink-0 border-b border-slate-100 p-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <div className="text-xl font-extrabold">
+              部屋一覧
+              {selectedProperty
+                ? ` / ${selectedProperty.property_name}`
+                : ""}
+            </div>
+
+            <div className="mt-1 text-xs text-slate-500">
+              {selectedProperty
+                ? `${rooms.length} 件`
+                : "物件を選択してください"}
+            </div>
+          </div>
+
+          <div className="w-full max-w-sm">
+            <input
+              type="search"
+              value={roomSearch}
+              onChange={(event) =>
+                onRoomSearchChange(event.target.value)
+              }
+              placeholder="部屋名・部屋コード・room_keyで検索"
+              className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-slate-300"
+            />
+          </div>
+        </div>
+      </div>
+
+      <div className="min-h-0 flex-1 overflow-auto p-4">
+        {!selectedProperty ? (
+          <div className="rounded-2xl border border-slate-200 bg-white px-4 py-10 text-center text-sm text-slate-500">
+            左の物件一覧から対象物件を選択してください。
+          </div>
+        ) : (
+          <div className="min-w-max overflow-hidden rounded-2xl border border-slate-200">
+            <table className="w-full min-w-[860px] text-sm">
+              <thead className="sticky top-0 z-10">
+                <tr>
+                  <th className="border-b bg-slate-50 px-4 py-3 text-left font-bold">
+                    部屋名
+                  </th>
+
+                  <th className="border-b bg-slate-50 px-4 py-3 text-left font-bold">
+                    部屋コード
+                  </th>
+
+                  <th className="border-b bg-slate-50 px-4 py-3 text-left font-bold">
+                    room_key
+                  </th>
+
+                  <th className="border-b bg-slate-50 px-4 py-3 text-left font-bold">
+                    定員
+                  </th>
+
+                  <th className="border-b bg-slate-50 px-4 py-3 text-left font-bold">
+                    並び順
+                  </th>
+
+                  <th className="border-b bg-slate-50 px-4 py-3 text-left font-bold">
+                    有効
+                  </th>
+
+                  <th className="border-b bg-slate-50 px-4 py-3 text-left font-bold">
+                    操作
+                  </th>
+                </tr>
+              </thead>
+
+              <tbody>
+                {rooms.map((room) => (
+                  <tr
+                    key={room.id}
+                    className="hover:bg-slate-50"
                   >
-                    編集
-                  </button>
-                ) : (
-                  <span className="text-xs text-slate-400">閲覧のみ</span>
-                )}
-              </td>
-            </tr>
-          ))}
-          {rooms.length === 0 ? (
-            <tr>
-              <td colSpan={7} className="px-4 py-10 text-center text-sm text-slate-500">
-                表示できる部屋がありません。
-              </td>
-            </tr>
-          ) : null}
-        </tbody>
-      </table>
-    </div>
+                    <td className="border-b px-4 py-3 font-medium">
+                      {room.room_name}
+                    </td>
+
+                    <td className="border-b px-4 py-3">
+                      {room.room_code}
+                    </td>
+
+                    <td className="border-b px-4 py-3">
+                      {room.room_key}
+                    </td>
+
+                    <td className="border-b px-4 py-3">
+                      {room.capacity ?? ""}
+                    </td>
+
+                    <td className="border-b px-4 py-3">
+                      {room.room_sort_order ?? ""}
+                    </td>
+
+                    <td className="border-b px-4 py-3">
+                      <StatusBadge on={room.is_active} />
+                    </td>
+
+                    <td className="border-b px-4 py-3">
+                      {!readOnly ? (
+                        <button
+                          type="button"
+                          onClick={() => onEditRoom(room)}
+                          className="rounded-full border border-slate-200 px-3 py-1 text-xs font-bold hover:bg-slate-50"
+                        >
+                          編集
+                        </button>
+                      ) : (
+                        <span className="text-xs text-slate-400">
+                          閲覧のみ
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+
+                {rooms.length === 0 ? (
+                  <tr>
+                    <td
+                      colSpan={7}
+                      className="px-4 py-10 text-center text-sm text-slate-500"
+                    >
+                      表示できる部屋がありません。
+                    </td>
+                  </tr>
+                ) : null}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </section>
   );
 }
