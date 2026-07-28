@@ -46,7 +46,7 @@ jobs:
 
       - name: Verify production build
         run: |
-          npm ci
+          npm install --no-audit --no-fund
           npm run build
 
       - name: Commit production implementation
