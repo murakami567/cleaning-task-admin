@@ -4,8 +4,8 @@
   "version": "0.0.1",
   "type": "module",
   "scripts": {
-    "dev": "node scripts/patch-equipment-reports.mjs && vite",
-    "build": "node scripts/patch-facility-photos.mjs && node scripts/patch-admin-tasks-priority-display.mjs && node scripts/patch-equipment-reports.mjs && vite build",
+    "dev": "node scripts/patch-equipment-reports.mjs && node scripts/patch-check-task-status.mjs && vite",
+    "build": "node scripts/patch-facility-photos.mjs && node scripts/patch-admin-tasks-priority-display.mjs && node scripts/patch-equipment-reports.mjs && node scripts/patch-check-task-status.mjs && vite build",
     "preview": "vite preview"
   },
   "dependencies": {
