@@ -22,6 +22,9 @@ export const PROPERTY_ORDER = [
   "駅前",
   "比恵",
   "アトラス",
+  "プレミアージュ",
+  "リベール",
+  "ルッシェ",
 ] as const;
 
 function normalizePropertyName(name?: string | null) {
@@ -32,6 +35,7 @@ function normalizePropertyName(name?: string | null) {
   // アクシオン美野島 → アクシオン リネーム時の旧データも吸収する
   if (value.includes("アクシオン")) return "アクシオン";
   if (value.includes("ウーブル博多")) return "ウーブル博多";
+  if (value.includes("プレミアージュ")) return "プレミアージュ";
   if (value.includes("グランデエス")) return "グランデエス";
   if (value.includes("いそのビル")) return "いそのビル";
   if (value.includes("FFFホテル")) return "FFFホテル";
@@ -40,6 +44,8 @@ function normalizePropertyName(name?: string | null) {
   if (value.includes("ウィングス")) return "ウィングス";
   if (value.includes("エスコート")) return "エスコート";
   if (value.includes("アトラス")) return "アトラス";
+  if (value.includes("リベール")) return "リベール";
+  if (value.includes("ルッシェ")) return "ルッシェ";
   if (value.includes("ロイズ")) return "ロイズ";
   if (value.includes("県庁前")) return "県庁前";
   if (value.includes("西中洲")) return "西中洲";
@@ -64,7 +70,13 @@ export function getPropertyOrderIndex(name?: string | null) {
 }
 
 export function comparePropertyOrder(a?: string | null, b?: string | null) {
-  return getPropertyOrderIndex(a) - getPropertyOrderIndex(b);
+  const indexDiff = getPropertyOrderIndex(a) - getPropertyOrderIndex(b);
+  if (indexDiff !== 0) return indexDiff;
+
+  // マスタ順に未登録の物件でも、同じ物件が必ずまとまるよう物件名で比較する。
+  const normalizedA = normalizePropertyName(a);
+  const normalizedB = normalizePropertyName(b);
+  return normalizedA.localeCompare(normalizedB, "ja", { numeric: true });
 }
 
 export function sortTasksByPropertyOrder<
