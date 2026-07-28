@@ -90,11 +90,19 @@ export default function EmployeeTasksPage() {
           prev.map((task) => (task.id === taskId ? { ...task, status, note } : task))
         );
       } else {
-        await api.post("/tasks/update", {
+        await api.post(
+          selectedTask.taskKind === "check"
+            ? "/api/employee/check-tasks/update"
+            : "/tasks/update",
+          {
           task_id: taskId,
-          status: denormalizeCleaningTaskStatus(status),
-          note,
-        });
+            status:
+              selectedTask.taskKind === "check"
+                ? denormalizeCheckTaskStatus(status)
+                : denormalizeCleaningTaskStatus(status),
+            note,
+          }
+        );
 
         if (selectedTask.taskKind === "cleaning") {
           setCleaningTasks((prev) =>
@@ -311,6 +319,7 @@ function TaskDetailModal({
   const [status, setStatus] = useState(normalizeStatus(task.status));
   const [note, setNote] = useState(task.note || "");
   const [lostItemOpen, setLostItemOpen] = useState(false);
+  const [equipmentReportOpen, setEquipmentReportOpen] = useState(false);
 
   const canReportLostItem = task.taskKind !== "other";
 
@@ -365,19 +374,29 @@ function TaskDetailModal({
                 onChange={(e) => setStatus(e.target.value)}
                 className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm outline-none"
               >
-                <option value="pending">未着手</option>
-                {task.taskKind !== "other" ? (
-                  <option value="started">清掃開始</option>
-                ) : null}
-                <option value="in_progress">
-                  {task.taskKind === "other" ? "対応中" : "清掃中"}
-                </option>
-                <option value="completed">
-                  {task.taskKind === "other" ? "完了" : "清掃完了"}
-                </option>
-                {task.taskKind !== "other" ? (
-                  <option value="cancelled">CXL</option>
-                ) : null}
+                {task.taskKind === "check" ? (
+                  <>
+                    <option value="pending">未着手</option>
+                    <option value="check_completed">チェック完了</option>
+                    <option value="cancelled">CXL</option>
+                  </>
+                ) : (
+                  <>
+                    <option value="pending">未着手</option>
+                    {task.taskKind !== "other" ? (
+                      <option value="started">清掃開始</option>
+                    ) : null}
+                    <option value="in_progress">
+                      {task.taskKind === "other" ? "対応中" : "清掃中"}
+                    </option>
+                    <option value="completed">
+                      {task.taskKind === "other" ? "完了" : "清掃完了"}
+                    </option>
+                    {task.taskKind !== "other" ? (
+                      <option value="cancelled">CXL</option>
+                    ) : null}
+                  </>
+                )}
               </select>
             </div>
 
@@ -393,13 +412,22 @@ function TaskDetailModal({
             </div>
 
             {canReportLostItem ? (
-              <button
-                type="button"
-                onClick={() => setLostItemOpen(true)}
-                className="w-full rounded-2xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm font-bold text-amber-700 hover:bg-amber-100"
-              >
-                忘れ物報告
-              </button>
+              <>
+                <button
+                  type="button"
+                  onClick={() => setLostItemOpen(true)}
+                  className="w-full rounded-2xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm font-bold text-amber-700 hover:bg-amber-100"
+                >
+                  忘れ物報告
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEquipmentReportOpen(true)}
+                  className="w-full rounded-2xl border border-orange-300 bg-orange-50 px-4 py-3 text-sm font-bold text-orange-600 hover:bg-orange-100"
+                >
+                  設備トラブル報告
+                </button>
+              </>
             ) : null}
           </div>
         </div>
@@ -428,6 +456,13 @@ function TaskDetailModal({
         <LostItemModal
           task={task}
           onClose={() => setLostItemOpen(false)}
+        />
+      ) : null}
+
+      {equipmentReportOpen ? (
+        <EquipmentTroubleModal
+          task={task}
+          onClose={() => setEquipmentReportOpen(false)}
         />
       ) : null}
     </div>
@@ -586,6 +621,121 @@ function LostItemModal({
   );
 }
 
+function EquipmentTroubleModal({
+  task,
+  onClose,
+}: {
+  task: EmployeeTask;
+  onClose: () => void;
+}) {
+  const [description, setDescription] = useState("");
+  const [photoDataUrl, setPhotoDataUrl] = useState("");
+  const [processingPhoto, setProcessingPhoto] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const taskDate = task.date || task.dueDate || "";
+
+  async function handleFileChange(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      setProcessingPhoto(true);
+      setPhotoDataUrl(await compressImage(file));
+    } catch (error) {
+      console.error("設備報告画像処理エラー:", error);
+      alert("写真の読み込みに失敗しました。");
+    } finally {
+      setProcessingPhoto(false);
+      e.target.value = "";
+    }
+  }
+
+  async function handleSave() {
+    if (saving) return;
+    if (!description.trim()) {
+      alert("報告内容を入力してください。");
+      return;
+    }
+    if (!photoDataUrl) {
+      alert("写真を添付してください。");
+      return;
+    }
+    try {
+      setSaving(true);
+      await api.post("/api/employee/facility-troubles", {
+        task_id: task.id,
+        property_name: task.propertyName || "",
+        room_name: task.roomName || "",
+        task_date: taskDate,
+        report_content: description.trim(),
+        photo_url: photoDataUrl,
+      });
+      alert("設備トラブルを報告しました。");
+      onClose();
+    } catch (error) {
+      console.error("設備トラブル報告エラー:", error);
+      alert(error instanceof Error ? error.message : "報告の保存に失敗しました。");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 px-3 py-4 sm:px-4"
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      <div className="flex w-full max-w-md flex-col overflow-hidden rounded-[26px] border border-slate-200 bg-white shadow-2xl">
+        <div className="flex items-center justify-between border-b border-slate-200 px-4 py-4 sm:px-5">
+          <div className="text-xl font-bold text-slate-900">設備トラブル報告</div>
+          <button onClick={onClose} className="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">閉じる</button>
+        </div>
+
+        <div className="max-h-[68vh] space-y-3 overflow-y-auto px-4 py-4 sm:px-5">
+          <InfoRow label="部屋" value={((task.propertyName || "-") + " " + (task.roomName || "")).trim()} />
+          <InfoRow label="日付" value={formatDate(taskDate)} />
+
+          <div>
+            <div className="mb-2 text-sm font-semibold text-slate-700">報告内容</div>
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="例：エアコンが動かない、排水が詰まっている、照明が切れている"
+              rows={5}
+              className="w-full resize-none rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none"
+            />
+          </div>
+
+          <div>
+            <div className="mb-2 text-sm font-semibold text-slate-700">写真（必須）</div>
+            {photoDataUrl ? (
+              <div className="space-y-2">
+                <img src={photoDataUrl} alt="設備トラブルの写真" className="w-full rounded-2xl border border-slate-200" />
+                <button type="button" onClick={() => setPhotoDataUrl("")} className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50">撮り直す</button>
+              </div>
+            ) : (
+              <label className="flex cursor-pointer items-center justify-center rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 px-4 py-10 text-sm font-semibold text-slate-600 hover:bg-slate-100">
+                <input type="file" accept="image/*" capture="environment" onChange={handleFileChange} className="hidden" />
+                {processingPhoto ? "読み込み中..." : "📷 撮影 / 写真を選択"}
+              </label>
+            )}
+          </div>
+        </div>
+
+        <div className="border-t border-slate-200 bg-white px-4 py-4 sm:px-5">
+          <div className="flex gap-3">
+            <button onClick={onClose} className="flex-1 rounded-2xl border border-slate-200 bg-white px-4 py-4 text-sm font-bold text-slate-700 hover:bg-slate-50">キャンセル</button>
+            <button onClick={handleSave} disabled={saving || !description.trim() || !photoDataUrl} className="flex-1 rounded-2xl bg-slate-900 px-4 py-4 text-sm font-bold text-white hover:bg-black disabled:opacity-50">
+              {saving ? "保存中..." : "保存"}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 async function compressImage(file: File): Promise<string> {
   // 端末のメモリを食わないよう最大辺 1024px / JPEG quality 0.7 に圧縮。
   const dataUrl = await new Promise<string>((resolve, reject) => {
@@ -731,6 +881,12 @@ function buildTaskCardTitle(task: EmployeeTask) {
 }
 
 function getStatusLabel(status: string, taskKind: EmployeeTask["taskKind"] = "cleaning") {
+  if (status === "check_completed") {
+    return {
+      label: "チェック完了",
+      className: "bg-indigo-50 text-indigo-700",
+    };
+  }
   if (status === "completed") {
     return {
       label: taskKind === "other" ? "完了" : "清掃完了",
@@ -762,11 +918,18 @@ function getStatusLabel(status: string, taskKind: EmployeeTask["taskKind"] = "cl
 }
 
 function normalizeStatus(status: string) {
+  if (status === "check_completed") return "check_completed";
   if (status === "completed") return "completed";
   if (status === "cancelled") return "cancelled";
   if (status === "started") return "started";
   if (status === "in_progress") return "in_progress";
   return "pending";
+}
+
+function denormalizeCheckTaskStatus(status: string) {
+  if (status === "check_completed") return "チェック完了";
+  if (status === "cancelled") return "CXL";
+  return "未着手";
 }
 
 function denormalizeCleaningTaskStatus(status: string) {

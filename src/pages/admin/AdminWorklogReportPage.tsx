@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import AdminWorklogEditor from "./AdminWorklogEditor";
 
 const API_BASE =
   (import.meta as any).env?.VITE_API_BASE_URL || "https://cleaning-task-api.onrender.com";
@@ -418,73 +419,10 @@ export default function AdminWorklogReportPage() {
           </div>
         ) : null}
 
-        {loading ? (
-          <div className="rounded-2xl border border-slate-200 bg-white px-4 py-6 text-sm text-slate-500">
-            読み込み中...
-          </div>
-        ) : groupedWorklogs.length === 0 ? (
-          <div className="rounded-2xl border border-slate-200 bg-white px-4 py-8 text-center text-sm text-slate-500">
-            対象日の実働報告はありません。
-          </div>
-        ) : (
-          <Card>
-            <div className="overflow-auto">
-              <table className="w-full min-w-[1580px] text-sm">
-                <thead>
-                  <tr>
-                    <th className="border-b bg-slate-50 px-4 py-3 text-left font-bold">スタッフ</th>
-                    <th className="border-b bg-slate-50 px-4 py-3 text-left font-bold">日付</th>
-                    <th className="border-b bg-slate-50 px-4 py-3 text-left font-bold">物件</th>
-                    <th className="border-b bg-slate-50 px-4 py-3 text-left font-bold">部屋</th>
-                    <th className="border-b bg-slate-50 px-4 py-3 text-left font-bold">作業開始</th>
-                    <th className="border-b bg-slate-50 px-4 py-3 text-left font-bold">出勤</th>
-                    <th className="border-b bg-slate-50 px-4 py-3 text-left font-bold">退勤</th>
-                    <th className="border-b bg-slate-50 px-4 py-3 text-left font-bold">アラート</th>
-                    <th className="border-b bg-slate-50 px-4 py-3 text-left font-bold">休憩</th>
-                    <th className="border-b bg-slate-50 px-4 py-3 text-left font-bold">作業時間</th>
-                    <th className="border-b bg-slate-50 px-4 py-3 text-left font-bold">作業種別</th>
-                    <th className="border-b bg-slate-50 px-4 py-3 text-left font-bold">備考</th>
-                    <th className="border-b bg-slate-50 px-4 py-3 text-left font-bold">担当部屋数</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {groupedWorklogs.map((row) => (
-                    <tr key={row.groupKey} className="hover:bg-slate-50">
-                      <td className="border-b px-4 py-3">
-                        <div className="font-medium">{row.staff_name || "-"}</div>
-                        <div className="text-xs text-slate-500">{row.staff_code || ""}</div>
-                      </td>
-                      <td className="border-b px-4 py-3">{row.work_date || "-"}</td>
-                      <td className="border-b px-4 py-3 whitespace-pre-wrap">
-                        {row.property_names.length > 0 ? row.property_names.join(" / ") : "-"}
-                      </td>
-                      <td className="border-b px-4 py-3 whitespace-pre-wrap">
-                        {row.room_names.length > 0 ? row.room_names.join(" / ") : "-"}
-                      </td>
-                      <td className="border-b px-4 py-3">{row.work_start_time || "-"}</td>
-                      <td className="border-b px-4 py-3">{row.start_time || "-"}</td>
-                      <td className="border-b px-4 py-3">{row.end_time || "-"}</td>
-                      <td className="border-b px-4 py-3"><WorklogAlertBadges row={row} /></td>
-                      <td className="border-b px-4 py-3">{row.break_minutes || 0}分</td>
-                      <td className="border-b px-4 py-3 font-medium">
-                        {formatMinutes(Number(row.work_minutes || 0))}
-                      </td>
-                      <td className="border-b px-4 py-3">
-                        {row.work_types.length > 0
-                          ? workTypeLabel(row.work_types.join(","))
-                          : "-"}
-                      </td>
-                      <td className="border-b px-4 py-3 whitespace-pre-wrap">
-                        {row.notes.length > 0 ? row.notes.join("\n---\n") : "-"}
-                      </td>
-                      <td className="border-b px-4 py-3">{row.room_names.length}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </Card>
-        )}
+        <AdminWorklogEditor
+          selectedDate={selectedDate}
+          onChanged={() => void loadWorklogs(selectedDate)}
+        />
       </div>
     </div>
   );

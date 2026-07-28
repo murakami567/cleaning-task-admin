@@ -29,6 +29,7 @@ type FacilityItem = {
   end_date: string | null;
   status: string;
   note: string;
+  photo_url: string | null;
 };
 
 const FACILITY_STATUS_OPTIONS = ["保留", "対応中", "対応済み"];
@@ -147,6 +148,7 @@ export default function FacilityManagementPage() {
     end_date: new Date().toISOString().slice(0, 10),
     status: "保留",
     note: "",
+    photo_url: "",
   });
 
   const loadAll = async () => {
@@ -216,6 +218,7 @@ export default function FacilityManagementPage() {
       end_date: new Date().toISOString().slice(0, 10),
       status: "保留",
       note: "",
+      photo_url: "",
     });
     setDrawerOpen(true);
   };
@@ -247,6 +250,7 @@ export default function FacilityManagementPage() {
       end_date: form.end_date,
       status: normalizeFacilityStatus(form.status),
       note: form.note,
+      photo_url: form.photo_url || null,
     };
 
     const url = selected ? `${API_BASE}/facilities/update` : `${API_BASE}/facilities/create`;
@@ -317,6 +321,7 @@ export default function FacilityManagementPage() {
               <tr>
                 <th className="text-left px-3 py-3">物件/部屋</th>
                 <th className="text-left px-3 py-3 w-[130px]">担当</th>
+                <th className="text-left px-3 py-3 w-[96px]">写真</th>
                 <th className="text-left px-3 py-3">対応内容</th>
                 <th className="text-left px-3 py-3 w-[150px]">期間</th>
                 <th className="text-left px-3 py-3 w-[110px]">状態</th>
@@ -336,6 +341,30 @@ export default function FacilityManagementPage() {
                     <div className="text-xs text-slate-500 mt-1">ID: {it.id.slice(0, 5)}</div>
                   </td>
                   <td className="px-3 py-4">{it.assignee}</td>
+                  <td className="px-3 py-4">
+                    {it.photo_url ? (
+                      <a
+                        href={it.photo_url}
+                        target="_blank"
+                        rel="noreferrer"
+                        onClick={(event) => event.stopPropagation()}
+                        aria-label="設備対応写真"
+                        className="block h-16 w-20 overflow-hidden rounded-xl border border-slate-200 bg-slate-50"
+                      >
+                        <img
+                          src={it.photo_url}
+                          alt={it.property_name + " " + it.room_name + " 設備対応写真"}
+                          className="h-full w-full object-cover"
+                          loading="lazy"
+                          onError={(event) => {
+                            event.currentTarget.style.display = "none";
+                          }}
+                        />
+                      </a>
+                    ) : (
+                      <span className="text-xs text-slate-400">なし</span>
+                    )}
+                  </td>
                   <td className="px-3 py-4">
                     <div className="font-bold">{it.content}</div>
                     {it.note ? <div className="text-xs text-slate-500 mt-1">📝 {it.note}</div> : null}
@@ -428,6 +457,20 @@ export default function FacilityManagementPage() {
               onChange={(v: string) => setForm((s) => ({ ...s, end_date: v }))}
             />
           </Field>
+
+          {form.photo_url ? (
+            <div className="sm:col-span-2">
+              <Field label="報告写真">
+                <a href={form.photo_url} target="_blank" rel="noreferrer">
+                  <img
+                    src={form.photo_url}
+                    alt="設備対応の報告写真"
+                    className="max-h-72 w-full rounded-2xl border border-slate-200 bg-slate-50 object-contain"
+                  />
+                </a>
+              </Field>
+            </div>
+          ) : null}
 
           <div className="sm:col-span-2">
             <Field label="対応内容">
