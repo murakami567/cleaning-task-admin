@@ -1,5 +1,4 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { sortTasksByPropertyOrder } from "./utils/propertyOrder";
 
 /* =========================
  * Options
@@ -134,36 +133,6 @@ function getTowelCount(
   return guests;
 }
 
-const PROPERTY_COLORS: Record<string, string> = {
-  "FFFホテル": "#ffffff",
-  "住吉": "#ffffff",
-  "駅前": "#ffffff",
-  "エスコート": "#ffe5e5",
-  "ジェン": "#f0f0f0",
-  "薬院": "#ffe8cc",
-  "県庁前": "#e6ffe6",
-  "ウィングス": "#e6f0ff",
-  "玉井": "#f0f0f0",
-  "西中洲": "#f3e6ff",
-  "アクシオン": "#f5f0e6",
-  "ルッシェ": "#f5f0e6",
-  "ウーブル博多": "#f5f0e6",
-  "冷泉": "#ffe5e5",
-  "ロイズ": "#f3e6ff",
-  "やなぎ橋": "#f5f0e6",
-  "美野島": "#e6ffe6",
-  "ブランシェ": "#e6ffe6",
-  "いそのビル": "#ffe5e5",
-  "アトラス": "#ffffff",
-  "東光": "#f5f0e6",
-  "比恵モダン": "#f0f0f0",
-  "浄水": "#e6f0ff",
-};
-
-const PROPERTY_NAME_KEYS = Object.keys(PROPERTY_COLORS).sort(
-  (a, b) => b.length - a.length
-);
-
 function normalizePropertyLabel(raw: string) {
   return String(raw || "")
     .normalize("NFKC")
@@ -171,20 +140,9 @@ function normalizePropertyLabel(raw: string) {
     .trim();
 }
 
-function extractPropertyName(raw: string) {
-  const value = normalizePropertyLabel(raw);
-  if (!value) return "";
-
-  const found = PROPERTY_NAME_KEYS.find((name) => {
-    const normalizedName = normalizePropertyLabel(name);
-    return value.startsWith(normalizedName) || value.includes(normalizedName);
-  });
-  return found || value;
-}
-
-function getPropertyColor(raw: string) {
-  const propertyName = extractPropertyName(raw);
-  return PROPERTY_COLORS[propertyName] || "#ffffff";
+function normalizeTaskColor(value?: string | null) {
+  const color = String(value || "#ffffff").trim();
+  return /^#[0-9a-fA-F]{6}$/.test(color) ? color : "#ffffff";
 }
 
 /* =========================
@@ -516,6 +474,7 @@ type PropertyMaster = {
   property_name: string;
   normalized_name: string | null;
   sort_order: number | null;
+  task_color?: string | null;
   is_active: boolean;
 };
 
@@ -920,6 +879,7 @@ export default function AdminTasksPagePreview() {
 
   const [properties, setProperties] = useState<PropertyMaster[]>([]);
   const [rooms, setRooms] = useState<RoomMaster[]>([]);
+  const [masterRooms, setMasterRooms] = useState<RoomMaster[]>([]);
   const [selectedPropertyId, setSelectedPropertyId] = useState("");
   const [selectedRoomId, setSelectedRoomId] = useState("");
 
@@ -941,11 +901,34 @@ export default function AdminTasksPagePreview() {
   const propertyNameToId = useMemo(() => {
     const map = new Map<string, string>();
     for (const p of properties) {
-      if (p.property_name) map.set(p.property_name, p.id);
-      if (p.normalized_name) map.set(p.normalized_name, p.id);
+      if (p.property_name) {
+        map.set(normalizePropertyLabel(p.property_name), p.id);
+      }
+      if (p.normalized_name) {
+        map.set(normalizePropertyLabel(p.normalized_name), p.id);
+      }
     }
     return map;
   }, [properties]);
+
+  const resolveTaskProperty = (taskProperty: string) => {
+    const key = normalizePropertyLabel(taskProperty);
+    const exact = properties.find(
+      (property) =>
+        normalizePropertyLabel(property.property_name) === key ||
+        normalizePropertyLabel(property.normalized_name || "") === key
+    );
+    if (exact) return exact;
+
+    return properties.find((property) => {
+      const names = [property.property_name, property.normalized_name]
+        .map((name) => normalizePropertyLabel(name || ""))
+        .filter(Boolean);
+      return names.some(
+        (name) => name.includes(key) || (key && key.includes(name))
+      );
+    });
+  };
 
   // 担当者を物件対応設定に応じて優先表示する。
   // チェック解除済み = 最優先、対応可能 = 次点。対象外は表示しない。
@@ -953,7 +936,9 @@ export default function AdminTasksPagePreview() {
     attendees: Attendee[],
     propertyName: string | undefined | null
   ): Attendee[] => {
-    const propertyId = propertyName ? propertyNameToId.get(propertyName) : "";
+    const propertyId = propertyName
+      ? propertyNameToId.get(normalizePropertyLabel(propertyName))
+      : "";
     if (!propertyId) return attendees;
 
     return attendees
@@ -1008,14 +993,30 @@ export default function AdminTasksPagePreview() {
   );
 
   const loadProperties = async () => {
-    const res = await fetch(`${API_BASE}/properties`);
-    if (!res.ok) throw new Error(`properties fetch failed: ${res.status}`);
-    const data: PropertyMaster[] = await res.json();
+    const [propertyRes, roomRes] = await Promise.all([
+      fetch(`${API_BASE}/properties`),
+      fetch(`${API_BASE}/rooms`),
+    ]);
+
+    if (!propertyRes.ok) {
+      throw new Error(`properties fetch failed: ${propertyRes.status}`);
+    }
+    if (!roomRes.ok) {
+      throw new Error(`rooms fetch failed: ${roomRes.status}`);
+    }
+
+    const propertyData: PropertyMaster[] = await propertyRes.json();
+    const roomData: RoomMaster[] = await roomRes.json();
+
     setProperties(
-      data
-        .filter((p) => p.is_active)
-        .sort((a, b) => (a.sort_order ?? 9999) - (b.sort_order ?? 9999))
+      propertyData
+        .filter((property) => property.is_active)
+        .sort(
+          (a, b) =>
+            (a.sort_order ?? 999999) - (b.sort_order ?? 999999)
+        )
     );
+    setMasterRooms(roomData.filter((room) => room.is_active));
   };
 
   const loadRooms = async (propertyId: string) => {
@@ -1120,20 +1121,72 @@ export default function AdminTasksPagePreview() {
   }, [autoRefresh, viewMode, selectedDate]);
 
   const visibleCleaningTasks = useMemo(() => {
-  const list = Array.isArray(cleaningTasks) ? cleaningTasks : [];
+    const list = Array.isArray(cleaningTasks) ? cleaningTasks : [];
 
-  let tasks: CleaningTask[] = [];
+    let tasks: CleaningTask[] = [];
 
-  if (viewMode === "TODAY") {
-    tasks = list.filter((t) => normalizeIsoDate(t.date) === baseDate);
-  } else if (viewMode === "FUTURE") {
-    tasks = list.filter((t) => isFutureDate(t.date));
-  } else {
-    tasks = list.filter((t) => normalizeIsoDate(t.date) === selectedDate);
-  }
+    if (viewMode === "TODAY") {
+      tasks = list.filter((task) => normalizeIsoDate(task.date) === baseDate);
+    } else if (viewMode === "FUTURE") {
+      tasks = list.filter((task) => isFutureDate(task.date));
+    } else {
+      tasks = list.filter(
+        (task) => normalizeIsoDate(task.date) === selectedDate
+      );
+    }
 
-  return sortTasksByPropertyOrder(tasks, viewMode);
-}, [cleaningTasks, viewMode, selectedDate]);
+    const roomOrder = new Map<string, number>();
+    masterRooms.forEach((room, index) => {
+      const order = room.room_sort_order ?? index + 1;
+      [room.room_name, room.room_code, room.room_key, room.normalized_room_key]
+        .filter(Boolean)
+        .forEach((name) => {
+          roomOrder.set(
+            `${room.property_id}::${normalizePropertyLabel(String(name))}`,
+            order
+          );
+        });
+    });
+
+    return [...tasks].sort((a, b) => {
+      if (viewMode === "FUTURE") {
+        const dateDiff = String(a.date || "").localeCompare(
+          String(b.date || "")
+        );
+        if (dateDiff !== 0) return dateDiff;
+      }
+
+      const propertyA = resolveTaskProperty(a.property);
+      const propertyB = resolveTaskProperty(b.property);
+      const propertyOrderA = propertyA?.sort_order ?? 999999;
+      const propertyOrderB = propertyB?.sort_order ?? 999999;
+
+      if (propertyOrderA !== propertyOrderB) {
+        return propertyOrderA - propertyOrderB;
+      }
+
+      if (!propertyA && !propertyB && a.property !== b.property) {
+        return a.property.localeCompare(b.property, "ja", { numeric: true });
+      }
+
+      const roomOrderA =
+        roomOrder.get(
+          `${propertyA?.id || ""}::${normalizePropertyLabel(a.room || "")}`
+        ) ?? 999999;
+      const roomOrderB =
+        roomOrder.get(
+          `${propertyB?.id || ""}::${normalizePropertyLabel(b.room || "")}`
+        ) ?? 999999;
+
+      if (roomOrderA !== roomOrderB) {
+        return roomOrderA - roomOrderB;
+      }
+
+      return String(a.room || "").localeCompare(String(b.room || ""), "ja", {
+        numeric: true,
+      });
+    });
+  }, [cleaningTasks, viewMode, selectedDate, properties, masterRooms]);
 
   const visibleNonCleaningTasks = useMemo(() => {
   const list = Array.isArray(nonCleaningTasks) ? nonCleaningTasks : [];
@@ -1378,7 +1431,7 @@ export default function AdminTasksPagePreview() {
       const assignees = assigneeLabels(task.assigneeIds ?? [], attendees);
       return [
         statusLabel(task.status),
-        extractPropertyName(task.property),
+        task.property,
         task.room || "",
         assignees,
         normalizeIsoDate(task.date),
@@ -1534,8 +1587,10 @@ export default function AdminTasksPagePreview() {
                       const allAttendees = attendeesByDate[t.date] ?? [];
                       const attendees = filterAttendeesForProperty(allAttendees, t.property);
                       const isSelected = t.id === selectedCleaningId;
-                      const propertyColor = getPropertyColor(t.property);
-                      const normalizedPropertyName = extractPropertyName(t.property);
+                      const matchedProperty = resolveTaskProperty(t.property);
+                      const propertyColor = normalizeTaskColor(
+                        matchedProperty?.task_color
+                      );
                       const checkerOptions = [{ value: "", label: "未設定" }].concat(
                         attendees.map((u) => ({ value: u.userId, label: u.name }))
                       );
@@ -1582,14 +1637,7 @@ export default function AdminTasksPagePreview() {
                           </Td>
 
                           <Td>
-                            <div className="font-medium">
-                              {normalizedPropertyName}
-                            </div>
-                            {normalizedPropertyName !== t.property ? (
-                              <div className="text-xs text-black/50">
-                                {t.property}
-                              </div>
-                            ) : null}
+                            <div className="font-medium">{t.property}</div>
                           </Td>
 
                           <Td>{t.room || "-"}</Td>
