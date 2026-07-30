@@ -21,6 +21,19 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Escape nested template expressions
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path("scripts/apply-property-master-task-view.mjs")
+          text = path.read_text(encoding="utf-8")
+          text = text.replace("${room.property_id}", "\\${room.property_id}")
+          text = text.replace("${propertyA?.id || \"\"}", "\\${propertyA?.id || \"\"}")
+          text = text.replace("${propertyB?.id || \"\"}", "\\${propertyB?.id || \"\"}")
+          path.write_text(text, encoding="utf-8")
+          PY
+
       - name: Apply source migration
         run: node scripts/apply-property-master-task-view.mjs
 
