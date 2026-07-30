@@ -1,0 +1,109 @@
+name: Restore task page and apply property colors
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/restore-and-fix-property-colors.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  restore-and-fix:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Restore full task page and apply color fix
+        run: |
+          git show 65ea6a1f284294b0aeb19b2489f20ee24ce42530:src/AdminTasksPagePreview.tsx > src/AdminTasksPagePreview.tsx
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('src/AdminTasksPagePreview.tsx')
+          text = path.read_text()
+
+          old_keys = '''const PROPERTY_NAME_KEYS = [
+  "アクシオン",
+  "比恵モダン",
+  "いそのビル",
+  "FFFホテル",
+  "エスコート",
+  "ウィングス",
+  "県庁前",
+  "やなぎ橋",
+  "西中洲",
+  "アトラス",
+  "ジェン",
+  "ロイズ",
+  "美野島",
+  "住吉",
+  "薬院",
+  "玉井",
+  "冷泉",
+  "東光",
+  "浄水",
+];'''
+          new_keys = '''const PROPERTY_NAME_KEYS = Object.keys(PROPERTY_COLORS).sort(
+  (a, b) => b.length - a.length
+);'''
+
+          old_extract = '''function extractPropertyName(raw: string) {
+  const value = String(raw || "").trim();
+  if (!value) return "";
+
+  const found = PROPERTY_NAME_KEYS.find(
+    (name) => value.startsWith(name) || value.includes(name)
+  );
+  return found || value;
+}'''
+          new_extract = '''function normalizePropertyLabel(raw: string) {
+  return String(raw || "")
+    .normalize("NFKC")
+    .replace(/[\\s　]+/g, "")
+    .trim();
+}
+
+function extractPropertyName(raw: string) {
+  const value = normalizePropertyLabel(raw);
+  if (!value) return "";
+
+  const found = PROPERTY_NAME_KEYS.find((name) => {
+    const normalizedName = normalizePropertyLabel(name);
+    return value.startsWith(normalizedName) || value.includes(normalizedName);
+  });
+  return found || value;
+}'''
+
+          if old_keys not in text:
+              raise SystemExit('PROPERTY_NAME_KEYS target not found')
+          if old_extract not in text:
+              raise SystemExit('extractPropertyName target not found')
+
+          text = text.replace(old_keys, new_keys, 1)
+          text = text.replace(old_extract, new_extract, 1)
+          path.write_text(text)
+          PY
+
+      - name: Remove obsolete one-time workflows
+        run: |
+          rm -f .github/workflows/fix-property-colors.yml
+          rm -f .github/workflows/restore-and-fix-property-colors.yml
+
+      - name: Verify production build
+        run: |
+          npm install --no-audit --no-fund
+          npm run build
+
+      - name: Commit production implementation
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "fix: タスク画面を復元し物件色判定を本番実装"
+          git push
