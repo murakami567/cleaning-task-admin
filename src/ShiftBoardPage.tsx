@@ -31,7 +31,7 @@ type ShiftDay = {
   shift_entries: ShiftEntry[];
 };
 
-type ShiftMark = "出勤" | "定休" | "休み" | "欠勤" | "遅刻";
+type ShiftMark = "出勤" | "定休" | "休み" | "有給" | "欠勤" | "遅刻";
 type MainTab = "shift" | "account" | "mate";
 type ViewMode = "month" | "week";
 
@@ -40,6 +40,7 @@ const SHIFT_OPTIONS: { value: ShiftMark; label: string }[] = [
   { value: "出勤", label: "出勤" },
   { value: "定休", label: "定休" },
   { value: "休み", label: "休み" },
+  { value: "有給", label: "有給" },
   { value: "欠勤", label: "欠勤" },
   { value: "遅刻", label: "遅刻" },
 ];
@@ -154,6 +155,7 @@ function markClass(value: ShiftMark) {
   if (value === "出勤") return "border-emerald-200 bg-emerald-50 text-emerald-700";
   if (value === "定休") return "border-blue-200 bg-blue-50 text-blue-700";
   if (value === "休み") return "border-slate-200 bg-slate-100 text-slate-600";
+  if (value === "有給") return "border-violet-200 bg-violet-50 text-violet-700";
   if (value === "欠勤") return "border-rose-200 bg-rose-50 text-rose-700";
   return "border-amber-200 bg-amber-50 text-amber-700";
 }
@@ -283,7 +285,7 @@ export default function ShiftBoardPage() {
       setSavingKey(key);
       setError("");
       const day = await getOrCreateDay(date);
-      const isOff = ["休み", "定休", "欠勤"].includes(nextStatus);
+      const isOff = ["休み", "定休", "有給", "欠勤"].includes(nextStatus);
       const response = await fetch(`${API_BASE}/shifts/upsert_entry`, {
         method: "POST",
         headers: authHeaders(),
@@ -368,7 +370,12 @@ export default function ShiftBoardPage() {
           `対象月: ${body.month || `${year}-${pad2(month)}`}`,
           `読取: ${body.fetched ?? 0}件`,
           `保存: ${body.saved ?? 0}件`,
-        ].join("\n")
+          body.status_counts
+            ? `内訳: 出勤 ${body.status_counts["出勤"] ?? 0} / 休み ${body.status_counts["休み"] ?? 0} / 定休 ${body.status_counts["定休"] ?? 0} / 有給 ${body.status_counts["有給"] ?? 0}`
+            : "",
+        ]
+          .filter(Boolean)
+          .join("\n")
       );
       setShiftUploadFile(null);
       await loadBoard(year, month);
@@ -621,4 +628,3 @@ export default function ShiftBoardPage() {
     </div>
   );
 }
-
