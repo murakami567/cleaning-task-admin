@@ -63,6 +63,29 @@ type StaffPayrollSetting = {
   is_active?: boolean;
 };
 
+type RoomPieceRate = {
+  id?: string;
+  property_id?: string;
+  room_id: string;
+  property_name?: string;
+  room_name?: string;
+  unit_price?: number;
+  rate?: number;
+  busy_season_allowance?: string;
+  is_active?: boolean;
+};
+
+type PropertyTypePieceRate = {
+  id?: string;
+  property_id: string;
+  property_name?: string;
+  work_type?: string;
+  property_type?: string;
+  unit_price?: number;
+  rate?: number;
+  is_active?: boolean;
+};
+
 function yen(value: any) {
   return `¥${Number(value || 0).toLocaleString()}`;
 }
@@ -82,60 +105,28 @@ function settingTypeLabel(type?: string) {
   return type === "hourly" ? "時給" : "単価";
 }
 
-function Button({
-  children,
-  active,
-  variant = "default",
-  className = "",
-  disabled,
-  ...props
-}: any) {
-  const style =
-    active || variant === "default"
-      ? "bg-black text-white hover:bg-black/90 disabled:bg-black/40"
-      : "border bg-white text-black hover:bg-black/5 disabled:text-black/40";
-
-  return (
-    <button
-      className={`h-10 rounded-xl px-4 text-sm font-medium transition disabled:cursor-not-allowed ${style} ${className}`}
-      disabled={disabled}
-      {...props}
-    >
-      {children}
-    </button>
-  );
+function Button({ children, active, variant = "default", className = "", disabled, ...props }: any) {
+  const style = active || variant === "default"
+    ? "bg-black text-white hover:bg-black/90 disabled:bg-black/40"
+    : "border bg-white text-black hover:bg-black/5 disabled:text-black/40";
+  return <button className={`h-10 rounded-xl px-4 text-sm font-medium transition disabled:cursor-not-allowed ${style} ${className}`} disabled={disabled} {...props}>{children}</button>;
 }
 
 function Card({ children, className = "" }: any) {
-  return (
-    <div className={`rounded-2xl border bg-white shadow-sm ${className}`}>
-      {children}
-    </div>
-  );
+  return <div className={`rounded-2xl border bg-white shadow-sm ${className}`}>{children}</div>;
 }
 
 function Metric({ label, value }: { label: string; value: any }) {
-  return (
-    <Card className="p-4">
-      <div className="text-xs text-neutral-500">{label}</div>
-      <div className="mt-1 text-2xl font-semibold">{value}</div>
-    </Card>
-  );
+  return <Card className="p-4"><div className="text-xs text-neutral-500">{label}</div><div className="mt-1 text-2xl font-semibold">{value}</div></Card>;
 }
 
 function Pill({ children, tone = "default" }: any) {
-  const cls =
-    tone === "good"
-      ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-      : tone === "warn"
-      ? "border-amber-200 bg-amber-50 text-amber-700"
-      : "border-neutral-200 bg-white text-neutral-700";
-
-  return (
-    <span className={`inline-flex rounded-full border px-3 py-1 text-xs ${cls}`}>
-      {children}
-    </span>
-  );
+  const cls = tone === "good"
+    ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+    : tone === "warn"
+    ? "border-amber-200 bg-amber-50 text-amber-700"
+    : "border-neutral-200 bg-white text-neutral-700";
+  return <span className={`inline-flex rounded-full border px-3 py-1 text-xs ${cls}`}>{children}</span>;
 }
 
 async function postJson(url: string, payload: any) {
@@ -144,12 +135,10 @@ async function postJson(url: string, payload: any) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
-
   if (!res.ok) {
     const text = await res.text();
     throw new Error(text || `request failed: ${res.status}`);
   }
-
   return res.json();
 }
 
@@ -159,11 +148,7 @@ export default function PayrollAttendancePage() {
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth() + 1);
   const [rows, setRows] = useState<PayrollDailyResult[]>([]);
-  const [settings, setSettings] = useState<any>({
-    staff_payroll_settings: [],
-    room_piece_rates: [],
-    property_type_piece_rates: [],
-  });
+  const [settings, setSettings] = useState<any>({ staff_payroll_settings: [], room_piece_rates: [], property_type_piece_rates: [] });
   const [staffs, setStaffs] = useState<StaffMaster[]>([]);
   const [properties, setProperties] = useState<PropertyMaster[]>([]);
   const [rooms, setRooms] = useState<RoomMaster[]>([]);
@@ -195,34 +180,21 @@ export default function PayrollAttendancePage() {
     if (!staffRes.ok) throw new Error("スタッフ一覧の取得に失敗しました");
     if (!propertyRes.ok) throw new Error("物件一覧の取得に失敗しました");
     if (!roomRes.ok) throw new Error("部屋一覧の取得に失敗しました");
-    return {
-      staffs: await staffRes.json(),
-      properties: await propertyRes.json(),
-      rooms: await roomRes.json(),
-    };
+    return { staffs: await staffRes.json(), properties: await propertyRes.json(), rooms: await roomRes.json() };
   };
 
   const loadAll = async () => {
     try {
       setLoading(true);
       setError("");
-      const [settingsData, resultData, masterData] = await Promise.all([
-        fetchSettings(),
-        fetchResults(),
-        fetchMasterData(),
-      ]);
+      const [settingsData, resultData, masterData] = await Promise.all([fetchSettings(), fetchResults(), fetchMasterData()]);
       setSettings(settingsData);
       setRows(resultData);
       setStaffs(Array.isArray(masterData.staffs) ? masterData.staffs : []);
       setProperties(Array.isArray(masterData.properties) ? masterData.properties : []);
       setRooms(Array.isArray(masterData.rooms) ? masterData.rooms : []);
-
       if (resultData.length > 0) {
-        setSelectedStaffId((prev) =>
-          prev && resultData.some((r: PayrollDailyResult) => r.staff_id === prev)
-            ? prev
-            : resultData[0].staff_id
-        );
+        setSelectedStaffId((prev) => prev && resultData.some((r: PayrollDailyResult) => r.staff_id === prev) ? prev : resultData[0].staff_id);
       } else {
         setSelectedStaffId("");
       }
@@ -234,9 +206,7 @@ export default function PayrollAttendancePage() {
     }
   };
 
-  useEffect(() => {
-    void loadAll();
-  }, [year, month]);
+  useEffect(() => { void loadAll(); }, [year, month]);
 
   const calculateMonthly = async () => {
     try {
@@ -252,49 +222,26 @@ export default function PayrollAttendancePage() {
   };
 
   const saveStaffPayrollSetting = async (payload: any) => {
-    try {
-      setSaving(true);
-      setError("");
-      await postJson(`${API_BASE}/payroll/settings/staff/upsert`, payload);
-      await loadAll();
-    } catch (e: any) {
-      setError(e.message || "スタッフ給与設定の保存に失敗しました");
-    } finally {
-      setSaving(false);
-    }
+    try { setSaving(true); setError(""); await postJson(`${API_BASE}/payroll/settings/staff/upsert`, payload); await loadAll(); }
+    catch (e: any) { setError(e.message || "スタッフ給与設定の保存に失敗しました"); }
+    finally { setSaving(false); }
   };
 
   const saveRoomRate = async (payload: any) => {
-    try {
-      setSaving(true);
-      setError("");
-      await postJson(`${API_BASE}/payroll/rates/room/upsert`, payload);
-      await loadAll();
-    } catch (e: any) {
-      setError(e.message || "部屋単価の保存に失敗しました");
-    } finally {
-      setSaving(false);
-    }
+    try { setSaving(true); setError(""); await postJson(`${API_BASE}/payroll/rates/room/upsert`, payload); await loadAll(); }
+    catch (e: any) { setError(e.message || "部屋単価の保存に失敗しました"); }
+    finally { setSaving(false); }
   };
 
   const savePropertyTypeRate = async (payload: any) => {
-    try {
-      setSaving(true);
-      setError("");
-      await postJson(`${API_BASE}/payroll/rates/property-type/upsert`, payload);
-      await loadAll();
-    } catch (e: any) {
-      setError(e.message || "物件タイプ単価の保存に失敗しました");
-    } finally {
-      setSaving(false);
-    }
+    try { setSaving(true); setError(""); await postJson(`${API_BASE}/payroll/rates/property-type/upsert`, payload); await loadAll(); }
+    catch (e: any) { setError(e.message || "物件タイプ単価の保存に失敗しました"); }
+    finally { setSaving(false); }
   };
 
   const staffList = useMemo(() => {
     const map = new Map<string, PayrollDailyResult>();
-    rows.forEach((r) => {
-      if (!map.has(r.staff_id)) map.set(r.staff_id, r);
-    });
+    rows.forEach((r) => { if (!map.has(r.staff_id)) map.set(r.staff_id, r); });
     return Array.from(map.values());
   }, [rows]);
 
@@ -305,42 +252,26 @@ export default function PayrollAttendancePage() {
 
   const selectedRows = useMemo(() => {
     if (!selectedStaff) return [];
-    return rows
-      .filter((r) => r.staff_id === selectedStaff.staff_id)
-      .sort((a, b) =>
-        a.target_date === b.target_date
-          ? String(a.facility || "").localeCompare(String(b.facility || ""), "ja")
-          : String(a.target_date).localeCompare(String(b.target_date))
-      );
+    return rows.filter((r) => r.staff_id === selectedStaff.staff_id).sort((a, b) =>
+      a.target_date === b.target_date
+        ? String(a.facility || "").localeCompare(String(b.facility || ""), "ja")
+        : String(a.target_date).localeCompare(String(b.target_date))
+    );
   }, [rows, selectedStaff]);
 
-  const total = (key: keyof PayrollDailyResult, list = rows) =>
-    list.reduce((sum, r) => sum + Number(r[key] || 0), 0);
+  const total = (key: keyof PayrollDailyResult, list = rows) => list.reduce((sum, r) => sum + Number(r[key] || 0), 0);
 
   return (
     <div className="min-h-screen bg-neutral-50 p-6 text-neutral-900">
       <style>{`@media print { body * { visibility:hidden; } .print-area,.print-area * { visibility:visible; } .print-area { position:absolute; left:0; top:0; width:100%; border:none!important; box-shadow:none!important; transform:scale(.82); transform-origin:top left; } @page { size:A4 portrait; margin:8mm; } }`}</style>
       <div className="mx-auto max-w-7xl space-y-6">
-        <button
-          type="button"
-          onClick={() => (window.location.href = "/admin/home")}
-          className="inline-flex h-10 items-center rounded-xl border border-neutral-200 bg-white px-4 text-sm font-medium text-neutral-700 hover:bg-neutral-100"
-        >
-          ← タスク管理に戻る
-        </button>
+        <button type="button" onClick={() => (window.location.href = "/admin/home")} className="inline-flex h-10 items-center rounded-xl border border-neutral-200 bg-white px-4 text-sm font-medium text-neutral-700 hover:bg-neutral-100">← タスク管理に戻る</button>
 
         <div className="flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold">給与・勤怠</h1>
-            <p className="text-sm text-neutral-500">実働報告・完了清掃タスク・単価設定から給与明細を作成</p>
-          </div>
+          <div><h1 className="text-2xl font-bold">給与・勤怠</h1><p className="text-sm text-neutral-500">実働報告・完了清掃タスク・単価設定から給与明細を作成</p></div>
           <div className="flex flex-wrap items-center gap-2">
-            <select className="h-10 rounded-xl border bg-white px-3 text-sm" value={year} onChange={(e) => setYear(Number(e.target.value))}>
-              {[2024, 2025, 2026, 2027].map((y) => <option key={y} value={y}>{y}年</option>)}
-            </select>
-            <select className="h-10 rounded-xl border bg-white px-3 text-sm" value={month} onChange={(e) => setMonth(Number(e.target.value))}>
-              {Array.from({ length: 12 }).map((_, i) => <option key={i + 1} value={i + 1}>{i + 1}月</option>)}
-            </select>
+            <select className="h-10 rounded-xl border bg-white px-3 text-sm" value={year} onChange={(e) => setYear(Number(e.target.value))}>{[2024, 2025, 2026, 2027].map((y) => <option key={y} value={y}>{y}年</option>)}</select>
+            <select className="h-10 rounded-xl border bg-white px-3 text-sm" value={month} onChange={(e) => setMonth(Number(e.target.value))}>{Array.from({ length: 12 }).map((_, i) => <option key={i + 1} value={i + 1}>{i + 1}月</option>)}</select>
             <Button variant="outline" onClick={loadAll} disabled={loading}>更新</Button>
             <Button onClick={calculateMonthly} disabled={calculating}>{calculating ? "計算中..." : "月次計算"}</Button>
           </div>
@@ -369,31 +300,16 @@ export default function PayrollAttendancePage() {
               <p className="mb-4 text-sm text-neutral-500">スタッフ別・日別の給与計算結果</p>
               <div className="overflow-auto rounded-2xl border">
                 <table className="w-full min-w-[1100px] text-sm">
-                  <thead className="bg-neutral-100 text-xs text-neutral-600">
-                    <tr>
-                      <th className="px-3 py-3 text-left">日付</th><th className="px-3 py-3 text-left">スタッフ</th><th className="px-3 py-3 text-left">計算方式</th><th className="px-3 py-3 text-left">施設</th><th className="px-3 py-3 text-right">部屋数</th><th className="px-3 py-3 text-right">清掃報酬</th><th className="px-3 py-3 text-right">実働</th><th className="px-3 py-3 text-right">時給報酬</th><th className="px-3 py-3 text-right">保証調整</th><th className="px-3 py-3 text-right">交通費</th><th className="px-3 py-3 text-right">支給額</th><th className="px-3 py-3 text-left">状態</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {rows.map((r) => (
-                      <tr key={r.id} className="cursor-pointer border-t bg-white hover:bg-neutral-50" onClick={() => { setSelectedStaffId(r.staff_id); setTab("statement"); }}>
-                        <td className="px-3 py-3">{formatMd(r.target_date)}</td><td className="px-3 py-3 font-medium">{r.staff_name}</td><td className="px-3 py-3"><Pill>{typeLabel(r.payroll_type)}</Pill></td><td className="px-3 py-3">{r.facility}</td><td className="px-3 py-3 text-right">{r.room_count || ""}</td><td className="px-3 py-3 text-right">{yen(r.cleaning_amount)}</td><td className="px-3 py-3 text-right">{r.actual_hours ? `${r.actual_hours}h` : ""}</td><td className="px-3 py-3 text-right">{yen(r.hourly_amount)}</td><td className="px-3 py-3 text-right">{yen(r.adjustment_amount)}</td><td className="px-3 py-3 text-right">{yen(r.transportation_fee)}</td><td className="px-3 py-3 text-right font-semibold">{yen(r.final_amount)}</td><td className="px-3 py-3"><Pill tone={r.status === "確定" ? "good" : "warn"}>{r.status || "未確定"}</Pill></td>
-                      </tr>
-                    ))}
-                  </tbody>
+                  <thead className="bg-neutral-100 text-xs text-neutral-600"><tr><th className="px-3 py-3 text-left">日付</th><th className="px-3 py-3 text-left">スタッフ</th><th className="px-3 py-3 text-left">計算方式</th><th className="px-3 py-3 text-left">施設</th><th className="px-3 py-3 text-right">部屋数</th><th className="px-3 py-3 text-right">清掃報酬</th><th className="px-3 py-3 text-right">実働</th><th className="px-3 py-3 text-right">時給報酬</th><th className="px-3 py-3 text-right">保証調整</th><th className="px-3 py-3 text-right">交通費</th><th className="px-3 py-3 text-right">支給額</th><th className="px-3 py-3 text-left">状態</th></tr></thead>
+                  <tbody>{rows.map((r) => <tr key={r.id} className="cursor-pointer border-t bg-white hover:bg-neutral-50" onClick={() => { setSelectedStaffId(r.staff_id); setTab("statement"); }}><td className="px-3 py-3">{formatMd(r.target_date)}</td><td className="px-3 py-3 font-medium">{r.staff_name}</td><td className="px-3 py-3"><Pill>{typeLabel(r.payroll_type)}</Pill></td><td className="px-3 py-3">{r.facility}</td><td className="px-3 py-3 text-right">{r.room_count || ""}</td><td className="px-3 py-3 text-right">{yen(r.cleaning_amount)}</td><td className="px-3 py-3 text-right">{r.actual_hours ? `${r.actual_hours}h` : ""}</td><td className="px-3 py-3 text-right">{yen(r.hourly_amount)}</td><td className="px-3 py-3 text-right">{yen(r.adjustment_amount)}</td><td className="px-3 py-3 text-right">{yen(r.transportation_fee)}</td><td className="px-3 py-3 text-right font-semibold">{yen(r.final_amount)}</td><td className="px-3 py-3"><Pill tone={r.status === "確定" ? "good" : "warn"}>{r.status || "未確定"}</Pill></td></tr>)}</tbody>
                 </table>
               </div>
             </Card>
           </div>
         ) : null}
 
-        {tab === "settings" ? (
-          <PayrollSettings settings={settings} staffs={staffs} properties={properties} rooms={rooms} saving={saving} onSaveStaff={saveStaffPayrollSetting} onSaveRoom={saveRoomRate} onSavePropertyType={savePropertyTypeRate} />
-        ) : null}
-
-        {tab === "statement" ? (
-          <PayrollStatement staffList={staffList} selectedStaffId={selectedStaff?.staff_id || ""} onSelectStaff={setSelectedStaffId} selectedStaff={selectedStaff} rows={selectedRows} total={total} />
-        ) : null}
+        {tab === "settings" ? <PayrollSettings settings={settings} staffs={staffs} properties={properties} rooms={rooms} saving={saving} onSaveStaff={saveStaffPayrollSetting} onSaveRoom={saveRoomRate} onSavePropertyType={savePropertyTypeRate} /> : null}
+        {tab === "statement" ? <PayrollStatement staffList={staffList} selectedStaffId={selectedStaff?.staff_id || ""} onSelectStaff={setSelectedStaffId} selectedStaff={selectedStaff} rows={selectedRows} total={total} /> : null}
       </div>
     </div>
   );
@@ -408,6 +324,8 @@ function PayrollSettings({ settings, staffs, properties, rooms, saving, onSaveSt
   const activeProperties = properties.filter((p: PropertyMaster) => p.is_active !== false);
   const activeRooms = rooms.filter((r: RoomMaster) => r.is_active !== false && (!roomForm.property_id || r.property_id === roomForm.property_id));
 
+  const propertyMap = useMemo(() => new Map(properties.map((p: PropertyMaster) => [p.id, p])), [properties]);
+  const roomMap = useMemo(() => new Map(rooms.map((r: RoomMaster) => [r.id, r])), [rooms]);
   const staffSettingMap = useMemo(() => new Map((settings.staff_payroll_settings || []).map((x: any) => [x.staff_id, x])), [settings.staff_payroll_settings]);
   const roomRateMap = useMemo(() => new Map((settings.room_piece_rates || []).map((x: any) => [x.room_id, x])), [settings.room_piece_rates]);
   const propertyTypeRateMap = useMemo(() => new Map((settings.property_type_piece_rates || []).map((x: any) => [`${x.property_id}::${x.work_type}`, x])), [settings.property_type_piece_rates]);
@@ -419,6 +337,31 @@ function PayrollSettings({ settings, staffs, properties, rooms, saving, onSaveSt
       .sort((a, b) => String(a.staff?.staff_name || a.setting.staff_name || "").localeCompare(String(b.staff?.staff_name || b.setting.staff_name || ""), "ja"));
   }, [settings.staff_payroll_settings, activeStaffs]);
 
+  const configuredRoomRates = useMemo(() => {
+    return [...(settings.room_piece_rates || [])]
+      .map((setting: RoomPieceRate) => {
+        const room = roomMap.get(setting.room_id) as RoomMaster | undefined;
+        const propertyId = setting.property_id || room?.property_id || "";
+        const property = propertyMap.get(propertyId) as PropertyMaster | undefined;
+        return { setting, room, property, propertyId };
+      })
+      .sort((a, b) => {
+        const p = String(a.property?.property_name || a.setting.property_name || "").localeCompare(String(b.property?.property_name || b.setting.property_name || ""), "ja", { numeric: true });
+        if (p !== 0) return p;
+        return String(a.room?.room_name || a.setting.room_name || "").localeCompare(String(b.room?.room_name || b.setting.room_name || ""), "ja", { numeric: true });
+      });
+  }, [settings.room_piece_rates, roomMap, propertyMap]);
+
+  const configuredPropertyRates = useMemo(() => {
+    return [...(settings.property_type_piece_rates || [])]
+      .map((setting: PropertyTypePieceRate) => ({ setting, property: propertyMap.get(setting.property_id) as PropertyMaster | undefined }))
+      .sort((a, b) => {
+        const p = String(a.property?.property_name || a.setting.property_name || "").localeCompare(String(b.property?.property_name || b.setting.property_name || ""), "ja", { numeric: true });
+        if (p !== 0) return p;
+        return String(a.setting.work_type || a.setting.property_type || "").localeCompare(String(b.setting.work_type || b.setting.property_type || ""), "ja", { numeric: true });
+      });
+  }, [settings.property_type_piece_rates, propertyMap]);
+
   useEffect(() => {
     if (!staffForm.staff_id) return;
     const current = staffSettingMap.get(staffForm.staff_id) as any;
@@ -428,17 +371,35 @@ function PayrollSettings({ settings, staffs, properties, rooms, saving, onSaveSt
   useEffect(() => {
     if (!roomForm.room_id) return;
     const current = roomRateMap.get(roomForm.room_id) as any;
-    setRoomForm((prev) => ({ ...prev, unit_price: Number(current?.unit_price || 0), busy_season_allowance: current?.busy_season_allowance || "", is_active: current?.is_active !== false }));
+    setRoomForm((prev) => ({ ...prev, unit_price: Number(current?.unit_price || current?.rate || 0), busy_season_allowance: current?.busy_season_allowance || "", is_active: current?.is_active !== false }));
   }, [roomForm.room_id, roomRateMap]);
 
   useEffect(() => {
     if (!propertyTypeForm.property_id || !propertyTypeForm.work_type) return;
     const current = propertyTypeRateMap.get(`${propertyTypeForm.property_id}::${propertyTypeForm.work_type}`) as any;
-    setPropertyTypeForm((prev) => ({ ...prev, unit_price: Number(current?.unit_price || 0), is_active: current?.is_active !== false }));
+    setPropertyTypeForm((prev) => ({ ...prev, unit_price: Number(current?.unit_price || current?.rate || 0), is_active: current?.is_active !== false }));
   }, [propertyTypeForm.property_id, propertyTypeForm.work_type, propertyTypeRateMap]);
 
   const selectConfiguredStaff = (staffId: string) => {
     setStaffForm((prev) => ({ ...prev, staff_id: staffId }));
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const selectConfiguredRoom = (propertyId: string, roomId: string) => {
+    const current = roomRateMap.get(roomId) as any;
+    setRoomForm({
+      property_id: propertyId,
+      room_id: roomId,
+      unit_price: Number(current?.unit_price || current?.rate || 0),
+      busy_season_allowance: current?.busy_season_allowance || "",
+      is_active: current?.is_active !== false,
+    });
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const selectConfiguredPropertyRate = (propertyId: string, workType: string) => {
+    const current = propertyTypeRateMap.get(`${propertyId}::${workType}`) as any;
+    setPropertyTypeForm({ property_id: propertyId, work_type: workType, unit_price: Number(current?.unit_price || current?.rate || 0), is_active: current?.is_active !== false });
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
@@ -483,34 +444,37 @@ function PayrollSettings({ settings, staffs, properties, rooms, saving, onSaveSt
       </div>
 
       <Card className="overflow-hidden">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b px-5 py-4">
-          <div><h2 className="text-lg font-semibold">スタッフ給与設定一覧</h2><p className="mt-1 text-sm text-neutral-500">給与設定が登録されている対象者。行をクリックすると上の編集フォームへ読み込みます。</p></div>
-          <Pill>{configuredStaffs.length}名</Pill>
-        </div>
-        <div className="overflow-auto">
-          <table className="w-full min-w-[760px] text-sm">
-            <thead className="bg-neutral-100 text-xs text-neutral-600"><tr><th className="px-4 py-3 text-left">スタッフ</th><th className="px-4 py-3 text-left">給与形態</th><th className="px-4 py-3 text-right">時給</th><th className="px-4 py-3 text-right">最低保証</th><th className="px-4 py-3 text-right">交通費</th><th className="px-4 py-3 text-left">状態</th><th className="px-4 py-3 text-right">操作</th></tr></thead>
-            <tbody>
-              {configuredStaffs.length === 0 ? <tr><td colSpan={7} className="px-4 py-10 text-center text-neutral-500">給与設定済みのスタッフがいません。</td></tr> : null}
-              {configuredStaffs.map(({ setting, staff }: any) => (
-                <tr key={setting.staff_id} className={`border-t hover:bg-neutral-50 ${staffForm.staff_id === setting.staff_id ? "bg-amber-50" : "bg-white"}`}>
-                  <td className="px-4 py-3 font-medium">{staff?.staff_name || setting.staff_name || "-"}{staff?.staff_code ? <span className="ml-2 text-xs text-neutral-400">({staff.staff_code})</span> : null}</td>
-                  <td className="px-4 py-3"><Pill>{settingTypeLabel(setting.payroll_type)}</Pill></td>
-                  <td className="px-4 py-3 text-right">{yen(setting.hourly_rate)}</td>
-                  <td className="px-4 py-3 text-right">{yen(setting.minimum_guarantee)}</td>
-                  <td className="px-4 py-3 text-right">{yen(setting.transportation_fee)}</td>
-                  <td className="px-4 py-3"><Pill tone={setting.is_active === false ? "warn" : "good"}>{setting.is_active === false ? "無効" : "有効"}</Pill></td>
-                  <td className="px-4 py-3 text-right"><button type="button" className="rounded-lg border bg-white px-3 py-1.5 text-xs font-medium hover:bg-neutral-50" onClick={() => selectConfiguredStaff(setting.staff_id)}>編集</button></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <ListHeader title="スタッフ給与設定一覧" description="給与設定が登録されている対象者。編集から上のフォームへ読み込みます。" count={`${configuredStaffs.length}名`} />
+        <div className="overflow-auto"><table className="w-full min-w-[760px] text-sm"><thead className="bg-neutral-100 text-xs text-neutral-600"><tr><th className="px-4 py-3 text-left">スタッフ</th><th className="px-4 py-3 text-left">給与形態</th><th className="px-4 py-3 text-right">時給</th><th className="px-4 py-3 text-right">最低保証</th><th className="px-4 py-3 text-right">交通費</th><th className="px-4 py-3 text-left">状態</th><th className="px-4 py-3 text-right">操作</th></tr></thead><tbody>
+          {configuredStaffs.length === 0 ? <EmptyRow colSpan={7} text="給与設定済みのスタッフがいません。" /> : null}
+          {configuredStaffs.map(({ setting, staff }: any) => <tr key={setting.staff_id} className={`border-t hover:bg-neutral-50 ${staffForm.staff_id === setting.staff_id ? "bg-amber-50" : "bg-white"}`}><td className="px-4 py-3 font-medium">{staff?.staff_name || setting.staff_name || "-"}{staff?.staff_code ? <span className="ml-2 text-xs text-neutral-400">({staff.staff_code})</span> : null}</td><td className="px-4 py-3"><Pill>{settingTypeLabel(setting.payroll_type)}</Pill></td><td className="px-4 py-3 text-right">{yen(setting.hourly_rate)}</td><td className="px-4 py-3 text-right">{yen(setting.minimum_guarantee)}</td><td className="px-4 py-3 text-right">{yen(setting.transportation_fee)}</td><td className="px-4 py-3"><Pill tone={setting.is_active === false ? "warn" : "good"}>{setting.is_active === false ? "無効" : "有効"}</Pill></td><td className="px-4 py-3 text-right"><EditButton onClick={() => selectConfiguredStaff(setting.staff_id)} /></td></tr>)}
+        </tbody></table></div>
+      </Card>
+
+      <Card className="overflow-hidden">
+        <ListHeader title="部屋別単価一覧" description="登録済みの物件・部屋ごとの清掃単価です。" count={`${configuredRoomRates.length}件`} />
+        <div className="overflow-auto"><table className="w-full min-w-[820px] text-sm"><thead className="bg-neutral-100 text-xs text-neutral-600"><tr><th className="px-4 py-3 text-left">物件</th><th className="px-4 py-3 text-left">部屋</th><th className="px-4 py-3 text-right">単価</th><th className="px-4 py-3 text-left">繁忙期加算</th><th className="px-4 py-3 text-left">状態</th><th className="px-4 py-3 text-right">操作</th></tr></thead><tbody>
+          {configuredRoomRates.length === 0 ? <EmptyRow colSpan={6} text="部屋別単価が登録されていません。" /> : null}
+          {configuredRoomRates.map(({ setting, room, property, propertyId }: any) => <tr key={setting.id || setting.room_id} className={`border-t hover:bg-neutral-50 ${roomForm.room_id === setting.room_id ? "bg-amber-50" : "bg-white"}`}><td className="px-4 py-3 font-medium">{property?.property_name || setting.property_name || "-"}</td><td className="px-4 py-3">{room?.room_name || setting.room_name || "-"}</td><td className="px-4 py-3 text-right">{yen(setting.unit_price ?? setting.rate)}</td><td className="px-4 py-3">{setting.busy_season_allowance || "-"}</td><td className="px-4 py-3"><Pill tone={setting.is_active === false ? "warn" : "good"}>{setting.is_active === false ? "無効" : "有効"}</Pill></td><td className="px-4 py-3 text-right"><EditButton onClick={() => selectConfiguredRoom(propertyId, setting.room_id)} /></td></tr>)}
+        </tbody></table></div>
+      </Card>
+
+      <Card className="overflow-hidden">
+        <ListHeader title="物件別単価一覧" description="物件ごとの清掃以外作業単価です。" count={`${configuredPropertyRates.length}件`} />
+        <div className="overflow-auto"><table className="w-full min-w-[720px] text-sm"><thead className="bg-neutral-100 text-xs text-neutral-600"><tr><th className="px-4 py-3 text-left">物件</th><th className="px-4 py-3 text-left">作業種別</th><th className="px-4 py-3 text-right">単価</th><th className="px-4 py-3 text-left">状態</th><th className="px-4 py-3 text-right">操作</th></tr></thead><tbody>
+          {configuredPropertyRates.length === 0 ? <EmptyRow colSpan={5} text="物件別単価が登録されていません。" /> : null}
+          {configuredPropertyRates.map(({ setting, property }: any) => { const workType = setting.work_type || setting.property_type || ""; return <tr key={setting.id || `${setting.property_id}::${workType}`} className={`border-t hover:bg-neutral-50 ${propertyTypeForm.property_id === setting.property_id && propertyTypeForm.work_type === workType ? "bg-amber-50" : "bg-white"}`}><td className="px-4 py-3 font-medium">{property?.property_name || setting.property_name || "-"}</td><td className="px-4 py-3">{workType || "-"}</td><td className="px-4 py-3 text-right">{yen(setting.unit_price ?? setting.rate)}</td><td className="px-4 py-3"><Pill tone={setting.is_active === false ? "warn" : "good"}>{setting.is_active === false ? "無効" : "有効"}</Pill></td><td className="px-4 py-3 text-right"><EditButton onClick={() => selectConfiguredPropertyRate(setting.property_id, workType)} /></td></tr>; })}
+        </tbody></table></div>
       </Card>
     </div>
   );
 }
 
+function ListHeader({ title, description, count }: any) {
+  return <div className="flex flex-wrap items-center justify-between gap-3 border-b px-5 py-4"><div><h2 className="text-lg font-semibold">{title}</h2><p className="mt-1 text-sm text-neutral-500">{description}</p></div><Pill>{count}</Pill></div>;
+}
+function EmptyRow({ colSpan, text }: any) { return <tr><td colSpan={colSpan} className="px-4 py-10 text-center text-neutral-500">{text}</td></tr>; }
+function EditButton({ onClick }: any) { return <button type="button" className="rounded-lg border bg-white px-3 py-1.5 text-xs font-medium hover:bg-neutral-50" onClick={onClick}>編集</button>; }
 function Field({ label, children }: any) { return <label className="block text-sm"><span className="mb-1 block text-neutral-600">{label}</span>{children}</label>; }
 function NumberField({ label, value, onChange }: any) { return <Field label={label}><input type="number" className="h-11 w-full rounded-xl border px-3" value={value} onChange={(e) => onChange(Number(e.target.value || 0))} /></Field>; }
 function CheckField({ checked, onChange }: any) { return <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} />有効</label>; }
