@@ -1,0 +1,79 @@
+name: Restore task property row colors
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/fix-property-row-colors.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Apply production source change
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path("src/AdminTasksPagePreview.tsx")
+          text = path.read_text(encoding="utf-8")
+
+          old_style = '''      <style>{`@media print { body * { visibility:hidden; } .print-area,.print-area * { visibility:visible; } .print-area { position:absolute; left:0; top:0; width:100%; border:none!important; box-shadow:none!important; transform:scale(.82); transform-origin:top left; } @page { size:A4 portrait; margin:8mm; } }`}</style>'''
+          if old_style in text:
+              new_style = '''      <style>{`@media print { body * { visibility:hidden; } .print-area,.print-area * { visibility:visible; } .print-area { position:absolute; left:0; top:0; width:100%; border:none!important; box-shadow:none!important; transform:scale(.82); transform-origin:top left; } @page { size:A4 portrait; margin:8mm; } } .task-property-row > td { background-color: var(--task-property-color) !important; }`}</style>'''
+              text = text.replace(old_style, new_style, 1)
+          elif '.task-property-row > td' not in text:
+              # AdminTasksPagePreview has no print style in some revisions; inject near top-level return wrapper.
+              marker = '''    <div className="min-h-screen bg-neutral-50 p-4 text-black">'''
+              if marker not in text:
+                  raise SystemExit("top-level page marker not found")
+              text = text.replace(
+                  marker,
+                  marker + '''\n      <style>{`.task-property-row > td { background-color: var(--task-property-color) !important; }`}</style>''',
+                  1,
+              )
+
+          old_row = '''                          className={`${tableEditMode ? "" : "cursor-pointer"}`}
+                          style={{
+                            backgroundColor: tableEditMode
+                              ? propertyColor
+                              : isSelected
+                              ? "#f5f5f5"
+                              : propertyColor,
+                          }}'''
+          new_row = '''                          className={`task-property-row ${tableEditMode ? "" : "cursor-pointer"}`}
+                          style={{
+                            "--task-property-color": isSelected ? "#f5f5f5" : propertyColor,
+                          } as React.CSSProperties}'''
+          if old_row not in text:
+              raise SystemExit("task row style target not found")
+          text = text.replace(old_row, new_row, 1)
+
+          path.write_text(text, encoding="utf-8")
+          PY
+
+      - name: Verify build
+        shell: bash
+        run: |
+          npm install --no-audit --no-fund
+          npm run build
+
+      - name: Remove temporary workflow and commit
+        shell: bash
+        run: |
+          rm -f .github/workflows/fix-property-row-colors.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "fix: 物件カラーをタスク行全体へ確実に反映"
+          git push
