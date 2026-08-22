@@ -91,6 +91,30 @@ function dueLabel(v: string) {
   return DUE_OPTIONS.find((o) => o.value === v)?.label ?? v;
 }
 
+function dueChipClass(v: string) {
+  switch (v) {
+    case "DUE_TODAY":
+      return "border-red-600 bg-red-600 text-white";
+    case "DUE_TOMORROW":
+      return "border-blue-500 bg-white text-blue-600";
+    case "DUE_LATER":
+    default:
+      return "border-slate-400 bg-white text-black";
+  }
+}
+
+function DueChip({ value }: { value: string }) {
+  return (
+    <span
+      className={`inline-flex items-center whitespace-nowrap rounded-full border px-2.5 py-0.5 text-xs font-semibold ${dueChipClass(
+        value
+      )}`}
+    >
+      {dueLabel(value)}
+    </span>
+  );
+}
+
 function categoryLabel(v: string) {
   return CATEGORY_OPTIONS.find((o) => o.value === v)?.label ?? v;
 }
@@ -1691,12 +1715,12 @@ export default function AdminTasksPagePreview() {
                                 disabled
                               />
                             ) : (
-                              dueLabel(
-                                computeDueLabel(
+                              <DueChip
+                                value={computeDueLabel(
                                   t.checkoutDate ?? t.date,
                                   t.nextCheckinDate ?? ""
-                                )
-                              )
+                                )}
+                              />
                             )}
                           </Td>
 
