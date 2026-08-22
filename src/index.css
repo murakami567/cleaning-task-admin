@@ -8,6 +8,14 @@ html, body, #root {
   min-height: 100%;
 }
 
+/*
+ * 清掃タスク一覧では物件マスタの task_color を <tr> の inline style に設定している。
+ * テーブルセル側に背景色が指定される環境でも、行の物件カラーを確実に表示する。
+ */
+tbody tr[style*="background-color"] > td {
+  background-color: inherit !important;
+}
+
 @media (min-width: 1280px) {
   body:has(input[placeholder="物件名・物件コード・住所・エントランス番号で検索"]) {
     overflow: hidden;
