@@ -86,6 +86,8 @@ type PropertyTypePieceRate = {
   is_active?: boolean;
 };
 
+type SettingsTab = "staff" | "room" | "property";
+
 function yen(value: any) {
   return `¥${Number(value || 0).toLocaleString()}`;
 }
@@ -316,6 +318,7 @@ export default function PayrollAttendancePage() {
 }
 
 function PayrollSettings({ settings, staffs, properties, rooms, saving, onSaveStaff, onSaveRoom, onSavePropertyType }: any) {
+  const [settingsTab, setSettingsTab] = useState<SettingsTab>("staff");
   const [staffForm, setStaffForm] = useState({ staff_id: "", payroll_type: "piece_rate", hourly_rate: 0, minimum_guarantee: 0, transportation_fee: 0, is_active: true });
   const [roomForm, setRoomForm] = useState({ property_id: "", room_id: "", unit_price: 0, busy_season_allowance: "", is_active: true });
   const [propertyTypeForm, setPropertyTypeForm] = useState({ property_id: "", work_type: "", unit_price: 0, is_active: true });
@@ -387,13 +390,7 @@ function PayrollSettings({ settings, staffs, properties, rooms, saving, onSaveSt
 
   const selectConfiguredRoom = (propertyId: string, roomId: string) => {
     const current = roomRateMap.get(roomId) as any;
-    setRoomForm({
-      property_id: propertyId,
-      room_id: roomId,
-      unit_price: Number(current?.unit_price || current?.rate || 0),
-      busy_season_allowance: current?.busy_season_allowance || "",
-      is_active: current?.is_active !== false,
-    });
+    setRoomForm({ property_id: propertyId, room_id: roomId, unit_price: Number(current?.unit_price || current?.rate || 0), busy_season_allowance: current?.busy_season_allowance || "", is_active: current?.is_active !== false });
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
@@ -405,67 +402,82 @@ function PayrollSettings({ settings, staffs, properties, rooms, saving, onSaveSt
 
   return (
     <div className="space-y-5">
-      <div className="grid gap-5 lg:grid-cols-3">
-        <Card className="p-5">
-          <h2 className="text-lg font-semibold">スタッフ給与設定</h2><p className="mt-1 text-sm text-neutral-500">給与形態・時給・最低保証・交通費</p>
-          <div className="mt-5 space-y-4">
-            <Field label="スタッフ"><select className="h-11 w-full rounded-xl border bg-white px-3" value={staffForm.staff_id} onChange={(e) => setStaffForm((p) => ({ ...p, staff_id: e.target.value }))}><option value="">選択してください</option>{activeStaffs.map((s: StaffMaster) => <option key={s.id} value={s.id}>{s.staff_name}{s.staff_code ? ` (${s.staff_code})` : ""}</option>)}</select></Field>
-            <Field label="給与形態"><select className="h-11 w-full rounded-xl border bg-white px-3" value={staffForm.payroll_type} onChange={(e) => setStaffForm((p) => ({ ...p, payroll_type: e.target.value }))}><option value="piece_rate">単価</option><option value="hourly">時給</option></select></Field>
-            <NumberField label="時給" value={staffForm.hourly_rate} onChange={(v) => setStaffForm((p) => ({ ...p, hourly_rate: v }))} />
-            <NumberField label="最低保証" value={staffForm.minimum_guarantee} onChange={(v) => setStaffForm((p) => ({ ...p, minimum_guarantee: v }))} />
-            <NumberField label="交通費" value={staffForm.transportation_fee} onChange={(v) => setStaffForm((p) => ({ ...p, transportation_fee: v }))} />
-            <CheckField checked={staffForm.is_active} onChange={(v) => setStaffForm((p) => ({ ...p, is_active: v }))} />
-            <Button className="w-full" disabled={!staffForm.staff_id || saving} onClick={() => onSaveStaff(staffForm)}>{saving ? "保存中..." : "保存"}</Button>
-          </div>
-        </Card>
-
-        <Card className="p-5">
-          <h2 className="text-lg font-semibold">部屋別単価</h2><p className="mt-1 text-sm text-neutral-500">物件・部屋ごとの清掃単価</p>
-          <div className="mt-5 space-y-4">
-            <Field label="物件"><select className="h-11 w-full rounded-xl border bg-white px-3" value={roomForm.property_id} onChange={(e) => setRoomForm((p) => ({ ...p, property_id: e.target.value, room_id: "" }))}><option value="">選択してください</option>{activeProperties.map((p: PropertyMaster) => <option key={p.id} value={p.id}>{p.property_name}</option>)}</select></Field>
-            <Field label="部屋"><select className="h-11 w-full rounded-xl border bg-white px-3" value={roomForm.room_id} onChange={(e) => setRoomForm((p) => ({ ...p, room_id: e.target.value }))}><option value="">選択してください</option>{activeRooms.map((r: RoomMaster) => <option key={r.id} value={r.id}>{r.room_name}</option>)}</select></Field>
-            <NumberField label="単価" value={roomForm.unit_price} onChange={(v) => setRoomForm((p) => ({ ...p, unit_price: v }))} />
-            <Field label="繁忙期加算"><input className="h-11 w-full rounded-xl border px-3" value={roomForm.busy_season_allowance} onChange={(e) => setRoomForm((p) => ({ ...p, busy_season_allowance: e.target.value }))} placeholder="例: 2026-07:300,2026-08:500" /></Field>
-            <CheckField checked={roomForm.is_active} onChange={(v) => setRoomForm((p) => ({ ...p, is_active: v }))} />
-            <Button className="w-full" disabled={!roomForm.room_id || saving} onClick={() => onSaveRoom(roomForm)}>{saving ? "保存中..." : "保存"}</Button>
-          </div>
-        </Card>
-
-        <Card className="p-5">
-          <h2 className="text-lg font-semibold">物件タイプ別単価</h2><p className="mt-1 text-sm text-neutral-500">物件ごとの清掃以外作業単価</p>
-          <div className="mt-5 space-y-4">
-            <Field label="物件"><select className="h-11 w-full rounded-xl border bg-white px-3" value={propertyTypeForm.property_id} onChange={(e) => setPropertyTypeForm((p) => ({ ...p, property_id: e.target.value }))}><option value="">選択してください</option>{activeProperties.map((p: PropertyMaster) => <option key={p.id} value={p.id}>{p.property_name}</option>)}</select></Field>
-            <Field label="作業種別"><input className="h-11 w-full rounded-xl border px-3" value={propertyTypeForm.work_type} onChange={(e) => setPropertyTypeForm((p) => ({ ...p, work_type: e.target.value }))} placeholder="例: リネン運搬" /></Field>
-            <NumberField label="単価" value={propertyTypeForm.unit_price} onChange={(v) => setPropertyTypeForm((p) => ({ ...p, unit_price: v }))} />
-            <CheckField checked={propertyTypeForm.is_active} onChange={(v) => setPropertyTypeForm((p) => ({ ...p, is_active: v }))} />
-            <Button className="w-full" disabled={!propertyTypeForm.property_id || !propertyTypeForm.work_type || saving} onClick={() => onSavePropertyType(propertyTypeForm)}>{saving ? "保存中..." : "保存"}</Button>
-          </div>
-        </Card>
+      <div className="flex flex-wrap gap-2 rounded-2xl border bg-white p-2 shadow-sm">
+        <Button active={settingsTab === "staff"} variant={settingsTab === "staff" ? "default" : "outline"} onClick={() => setSettingsTab("staff")}>スタッフ給与設定</Button>
+        <Button active={settingsTab === "room"} variant={settingsTab === "room" ? "default" : "outline"} onClick={() => setSettingsTab("room")}>部屋別単価</Button>
+        <Button active={settingsTab === "property"} variant={settingsTab === "property" ? "default" : "outline"} onClick={() => setSettingsTab("property")}>物件別単価</Button>
       </div>
 
-      <Card className="overflow-hidden">
-        <ListHeader title="スタッフ給与設定一覧" description="給与設定が登録されている対象者。編集から上のフォームへ読み込みます。" count={`${configuredStaffs.length}名`} />
-        <div className="overflow-auto"><table className="w-full min-w-[760px] text-sm"><thead className="bg-neutral-100 text-xs text-neutral-600"><tr><th className="px-4 py-3 text-left">スタッフ</th><th className="px-4 py-3 text-left">給与形態</th><th className="px-4 py-3 text-right">時給</th><th className="px-4 py-3 text-right">最低保証</th><th className="px-4 py-3 text-right">交通費</th><th className="px-4 py-3 text-left">状態</th><th className="px-4 py-3 text-right">操作</th></tr></thead><tbody>
-          {configuredStaffs.length === 0 ? <EmptyRow colSpan={7} text="給与設定済みのスタッフがいません。" /> : null}
-          {configuredStaffs.map(({ setting, staff }: any) => <tr key={setting.staff_id} className={`border-t hover:bg-neutral-50 ${staffForm.staff_id === setting.staff_id ? "bg-amber-50" : "bg-white"}`}><td className="px-4 py-3 font-medium">{staff?.staff_name || setting.staff_name || "-"}{staff?.staff_code ? <span className="ml-2 text-xs text-neutral-400">({staff.staff_code})</span> : null}</td><td className="px-4 py-3"><Pill>{settingTypeLabel(setting.payroll_type)}</Pill></td><td className="px-4 py-3 text-right">{yen(setting.hourly_rate)}</td><td className="px-4 py-3 text-right">{yen(setting.minimum_guarantee)}</td><td className="px-4 py-3 text-right">{yen(setting.transportation_fee)}</td><td className="px-4 py-3"><Pill tone={setting.is_active === false ? "warn" : "good"}>{setting.is_active === false ? "無効" : "有効"}</Pill></td><td className="px-4 py-3 text-right"><EditButton onClick={() => selectConfiguredStaff(setting.staff_id)} /></td></tr>)}
-        </tbody></table></div>
-      </Card>
+      {settingsTab === "staff" ? (
+        <div className="space-y-5">
+          <Card className="p-5">
+            <h2 className="text-lg font-semibold">スタッフ給与設定</h2><p className="mt-1 text-sm text-neutral-500">給与形態・時給・最低保証・交通費</p>
+            <div className="mt-5 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              <Field label="スタッフ"><select className="h-11 w-full rounded-xl border bg-white px-3" value={staffForm.staff_id} onChange={(e) => setStaffForm((p) => ({ ...p, staff_id: e.target.value }))}><option value="">選択してください</option>{activeStaffs.map((s: StaffMaster) => <option key={s.id} value={s.id}>{s.staff_name}{s.staff_code ? ` (${s.staff_code})` : ""}</option>)}</select></Field>
+              <Field label="給与形態"><select className="h-11 w-full rounded-xl border bg-white px-3" value={staffForm.payroll_type} onChange={(e) => setStaffForm((p) => ({ ...p, payroll_type: e.target.value }))}><option value="piece_rate">単価</option><option value="hourly">時給</option></select></Field>
+              <NumberField label="時給" value={staffForm.hourly_rate} onChange={(v) => setStaffForm((p) => ({ ...p, hourly_rate: v }))} />
+              <NumberField label="最低保証" value={staffForm.minimum_guarantee} onChange={(v) => setStaffForm((p) => ({ ...p, minimum_guarantee: v }))} />
+              <NumberField label="交通費" value={staffForm.transportation_fee} onChange={(v) => setStaffForm((p) => ({ ...p, transportation_fee: v }))} />
+              <div className="flex items-end gap-3"><CheckField checked={staffForm.is_active} onChange={(v) => setStaffForm((p) => ({ ...p, is_active: v }))} /><Button className="ml-auto min-w-[140px]" disabled={!staffForm.staff_id || saving} onClick={() => onSaveStaff(staffForm)}>{saving ? "保存中..." : "保存"}</Button></div>
+            </div>
+          </Card>
 
-      <Card className="overflow-hidden">
-        <ListHeader title="部屋別単価一覧" description="登録済みの物件・部屋ごとの清掃単価です。" count={`${configuredRoomRates.length}件`} />
-        <div className="overflow-auto"><table className="w-full min-w-[820px] text-sm"><thead className="bg-neutral-100 text-xs text-neutral-600"><tr><th className="px-4 py-3 text-left">物件</th><th className="px-4 py-3 text-left">部屋</th><th className="px-4 py-3 text-right">単価</th><th className="px-4 py-3 text-left">繁忙期加算</th><th className="px-4 py-3 text-left">状態</th><th className="px-4 py-3 text-right">操作</th></tr></thead><tbody>
-          {configuredRoomRates.length === 0 ? <EmptyRow colSpan={6} text="部屋別単価が登録されていません。" /> : null}
-          {configuredRoomRates.map(({ setting, room, property, propertyId }: any) => <tr key={setting.id || setting.room_id} className={`border-t hover:bg-neutral-50 ${roomForm.room_id === setting.room_id ? "bg-amber-50" : "bg-white"}`}><td className="px-4 py-3 font-medium">{property?.property_name || setting.property_name || "-"}</td><td className="px-4 py-3">{room?.room_name || setting.room_name || "-"}</td><td className="px-4 py-3 text-right">{yen(setting.unit_price ?? setting.rate)}</td><td className="px-4 py-3">{setting.busy_season_allowance || "-"}</td><td className="px-4 py-3"><Pill tone={setting.is_active === false ? "warn" : "good"}>{setting.is_active === false ? "無効" : "有効"}</Pill></td><td className="px-4 py-3 text-right"><EditButton onClick={() => selectConfiguredRoom(propertyId, setting.room_id)} /></td></tr>)}
-        </tbody></table></div>
-      </Card>
+          <Card className="overflow-hidden">
+            <ListHeader title="スタッフ給与設定一覧" description="給与設定が登録されている対象者。編集から上のフォームへ読み込みます。" count={`${configuredStaffs.length}名`} />
+            <div className="overflow-auto"><table className="w-full min-w-[760px] text-sm"><thead className="bg-neutral-100 text-xs text-neutral-600"><tr><th className="px-4 py-3 text-left">スタッフ</th><th className="px-4 py-3 text-left">給与形態</th><th className="px-4 py-3 text-right">時給</th><th className="px-4 py-3 text-right">最低保証</th><th className="px-4 py-3 text-right">交通費</th><th className="px-4 py-3 text-left">状態</th><th className="px-4 py-3 text-right">操作</th></tr></thead><tbody>
+              {configuredStaffs.length === 0 ? <EmptyRow colSpan={7} text="給与設定済みのスタッフがいません。" /> : null}
+              {configuredStaffs.map(({ setting, staff }: any) => <tr key={setting.staff_id} className={`border-t hover:bg-neutral-50 ${staffForm.staff_id === setting.staff_id ? "bg-amber-50" : "bg-white"}`}><td className="px-4 py-3 font-medium">{staff?.staff_name || setting.staff_name || "-"}{staff?.staff_code ? <span className="ml-2 text-xs text-neutral-400">({staff.staff_code})</span> : null}</td><td className="px-4 py-3"><Pill>{settingTypeLabel(setting.payroll_type)}</Pill></td><td className="px-4 py-3 text-right">{yen(setting.hourly_rate)}</td><td className="px-4 py-3 text-right">{yen(setting.minimum_guarantee)}</td><td className="px-4 py-3 text-right">{yen(setting.transportation_fee)}</td><td className="px-4 py-3"><Pill tone={setting.is_active === false ? "warn" : "good"}>{setting.is_active === false ? "無効" : "有効"}</Pill></td><td className="px-4 py-3 text-right"><EditButton onClick={() => selectConfiguredStaff(setting.staff_id)} /></td></tr>)}
+            </tbody></table></div>
+          </Card>
+        </div>
+      ) : null}
 
-      <Card className="overflow-hidden">
-        <ListHeader title="物件別単価一覧" description="物件ごとの清掃以外作業単価です。" count={`${configuredPropertyRates.length}件`} />
-        <div className="overflow-auto"><table className="w-full min-w-[720px] text-sm"><thead className="bg-neutral-100 text-xs text-neutral-600"><tr><th className="px-4 py-3 text-left">物件</th><th className="px-4 py-3 text-left">作業種別</th><th className="px-4 py-3 text-right">単価</th><th className="px-4 py-3 text-left">状態</th><th className="px-4 py-3 text-right">操作</th></tr></thead><tbody>
-          {configuredPropertyRates.length === 0 ? <EmptyRow colSpan={5} text="物件別単価が登録されていません。" /> : null}
-          {configuredPropertyRates.map(({ setting, property }: any) => { const workType = setting.work_type || setting.property_type || ""; return <tr key={setting.id || `${setting.property_id}::${workType}`} className={`border-t hover:bg-neutral-50 ${propertyTypeForm.property_id === setting.property_id && propertyTypeForm.work_type === workType ? "bg-amber-50" : "bg-white"}`}><td className="px-4 py-3 font-medium">{property?.property_name || setting.property_name || "-"}</td><td className="px-4 py-3">{workType || "-"}</td><td className="px-4 py-3 text-right">{yen(setting.unit_price ?? setting.rate)}</td><td className="px-4 py-3"><Pill tone={setting.is_active === false ? "warn" : "good"}>{setting.is_active === false ? "無効" : "有効"}</Pill></td><td className="px-4 py-3 text-right"><EditButton onClick={() => selectConfiguredPropertyRate(setting.property_id, workType)} /></td></tr>; })}
-        </tbody></table></div>
-      </Card>
+      {settingsTab === "room" ? (
+        <div className="space-y-5">
+          <Card className="p-5">
+            <h2 className="text-lg font-semibold">部屋別単価</h2><p className="mt-1 text-sm text-neutral-500">物件・部屋ごとの清掃単価</p>
+            <div className="mt-5 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              <Field label="物件"><select className="h-11 w-full rounded-xl border bg-white px-3" value={roomForm.property_id} onChange={(e) => setRoomForm((p) => ({ ...p, property_id: e.target.value, room_id: "" }))}><option value="">選択してください</option>{activeProperties.map((p: PropertyMaster) => <option key={p.id} value={p.id}>{p.property_name}</option>)}</select></Field>
+              <Field label="部屋"><select className="h-11 w-full rounded-xl border bg-white px-3" value={roomForm.room_id} onChange={(e) => setRoomForm((p) => ({ ...p, room_id: e.target.value }))}><option value="">選択してください</option>{activeRooms.map((r: RoomMaster) => <option key={r.id} value={r.id}>{r.room_name}</option>)}</select></Field>
+              <NumberField label="単価" value={roomForm.unit_price} onChange={(v) => setRoomForm((p) => ({ ...p, unit_price: v }))} />
+              <Field label="繁忙期加算"><input className="h-11 w-full rounded-xl border px-3" value={roomForm.busy_season_allowance} onChange={(e) => setRoomForm((p) => ({ ...p, busy_season_allowance: e.target.value }))} placeholder="例: 2026-07:300,2026-08:500" /></Field>
+              <CheckField checked={roomForm.is_active} onChange={(v) => setRoomForm((p) => ({ ...p, is_active: v }))} />
+              <div className="flex items-end justify-end"><Button className="min-w-[140px]" disabled={!roomForm.room_id || saving} onClick={() => onSaveRoom(roomForm)}>{saving ? "保存中..." : "保存"}</Button></div>
+            </div>
+          </Card>
+
+          <Card className="overflow-hidden">
+            <ListHeader title="部屋別単価一覧" description="登録済みの物件・部屋ごとの清掃単価です。" count={`${configuredRoomRates.length}件`} />
+            <div className="overflow-auto"><table className="w-full min-w-[820px] text-sm"><thead className="bg-neutral-100 text-xs text-neutral-600"><tr><th className="px-4 py-3 text-left">物件</th><th className="px-4 py-3 text-left">部屋</th><th className="px-4 py-3 text-right">単価</th><th className="px-4 py-3 text-left">繁忙期加算</th><th className="px-4 py-3 text-left">状態</th><th className="px-4 py-3 text-right">操作</th></tr></thead><tbody>
+              {configuredRoomRates.length === 0 ? <EmptyRow colSpan={6} text="部屋別単価が登録されていません。" /> : null}
+              {configuredRoomRates.map(({ setting, room, property, propertyId }: any) => <tr key={setting.id || setting.room_id} className={`border-t hover:bg-neutral-50 ${roomForm.room_id === setting.room_id ? "bg-amber-50" : "bg-white"}`}><td className="px-4 py-3 font-medium">{property?.property_name || setting.property_name || "-"}</td><td className="px-4 py-3">{room?.room_name || setting.room_name || "-"}</td><td className="px-4 py-3 text-right">{yen(setting.unit_price ?? setting.rate)}</td><td className="px-4 py-3">{setting.busy_season_allowance || "-"}</td><td className="px-4 py-3"><Pill tone={setting.is_active === false ? "warn" : "good"}>{setting.is_active === false ? "無効" : "有効"}</Pill></td><td className="px-4 py-3 text-right"><EditButton onClick={() => selectConfiguredRoom(propertyId, setting.room_id)} /></td></tr>)}
+            </tbody></table></div>
+          </Card>
+        </div>
+      ) : null}
+
+      {settingsTab === "property" ? (
+        <div className="space-y-5">
+          <Card className="p-5">
+            <h2 className="text-lg font-semibold">物件別単価</h2><p className="mt-1 text-sm text-neutral-500">物件ごとの清掃以外作業単価</p>
+            <div className="mt-5 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              <Field label="物件"><select className="h-11 w-full rounded-xl border bg-white px-3" value={propertyTypeForm.property_id} onChange={(e) => setPropertyTypeForm((p) => ({ ...p, property_id: e.target.value }))}><option value="">選択してください</option>{activeProperties.map((p: PropertyMaster) => <option key={p.id} value={p.id}>{p.property_name}</option>)}</select></Field>
+              <Field label="作業種別"><input className="h-11 w-full rounded-xl border px-3" value={propertyTypeForm.work_type} onChange={(e) => setPropertyTypeForm((p) => ({ ...p, work_type: e.target.value }))} placeholder="例: リネン運搬" /></Field>
+              <NumberField label="単価" value={propertyTypeForm.unit_price} onChange={(v) => setPropertyTypeForm((p) => ({ ...p, unit_price: v }))} />
+              <CheckField checked={propertyTypeForm.is_active} onChange={(v) => setPropertyTypeForm((p) => ({ ...p, is_active: v }))} />
+              <div className="flex items-end justify-end lg:col-start-3"><Button className="min-w-[140px]" disabled={!propertyTypeForm.property_id || !propertyTypeForm.work_type || saving} onClick={() => onSavePropertyType(propertyTypeForm)}>{saving ? "保存中..." : "保存"}</Button></div>
+            </div>
+          </Card>
+
+          <Card className="overflow-hidden">
+            <ListHeader title="物件別単価一覧" description="物件ごとの清掃以外作業単価です。" count={`${configuredPropertyRates.length}件`} />
+            <div className="overflow-auto"><table className="w-full min-w-[720px] text-sm"><thead className="bg-neutral-100 text-xs text-neutral-600"><tr><th className="px-4 py-3 text-left">物件</th><th className="px-4 py-3 text-left">作業種別</th><th className="px-4 py-3 text-right">単価</th><th className="px-4 py-3 text-left">状態</th><th className="px-4 py-3 text-right">操作</th></tr></thead><tbody>
+              {configuredPropertyRates.length === 0 ? <EmptyRow colSpan={5} text="物件別単価が登録されていません。" /> : null}
+              {configuredPropertyRates.map(({ setting, property }: any) => { const workType = setting.work_type || setting.property_type || ""; return <tr key={setting.id || `${setting.property_id}::${workType}`} className={`border-t hover:bg-neutral-50 ${propertyTypeForm.property_id === setting.property_id && propertyTypeForm.work_type === workType ? "bg-amber-50" : "bg-white"}`}><td className="px-4 py-3 font-medium">{property?.property_name || setting.property_name || "-"}</td><td className="px-4 py-3">{workType || "-"}</td><td className="px-4 py-3 text-right">{yen(setting.unit_price ?? setting.rate)}</td><td className="px-4 py-3"><Pill tone={setting.is_active === false ? "warn" : "good"}>{setting.is_active === false ? "無効" : "有効"}</Pill></td><td className="px-4 py-3 text-right"><EditButton onClick={() => selectConfiguredPropertyRate(setting.property_id, workType)} /></td></tr>; })}
+            </tbody></table></div>
+          </Card>
+        </div>
+      ) : null}
     </div>
   );
 }
