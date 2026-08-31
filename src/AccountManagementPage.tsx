@@ -156,6 +156,14 @@ export default function AccountManagementPage() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [selected, setSelected] = useState<Staff | null>(null);
   const [saving, setSaving] = useState(false);
+  const isOperation = useMemo(() => {
+    try {
+      const raw = localStorage.getItem("admin_user");
+      return raw ? JSON.parse(raw)?.role === "operation" : false;
+    } catch {
+      return false;
+    }
+  }, []);
 
   const [form, setForm] = useState({
     id: "",
@@ -383,6 +391,7 @@ export default function AccountManagementPage() {
       <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-4 flex flex-wrap gap-3 items-center justify-between">
         <div>
           <div className="text-xs text-slate-500">管理画面 ＞ アカウント管理</div>
+          {isOperation ? <div className="mt-1 text-xs font-bold text-amber-700">operation権限は閲覧のみです</div> : null}
           <div className="text-base font-extrabold mt-1">アカウント管理</div>
         </div>
 
@@ -409,6 +418,7 @@ export default function AccountManagementPage() {
           <button
             className="rounded-full bg-slate-900 text-white px-4 py-2 text-sm font-bold hover:bg-black"
             onClick={openNew}
+            disabled={isOperation}
           >
             ＋アカウント追加
           </button>
@@ -441,7 +451,7 @@ export default function AccountManagementPage() {
                 <tr
                   key={staff.id}
                   className="border-b border-slate-100 cursor-pointer hover:bg-slate-50"
-                  onClick={() => openEdit(staff)}
+                  onClick={() => { if (!isOperation) openEdit(staff); }}
                 >
                   <td className="px-3 py-3">{staff.sort_order ?? ""}</td>
                   <td className="px-3 py-3 font-semibold">{staff.staff_code}</td>
@@ -490,7 +500,7 @@ export default function AccountManagementPage() {
               <Button
                 className="bg-slate-900 text-white border-slate-900 hover:bg-black"
                 onClick={save}
-                disabled={saving}
+                disabled={saving || isOperation}
               >
                 {saving ? "保存中..." : "保存"}
               </Button>
@@ -520,6 +530,7 @@ export default function AccountManagementPage() {
               options={[
                 { value: "admin", label: "admin" },
                 { value: "sub_admin", label: "sub_admin" },
+                { value: "operation", label: "operation" },
                 { value: "payroll_admin", label: "payroll_admin" },
                 { value: "leader", label: "leader" },
                 { value: "checker", label: "checker" },

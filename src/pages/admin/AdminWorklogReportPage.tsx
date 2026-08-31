@@ -169,6 +169,14 @@ export default function AdminWorklogReportPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [alertFilter, setAlertFilter] = useState<AlertFilter>("all");
+  const isOperation = useMemo(() => {
+    try {
+      const raw = localStorage.getItem("admin_user");
+      return raw ? JSON.parse(raw)?.role === "operation" : false;
+    } catch {
+      return false;
+    }
+  }, []);
   const [workTypeFilter, setWorkTypeFilter] = useState<
     "all" | "cleaning" | "inspection" | "linen" | "support"
   >("all");
@@ -419,10 +427,16 @@ export default function AdminWorklogReportPage() {
           </div>
         ) : null}
 
-        <AdminWorklogEditor
-          selectedDate={selectedDate}
-          onChanged={() => void loadWorklogs(selectedDate)}
-        />
+        {isOperation ? (
+          <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-bold text-amber-700">
+            operation権限は実働報告の閲覧のみ可能です。
+          </div>
+        ) : (
+          <AdminWorklogEditor
+            selectedDate={selectedDate}
+            onChanged={() => void loadWorklogs(selectedDate)}
+          />
+        )}
       </div>
     </div>
   );

@@ -189,6 +189,14 @@ export default function ShiftBoardPage() {
   const [jinjerSyncing, setJinjerSyncing] = useState(false);
   const [shiftUploadFile, setShiftUploadFile] = useState<File | null>(null);
   const [shiftUploading, setShiftUploading] = useState(false);
+  const isOperation = useMemo(() => {
+    try {
+      const raw = localStorage.getItem("admin_user");
+      return raw ? JSON.parse(raw)?.role === "operation" : false;
+    } catch {
+      return false;
+    }
+  }, []);
 
   const allDates = useMemo(() => buildMonthDates(year, month), [year, month]);
   const weekDates = useMemo(() => buildWeekDates(weekBaseDate), [weekBaseDate]);
@@ -278,6 +286,7 @@ export default function ShiftBoardPage() {
   };
 
   const saveCell = async (date: string, staffId: string, nextStatus: ShiftMark) => {
+    if (isOperation) return;
     const key = `${date}-${staffId}`;
     if (savingKey) return;
 
@@ -310,6 +319,7 @@ export default function ShiftBoardPage() {
   };
 
   const syncJinjer = async () => {
+    if (isOperation) return;
     if (jinjerSyncing) return;
     if (!window.confirm(`${year}年${month}月のシフトをJinjerから取り込みます。`)) return;
 
@@ -347,6 +357,7 @@ export default function ShiftBoardPage() {
   };
 
   const uploadShiftFile = async () => {
+    if (isOperation) return;
     if (!shiftUploadFile || shiftUploading) return;
     if (!window.confirm(`${year}年${month}月のシフトをファイルから取り込みます。`)) return;
 
@@ -434,6 +445,7 @@ export default function ShiftBoardPage() {
               <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
                 <div>
                   <div className="text-[18px] font-extrabold">シフトボード</div>
+                  {isOperation ? <div className="mt-1 text-xs font-bold text-amber-700">operation権限はシフト閲覧のみです</div> : null}
                   <div className="mt-1 text-sm text-slate-500">
                     清掃件数・出勤人数・1人当たり清掃数を日別に確認
                   </div>
@@ -496,7 +508,7 @@ export default function ShiftBoardPage() {
                 <div className="flex flex-wrap gap-2">
                   <button
                     type="button"
-                    disabled={jinjerSyncing}
+                    disabled={isOperation || jinjerSyncing}
                     onClick={() => void syncJinjer()}
                     className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-bold text-emerald-700 disabled:opacity-50"
                   >
@@ -508,12 +520,13 @@ export default function ShiftBoardPage() {
                       type="file"
                       accept=".xlsx,.xls,.csv"
                       className="hidden"
+                      disabled={isOperation}
                       onChange={(event) => setShiftUploadFile(event.target.files?.[0] ?? null)}
                     />
                   </label>
                   <button
                     type="button"
-                    disabled={!shiftUploadFile || shiftUploading}
+                    disabled={isOperation || !shiftUploadFile || shiftUploading}
                     onClick={() => void uploadShiftFile()}
                     className="rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-sm font-bold text-blue-700 disabled:opacity-50"
                   >
@@ -550,7 +563,7 @@ export default function ShiftBoardPage() {
                               <span className="truncate text-sm font-semibold">{staff.staff_name}</span>
                               <select
                                 value={current}
-                                disabled={savingKey === key}
+                                disabled={isOperation || savingKey === key}
                                 onChange={(event) => void saveCell(date, staff.id, event.target.value as ShiftMark)}
                                 className={`rounded-lg border px-2 py-1 text-sm font-semibold ${markClass(current)}`}
                               >
@@ -597,7 +610,7 @@ export default function ShiftBoardPage() {
                               <td key={staff.id} className={`min-w-[118px] ${stickyBg} px-3 py-3`}>
                                 <select
                                   value={current}
-                                  disabled={savingKey === key}
+                                  disabled={isOperation || savingKey === key}
                                   onChange={(event) => void saveCell(date, staff.id, event.target.value as ShiftMark)}
                                   className={`h-10 min-w-[92px] rounded-xl border px-3 text-sm font-medium outline-none ${markClass(current)} ${savingKey === key ? "opacity-50" : ""}`}
                                 >

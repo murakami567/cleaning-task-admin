@@ -152,6 +152,7 @@ export default function ShiftManagementPage() {
     }
   }, []);
   const adminToken = useMemo(() => localStorage.getItem("admin_access_token") || "", []);
+  const isOperation = currentUser?.role === "operation";
 
   // 1 分ごとに「現在時刻」を更新
   useEffect(() => {
@@ -177,9 +178,10 @@ export default function ShiftManagementPage() {
       if (data && data.length > 0) {
         setShiftDay(data[0]);
       } else {
+        if (isOperation) { setShiftDay(null); return; }
         const createRes = await fetch(`${API_BASE}/shifts/create_day`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${adminToken}` },
           body: JSON.stringify({ shift_date: shiftDate, note: "" }),
         });
         const created = await createRes.json();
@@ -258,6 +260,7 @@ export default function ShiftManagementPage() {
   }, [schedules, nowMin, selectedDate]);
 
   const saveEntry = async (staffId: string, patch: Partial<ShiftEntry>) => {
+    if (isOperation) return;
     if (!shiftDay) return;
 
     const current = entryMap.get(staffId);
@@ -274,7 +277,7 @@ export default function ShiftManagementPage() {
 
     const res = await fetch(`${API_BASE}/shifts/upsert_entry`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${adminToken}` },
       body: JSON.stringify(body),
     });
 
@@ -310,6 +313,7 @@ export default function ShiftManagementPage() {
         <div>
           <div className="text-xs text-slate-500">管理画面 ＞ シフト管理</div>
           <div className="text-base font-extrabold mt-1">シフト管理</div>
+          {isOperation ? <div className="mt-1 text-xs font-bold text-amber-700">operation権限はシフト閲覧のみです</div> : null}
         </div>
 
         <div className="flex flex-wrap gap-2 items-center">
@@ -406,6 +410,7 @@ export default function ShiftManagementPage() {
                     <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
                       <Select
                         value={entry?.status || "出勤"}
+                        disabled={isOperation}
                         onChange={(v: string) => void saveEntry(staff.id, { status: v })}
                         options={SHIFT_STATUS_OPTIONS}
                       />
@@ -476,7 +481,7 @@ export default function ShiftManagementPage() {
           staff={scheduleStaff}
           date={selectedDate}
           schedules={schedules.filter((s) => s.staff_id === scheduleStaff.id)}
-          canEdit={!!currentUser && currentUser.id === scheduleStaff.id}
+          canEdit={!isOperation && !!currentUser && currentUser.id === scheduleStaff.id}
           adminToken={adminToken}
           onClose={closeScheduleModal}
           onChanged={() => void loadSchedules(selectedDate)}
