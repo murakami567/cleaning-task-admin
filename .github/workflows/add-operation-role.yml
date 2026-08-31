@@ -1,0 +1,88 @@
+name: Add operation role UI restrictions
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/add-operation-role.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch admin UI
+        run: |
+          python <<'PY'
+          from pathlib import Path
+
+          # AccountManagementPage: add operation role + read-only UI
+          p = Path('src/AccountManagementPage.tsx')
+          s = p.read_text()
+          if 'const isOperation = useMemo' not in s:
+              s = s.replace('  const [saving, setSaving] = useState(false);', '''  const [saving, setSaving] = useState(false);\n  const isOperation = useMemo(() => {\n    try {\n      const raw = localStorage.getItem("admin_user");\n      return raw ? JSON.parse(raw)?.role === "operation" : false;\n    } catch {\n      return false;\n    }\n  }, []);''')
+          s = s.replace('            onClick={openNew}\n          >\n            ＋アカウント追加', '            onClick={openNew}\n            disabled={isOperation}\n          >\n            ＋アカウント追加')
+          s = s.replace('                  onClick={() => openEdit(staff)}', '                  onClick={() => { if (!isOperation) openEdit(staff); }}')
+          s = s.replace('                onClick={save}\n                disabled={saving}', '                onClick={save}\n                disabled={saving || isOperation}')
+          s = s.replace('{ value: "sub_admin", label: "sub_admin" },', '{ value: "sub_admin", label: "sub_admin" },\n                { value: "operation", label: "operation" },')
+          if 'operation権限は閲覧のみ' not in s:
+              s = s.replace('<div className="text-xs text-slate-500">管理画面 ＞ アカウント管理</div>', '<div className="text-xs text-slate-500">管理画面 ＞ アカウント管理</div>\n          {isOperation ? <div className="mt-1 text-xs font-bold text-amber-700">operation権限は閲覧のみです</div> : null}')
+          p.write_text(s)
+
+          # ShiftBoardPage: operation read-only for all shift edits/imports
+          p = Path('src/ShiftBoardPage.tsx')
+          s = p.read_text()
+          if 'const isOperation = useMemo' not in s:
+              s = s.replace('  const [shiftUploading, setShiftUploading] = useState(false);', '''  const [shiftUploading, setShiftUploading] = useState(false);\n  const isOperation = useMemo(() => {\n    try {\n      const raw = localStorage.getItem("admin_user");\n      return raw ? JSON.parse(raw)?.role === "operation" : false;\n    } catch {\n      return false;\n    }\n  }, []);''')
+          s = s.replace('  const saveCell = async (date: string, staffId: string, nextStatus: ShiftMark) => {\n    const key', '  const saveCell = async (date: string, staffId: string, nextStatus: ShiftMark) => {\n    if (isOperation) return;\n    const key')
+          s = s.replace('  const syncJinjer = async () => {\n    if (jinjerSyncing) return;', '  const syncJinjer = async () => {\n    if (isOperation) return;\n    if (jinjerSyncing) return;')
+          s = s.replace('  const uploadShiftFile = async () => {\n    if (!shiftUploadFile || shiftUploading) return;', '  const uploadShiftFile = async () => {\n    if (isOperation) return;\n    if (!shiftUploadFile || shiftUploading) return;')
+          s = s.replace('disabled={savingKey === key}', 'disabled={isOperation || savingKey === key}')
+          s = s.replace('disabled={jinjerSyncing}', 'disabled={isOperation || jinjerSyncing}')
+          s = s.replace('className="hidden"\n                      onChange={(event) => setShiftUploadFile', 'className="hidden"\n                      disabled={isOperation}\n                      onChange={(event) => setShiftUploadFile')
+          s = s.replace('disabled={!shiftUploadFile || shiftUploading}', 'disabled={isOperation || !shiftUploadFile || shiftUploading}')
+          if 'operation権限はシフト閲覧のみ' not in s:
+              s = s.replace('<div className="text-[18px] font-extrabold">シフトボード</div>', '<div className="text-[18px] font-extrabold">シフトボード</div>\n                  {isOperation ? <div className="mt-1 text-xs font-bold text-amber-700">operation権限はシフト閲覧のみです</div> : null}')
+          p.write_text(s)
+
+          # ShiftManagementPage: operation read-only; authenticated writes for other roles
+          p = Path('src/ShiftManagementPage.tsx')
+          s = p.read_text()
+          if 'const isOperation = currentUser?.role === "operation";' not in s:
+              s = s.replace('  const adminToken = useMemo(() => localStorage.getItem("admin_access_token") || "", []);', '  const adminToken = useMemo(() => localStorage.getItem("admin_access_token") || "", []);\n  const isOperation = currentUser?.role === "operation";')
+          s = s.replace('        const createRes = await fetch(`${API_BASE}/shifts/create_day`, {\n          method: "POST",\n          headers: { "Content-Type": "application/json" },', '        if (isOperation) { setShiftDay(null); return; }\n        const createRes = await fetch(`${API_BASE}/shifts/create_day`, {\n          method: "POST",\n          headers: { "Content-Type": "application/json", Authorization: `Bearer ${adminToken}` },')
+          s = s.replace('  const saveEntry = async (staffId: string, patch: Partial<ShiftEntry>) => {\n    if (!shiftDay) return;', '  const saveEntry = async (staffId: string, patch: Partial<ShiftEntry>) => {\n    if (isOperation) return;\n    if (!shiftDay) return;')
+          s = s.replace('      headers: { "Content-Type": "application/json" },\n      body: JSON.stringify(body),', '      headers: { "Content-Type": "application/json", Authorization: `Bearer ${adminToken}` },\n      body: JSON.stringify(body),', 1)
+          s = s.replace('                        value={entry?.status || "出勤"}\n                        onChange=', '                        value={entry?.status || "出勤"}\n                        disabled={isOperation}\n                        onChange=')
+          s = s.replace('          canEdit={!!currentUser && currentUser.id === scheduleStaff.id}', '          canEdit={!isOperation && !!currentUser && currentUser.id === scheduleStaff.id}')
+          if 'operation権限はシフト閲覧のみ' not in s:
+              s = s.replace('<div className="text-base font-extrabold mt-1">シフト管理</div>', '<div className="text-base font-extrabold mt-1">シフト管理</div>\n          {isOperation ? <div className="mt-1 text-xs font-bold text-amber-700">operation権限はシフト閲覧のみです</div> : null}')
+          p.write_text(s)
+
+          # Worklog report: hide editor for operation; viewing remains available
+          p = Path('src/pages/admin/AdminWorklogReportPage.tsx')
+          s = p.read_text()
+          if 'const isOperation = useMemo' not in s:
+              s = s.replace('  const [workTypeFilter, setWorkTypeFilter] = useState<', '''  const isOperation = useMemo(() => {\n    try {\n      const raw = localStorage.getItem("admin_user");\n      return raw ? JSON.parse(raw)?.role === "operation" : false;\n    } catch {\n      return false;\n    }\n  }, []);\n  const [workTypeFilter, setWorkTypeFilter] = useState<''')
+          s = s.replace('        <AdminWorklogEditor\n          selectedDate={selectedDate}\n          onChanged={() => void loadWorklogs(selectedDate)}\n        />', '''        {isOperation ? (\n          <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-bold text-amber-700">\n            operation権限は実働報告の閲覧のみ可能です。\n          </div>\n        ) : (\n          <AdminWorklogEditor\n            selectedDate={selectedDate}\n            onChanged={() => void loadWorklogs(selectedDate)}\n          />\n        )}''')
+          p.write_text(s)
+          PY
+
+      - name: Verify build
+        run: |
+          npm install --no-audit --no-fund
+          npm run build
+
+      - name: Commit implementation
+        run: |
+          if git diff --quiet; then exit 0; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src
+          git commit -m "feat: operation権限を追加"
+          git push
