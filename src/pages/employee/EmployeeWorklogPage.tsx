@@ -159,7 +159,6 @@ export default function EmployeeWorklogPage() {
     setSelectedWorkTypes(["cleaning"]);
     setRows([makeRow()]);
     setNote("");
-    setSuccessMessage("");
     setErrorMessage("");
   }
 
@@ -230,8 +229,8 @@ export default function EmployeeWorklogPage() {
         }
       }
 
-      setSuccessMessage("実働を登録しました。");
       clearForm();
+      setSuccessMessage("実働報告を送信しました");
     } catch (error) {
       console.error("実働登録エラー:", error);
       setErrorMessage(
@@ -400,12 +399,6 @@ export default function EmployeeWorklogPage() {
               </Field>
             </div>
 
-            {successMessage ? (
-              <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
-                {successMessage}
-              </div>
-            ) : null}
-
             {errorMessage ? (
               <div className="mt-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
                 {errorMessage}
@@ -432,6 +425,37 @@ export default function EmployeeWorklogPage() {
           </div>
         </form>
       </main>
+
+      {successMessage ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 px-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="worklog-success-title"
+        >
+          <div className="w-full max-w-sm rounded-3xl border border-slate-200 bg-white p-6 text-center shadow-2xl">
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100 text-2xl font-black text-emerald-700">
+              ✓
+            </div>
+            <h2
+              id="worklog-success-title"
+              className="mt-4 text-xl font-black text-slate-900"
+            >
+              {successMessage}
+            </h2>
+            <p className="mt-3 text-sm leading-6 text-slate-600">
+              お疲れさまでした。入力内容を正常に保存しました。
+            </p>
+            <button
+              type="button"
+              onClick={() => setSuccessMessage("")}
+              className="mt-6 w-full rounded-2xl bg-slate-900 px-5 py-3 text-sm font-bold text-white hover:bg-black"
+            >
+              閉じる
+            </button>
+          </div>
+        </div>
+      ) : null}
 
       <BottomNav />
     </div>
