@@ -326,12 +326,12 @@ export default function PayrollAttendancePage() {
           border-radius:0 !important;
           transform:none !important;
         }
-        .print-area .print-summary { grid-template-columns:repeat(4,1fr) !important; gap:6px !important; margin-bottom:10px !important; }
-        .print-area .print-summary > div { padding:8px !important; box-shadow:none !important; border-radius:6px !important; }
-        .print-area .print-summary .text-2xl { font-size:16px !important; line-height:1.2 !important; }
+        .print-area .print-summary { grid-template-columns:repeat(4,1fr) !important; gap:4px !important; margin-bottom:8px !important; }
+        .print-area .print-summary > div { padding:6px !important; box-shadow:none !important; border-radius:4px !important; }
+        .print-area .print-summary .text-2xl { font-size:13px !important; line-height:1.15 !important; }
         .print-area .print-table-wrap { overflow:visible !important; border-radius:0 !important; }
-        .print-area table { width:100% !important; min-width:0 !important; table-layout:fixed !important; font-size:8px !important; }
-        .print-area th, .print-area td { padding:5px 4px !important; line-height:1.25 !important; word-break:break-word !important; overflow-wrap:anywhere !important; }
+        .print-area table { width:100% !important; min-width:0 !important; table-layout:fixed !important; font-size:6.5px !important; }
+        .print-area th, .print-area td { padding:4px 2px !important; line-height:1.25 !important; word-break:break-word !important; overflow-wrap:anywhere !important; }
         .print-area th:nth-child(1), .print-area td:nth-child(1) { width:5%; }
         .print-area th:nth-child(2), .print-area td:nth-child(2) { width:9%; }
         .print-area th:nth-child(3), .print-area td:nth-child(3) { width:8%; }
@@ -346,7 +346,7 @@ export default function PayrollAttendancePage() {
         .print-area thead { display:table-header-group; }
         .print-area tfoot { display:table-row-group; }
         .print-area tr { break-inside:avoid; page-break-inside:avoid; }
-        @page { size:A4 landscape; margin:8mm; }
+        @page { size:A4 portrait; margin:7mm; }
       }`}</style>
       <div className="w-full space-y-6">
         <button type="button" onClick={() => (window.location.href = "/admin/home")} className="inline-flex h-10 items-center rounded-xl border border-neutral-200 bg-white px-4 text-sm font-medium text-neutral-700 hover:bg-neutral-100">← タスク管理に戻る</button>
