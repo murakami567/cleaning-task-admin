@@ -1,0 +1,64 @@
+name: Add task CI CO inputs
+on:
+  push:
+    paths:
+      - '.github/workflows/add-task-ci-co-inputs.yml'
+permissions:
+  contents: write
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Update task drawer
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('src/AdminTasksPagePreview.tsx')
+          s = p.read_text()
+
+          old = '''  nextCheckinDate?: string;\n  nextGuestCount?: number;\n  nextStayNights?: number;\n};\n'''
+          new = '''  nextCheckinDate?: string;\n  nextGuestCount?: number;\n  nextStayNights?: number;\n  earlyCheckinTime?: string;\n  lateCheckoutTime?: string;\n};\n'''
+          if old not in s:
+              raise SystemExit('CleaningTask type anchor not found')
+          s = s.replace(old, new, 1)
+
+          old = '''  next_guest_count?: number;\n  next_stay_nights?: number;\n};\n'''
+          new = '''  next_guest_count?: number;\n  next_stay_nights?: number;\n  early_checkin_time?: string | null;\n  late_checkout_time?: string | null;\n};\n'''
+          if old not in s:
+              raise SystemExit('ApiCleaningTask type anchor not found')
+          s = s.replace(old, new, 1)
+
+          old = '''    nextGuestCount: task.next_guest_count ?? 0,\n    nextStayNights: task.next_stay_nights ?? 0,\n  };\n'''
+          new = '''    nextGuestCount: task.next_guest_count ?? 0,\n    nextStayNights: task.next_stay_nights ?? 0,\n    earlyCheckinTime: task.early_checkin_time ?? "",\n    lateCheckoutTime: task.late_checkout_time ?? "",\n  };\n'''
+          if old not in s:
+              raise SystemExit('map task anchor not found')
+          s = s.replace(old, new, 1)
+
+          old = '''  if (patch.note !== undefined) body.note = patch.note;\n\n  // 持越・日付変更用。checkout_date / next_checkin_date は送らない。\n'''
+          new = '''  if (patch.note !== undefined) body.note = patch.note;\n  if (patch.earlyCheckinTime !== undefined) body.early_checkin_time = patch.earlyCheckinTime;\n  if (patch.lateCheckoutTime !== undefined) body.late_checkout_time = patch.lateCheckoutTime;\n\n  // 持越・日付変更用。checkout_date / next_checkin_date は送らない。\n'''
+          if old not in s:
+              raise SystemExit('persist anchor not found')
+          s = s.replace(old, new, 1)
+
+          old = '''              <div className="mt-1 text-xs text-black/50">\n                {formatMd(selectedCleaningTask.date)} / 出勤者:{" "}\n                {selectedCleaningAttendees.map((u) => u.name).join(" / ") ||\n                  "なし"}\n              </div>\n            </div>\n\n            <div>\n              <div className="mb-1 text-xs text-black/60">\n                チェックアウト日\n'''
+          new = '''            </div>\n\n            <div className="grid grid-cols-2 gap-3">\n              <div>\n                <div className="mb-1 text-xs text-black/60">アーリーチェックイン</div>\n                <input\n                  type="time"\n                  className="h-9 w-full rounded-lg border px-2 text-sm"\n                  value={selectedCleaningTask.earlyCheckinTime || ""}\n                  onChange={(e) =>\n                    updateCleaningTask(selectedCleaningTask.id, {\n                      earlyCheckinTime: e.target.value,\n                    })\n                  }\n                />\n              </div>\n              <div>\n                <div className="mb-1 text-xs text-black/60">レイトチェックアウト</div>\n                <input\n                  type="time"\n                  className="h-9 w-full rounded-lg border px-2 text-sm"\n                  value={selectedCleaningTask.lateCheckoutTime || ""}\n                  onChange={(e) =>\n                    updateCleaningTask(selectedCleaningTask.id, {\n                      lateCheckoutTime: e.target.value,\n                    })\n                  }\n                />\n              </div>\n            </div>\n\n            <div>\n              <div className="mb-1 text-xs text-black/60">\n                チェックアウト日\n'''
+          if old not in s:
+              raise SystemExit('drawer date/attendance anchor not found')
+          s = s.replace(old, new, 1)
+
+          p.write_text(s)
+          PY
+      - run: npm install
+      - run: npm run build
+      - name: Commit changes and cleanup
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          rm .github/workflows/add-task-ci-co-inputs.yml
+          git add src/AdminTasksPagePreview.tsx .github/workflows/add-task-ci-co-inputs.yml
+          git commit -m 'feat: 清掃タスク編集にアーリーCI・レイトCO入力を追加'
+          git push
