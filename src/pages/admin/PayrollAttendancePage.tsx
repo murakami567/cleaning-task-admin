@@ -334,8 +334,8 @@ export default function PayrollAttendancePage() {
         .print-area th, .print-area td { padding:4px 2px !important; line-height:1.25 !important; word-break:break-word !important; overflow-wrap:anywhere !important; }
         .print-area th:nth-child(1), .print-area td:nth-child(1) { width:5%; }
         .print-area th:nth-child(2), .print-area td:nth-child(2) { width:9%; }
-        .print-area th:nth-child(3), .print-area td:nth-child(3) { width:8%; }
-        .print-area th:nth-child(4), .print-area td:nth-child(4) { width:24%; }
+        .print-area th:nth-child(3), .print-area td:nth-child(3) { width:10%; }
+        .print-area th:nth-child(4), .print-area td:nth-child(4) { width:22%; }
         .print-area th:nth-child(5), .print-area td:nth-child(5) { width:6%; }
         .print-area th:nth-child(6), .print-area td:nth-child(6) { width:8%; }
         .print-area th:nth-child(7), .print-area td:nth-child(7) { width:7%; }
@@ -343,10 +343,11 @@ export default function PayrollAttendancePage() {
         .print-area th:nth-child(9), .print-area td:nth-child(9) { width:8%; }
         .print-area th:nth-child(10), .print-area td:nth-child(10) { width:8%; }
         .print-area th:nth-child(11), .print-area td:nth-child(11) { width:9%; }
+        .print-area td:nth-child(3) span { white-space:nowrap !important; word-break:keep-all !important; overflow-wrap:normal !important; }
         .print-area thead { display:table-header-group; }
         .print-area tfoot { display:table-row-group; }
         .print-area tr { break-inside:avoid; page-break-inside:avoid; }
-        @page { size:A4 portrait; margin:7mm; }
+        @page { size:A4 portrait; margin:10mm 12mm; }
       }`}</style>
       <div className="w-full space-y-6">
         <button type="button" onClick={() => (window.location.href = "/admin/home")} className="inline-flex h-10 items-center rounded-xl border border-neutral-200 bg-white px-4 text-sm font-medium text-neutral-700 hover:bg-neutral-100">← タスク管理に戻る</button>
