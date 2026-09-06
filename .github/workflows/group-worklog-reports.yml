@@ -24,16 +24,7 @@ jobs:
           p = Path('src/pages/admin/AdminWorklogReportPage.tsx')
           s = p.read_text()
           old = '      const key = `${row.user_id}_${row.work_date}`;'
-          new = '''      const key = [
-        row.user_id,
-        row.work_date,
-        row.work_start_time,
-        row.start_time,
-        row.end_time,
-        Number(row.break_minutes || 0),
-        row.work_type || "",
-        row.note || "",
-      ].join("||");'''
+          new = '      const key = [\n        row.user_id,\n        row.work_date,\n        row.work_start_time,\n        row.start_time,\n        row.end_time,\n        Number(row.break_minutes || 0),\n        row.work_type || "",\n        row.note || "",\n      ].join("||");'
           if old not in s:
               raise SystemExit('group key target not found')
           p.write_text(s.replace(old, new, 1))
