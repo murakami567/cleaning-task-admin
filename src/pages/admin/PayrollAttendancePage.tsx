@@ -310,7 +310,7 @@ export default function PayrollAttendancePage() {
   return (
     <div className="min-h-screen bg-neutral-50 p-6 text-neutral-900">
       <style>{`@media print { body * { visibility:hidden; } .print-area,.print-area * { visibility:visible; } .print-area { position:absolute; left:0; top:0; width:100%; border:none!important; box-shadow:none!important; transform:scale(.82); transform-origin:top left; } @page { size:A4 portrait; margin:8mm; } }`}</style>
-      <div className="mx-auto w-full max-w-[1500px] space-y-6">
+      <div className="w-full space-y-6">
         <button type="button" onClick={() => (window.location.href = "/admin/home")} className="inline-flex h-10 items-center rounded-xl border border-neutral-200 bg-white px-4 text-sm font-medium text-neutral-700 hover:bg-neutral-100">← タスク管理に戻る</button>
 
         <div className="flex flex-wrap items-center justify-between gap-4">
