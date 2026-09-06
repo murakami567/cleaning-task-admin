@@ -309,7 +309,45 @@ export default function PayrollAttendancePage() {
 
   return (
     <div className="min-h-screen bg-neutral-50 p-6 text-neutral-900">
-      <style>{`@media print { body * { visibility:hidden; } .print-area,.print-area * { visibility:visible; } .print-area { position:absolute; left:0; top:0; width:100%; border:none!important; box-shadow:none!important; transform:scale(.82); transform-origin:top left; } @page { size:A4 portrait; margin:8mm; } }`}</style>
+      <style>{`@media print {
+        html, body { background:#fff !important; }
+        body * { visibility:hidden; }
+        .print-area, .print-area * { visibility:visible; }
+        .print-area {
+          position:absolute;
+          left:0;
+          top:0;
+          width:100% !important;
+          max-width:none !important;
+          margin:0 !important;
+          padding:0 !important;
+          border:none !important;
+          box-shadow:none !important;
+          border-radius:0 !important;
+          transform:none !important;
+        }
+        .print-area .print-summary { grid-template-columns:repeat(4,1fr) !important; gap:6px !important; margin-bottom:10px !important; }
+        .print-area .print-summary > div { padding:8px !important; box-shadow:none !important; border-radius:6px !important; }
+        .print-area .print-summary .text-2xl { font-size:16px !important; line-height:1.2 !important; }
+        .print-area .print-table-wrap { overflow:visible !important; border-radius:0 !important; }
+        .print-area table { width:100% !important; min-width:0 !important; table-layout:fixed !important; font-size:8px !important; }
+        .print-area th, .print-area td { padding:5px 4px !important; line-height:1.25 !important; word-break:break-word !important; overflow-wrap:anywhere !important; }
+        .print-area th:nth-child(1), .print-area td:nth-child(1) { width:5%; }
+        .print-area th:nth-child(2), .print-area td:nth-child(2) { width:9%; }
+        .print-area th:nth-child(3), .print-area td:nth-child(3) { width:8%; }
+        .print-area th:nth-child(4), .print-area td:nth-child(4) { width:24%; }
+        .print-area th:nth-child(5), .print-area td:nth-child(5) { width:6%; }
+        .print-area th:nth-child(6), .print-area td:nth-child(6) { width:8%; }
+        .print-area th:nth-child(7), .print-area td:nth-child(7) { width:7%; }
+        .print-area th:nth-child(8), .print-area td:nth-child(8) { width:8%; }
+        .print-area th:nth-child(9), .print-area td:nth-child(9) { width:8%; }
+        .print-area th:nth-child(10), .print-area td:nth-child(10) { width:8%; }
+        .print-area th:nth-child(11), .print-area td:nth-child(11) { width:9%; }
+        .print-area thead { display:table-header-group; }
+        .print-area tfoot { display:table-row-group; }
+        .print-area tr { break-inside:avoid; page-break-inside:avoid; }
+        @page { size:A4 landscape; margin:8mm; }
+      }`}</style>
       <div className="w-full space-y-6">
         <button type="button" onClick={() => (window.location.href = "/admin/home")} className="inline-flex h-10 items-center rounded-xl border border-neutral-200 bg-white px-4 text-sm font-medium text-neutral-700 hover:bg-neutral-100">← タスク管理に戻る</button>
 
@@ -637,11 +675,11 @@ function PayrollStatement({ staffList, selectedStaffId, onSelectStaff, selectedS
     <Card className="print-area p-5">
       <div className="mb-5 flex flex-wrap items-start justify-between gap-4">
         <div><h2 className="text-lg font-semibold">個別給与明細</h2><p className="mt-1 text-sm text-neutral-500">スタッフを選択して印刷できます</p></div>
-        <div className="flex gap-2"><select className="h-10 rounded-xl border bg-white px-3 text-sm print:hidden" value={selectedStaffId} onChange={(e) => onSelectStaff(e.target.value)}>{staffList.map((staff: PayrollDailyResult) => <option key={staff.staff_id} value={staff.staff_id}>{staff.staff_name}</option>)}</select><Button variant="outline" className="print:hidden" onClick={() => window.print()}>印刷</Button></div>
+        <div className="flex gap-2"><select className="h-10 rounded-xl border bg-white px-3 text-sm print:hidden" value={selectedStaffId} onChange={(e) => onSelectStaff(e.target.value)}>{staffList.map((staff: PayrollDailyResult) => <option key={staff.staff_id} value={staff.staff_id}>{staff.staff_name}</option>)}</select><Button variant="outline" className="print:hidden" onClick={() => window.print()}>印刷・PDF保存</Button></div>
       </div>
       {!selectedStaff ? <div className="rounded-2xl border bg-neutral-50 p-6 text-sm text-neutral-500">対象スタッフがありません</div> : <>
-        <div className="mb-5 grid gap-4 md:grid-cols-4"><Metric label="スタッフ" value={selectedStaff.staff_name} /><Metric label="計算方式" value={typeLabel(selectedStaff.payroll_type)} /><Metric label="対象日数" value={`${new Set(rows.map((r: PayrollDailyResult) => r.target_date)).size}日`} /><Metric label="支給合計" value={yen(total("final_amount", rows))} /></div>
-        <div className="overflow-auto rounded-2xl border"><table className="w-full min-w-[900px] text-sm"><thead className="bg-neutral-100 text-xs text-neutral-600"><tr><th className="px-3 py-3 text-left">日付</th><th className="px-3 py-3 text-left">施設</th><th className="px-3 py-3 text-left">区分</th><th className="px-3 py-3 text-left min-w-[280px]">内訳</th><th className="px-3 py-3 text-right">部屋数</th><th className="px-3 py-3 text-right">清掃報酬</th><th className="px-3 py-3 text-right">実働</th><th className="px-3 py-3 text-right">時給報酬</th><th className="px-3 py-3 text-right">保証調整</th><th className="px-3 py-3 text-right">交通費</th><th className="px-3 py-3 text-right">支給額</th></tr></thead><tbody>{statementItems.map(({ row: r, kind }) => {
+        <div className="print-summary mb-5 grid gap-4 md:grid-cols-4"><Metric label="スタッフ" value={selectedStaff.staff_name} /><Metric label="計算方式" value={typeLabel(selectedStaff.payroll_type)} /><Metric label="対象日数" value={`${new Set(rows.map((r: PayrollDailyResult) => r.target_date)).size}日`} /><Metric label="支給合計" value={yen(total("final_amount", rows))} /></div>
+        <div className="print-table-wrap overflow-auto rounded-2xl border"><table className="w-full min-w-[900px] text-sm"><thead className="bg-neutral-100 text-xs text-neutral-600"><tr><th className="px-3 py-3 text-left">日付</th><th className="px-3 py-3 text-left">施設</th><th className="px-3 py-3 text-left">区分</th><th className="px-3 py-3 text-left min-w-[280px]">内訳</th><th className="px-3 py-3 text-right">部屋数</th><th className="px-3 py-3 text-right">清掃報酬</th><th className="px-3 py-3 text-right">実働</th><th className="px-3 py-3 text-right">時給報酬</th><th className="px-3 py-3 text-right">保証調整</th><th className="px-3 py-3 text-right">交通費</th><th className="px-3 py-3 text-right">支給額</th></tr></thead><tbody>{statementItems.map(({ row: r, kind }) => {
           const displayDate = previousDate !== r.target_date;
           previousDate = r.target_date;
           const parts = String(r.note || "").split(" / ").filter(Boolean);
