@@ -330,8 +330,8 @@ export default function PayrollAttendancePage() {
         .print-area .print-summary > div { padding:6px !important; box-shadow:none !important; border-radius:4px !important; }
         .print-area .print-summary .text-2xl { font-size:13px !important; line-height:1.15 !important; }
         .print-area .print-table-wrap { overflow:visible !important; border-radius:0 !important; }
-        .print-area table { width:100% !important; min-width:0 !important; table-layout:fixed !important; font-size:6.5px !important; }
-        .print-area th, .print-area td { padding:4px 2px !important; line-height:1.25 !important; word-break:break-word !important; overflow-wrap:anywhere !important; }
+        .print-area table { width:100% !important; min-width:0 !important; table-layout:fixed !important; font-size:7.5px !important; }
+        .print-area th, .print-area td { padding:4px 2.5px !important; line-height:1.25 !important; word-break:break-word !important; overflow-wrap:anywhere !important; }
         .print-area th:nth-child(1), .print-area td:nth-child(1) { width:5%; }
         .print-area th:nth-child(2), .print-area td:nth-child(2) { width:9%; }
         .print-area th:nth-child(3), .print-area td:nth-child(3) { width:10%; }
@@ -343,6 +343,7 @@ export default function PayrollAttendancePage() {
         .print-area th:nth-child(9), .print-area td:nth-child(9) { width:8%; }
         .print-area th:nth-child(10), .print-area td:nth-child(10) { width:8%; }
         .print-area th:nth-child(11), .print-area td:nth-child(11) { width:9%; }
+        .print-area td:nth-child(5), .print-area td:nth-child(6), .print-area td:nth-child(7), .print-area td:nth-child(8), .print-area td:nth-child(9), .print-area td:nth-child(10), .print-area td:nth-child(11) { font-size:8px !important; font-weight:600 !important; }
         .print-area td:nth-child(3) span { white-space:nowrap !important; word-break:keep-all !important; overflow-wrap:normal !important; }
         .print-area thead { display:table-header-group; }
         .print-area tfoot { display:table-row-group; }
