@@ -344,7 +344,7 @@ export default function PayrollAttendancePage() {
         .print-area th:nth-child(10), .print-area td:nth-child(10) { width:8%; }
         .print-area th:nth-child(11), .print-area td:nth-child(11) { width:9%; }
         .print-area td:nth-child(5), .print-area td:nth-child(6), .print-area td:nth-child(7), .print-area td:nth-child(8), .print-area td:nth-child(9), .print-area td:nth-child(10), .print-area td:nth-child(11) { font-size:8px !important; font-weight:600 !important; }
-        .print-area td:nth-child(3) span { white-space:nowrap !important; word-break:keep-all !important; overflow-wrap:normal !important; }
+        .print-area td:nth-child(3) span { white-space:nowrap !important; word-break:keep-all !important; overflow-wrap:normal !important; font-size:6.5px !important; line-height:1 !important; padding:2px 5px !important; }
         .print-area thead { display:table-header-group; }
         .print-area tfoot { display:table-row-group; }
         .print-area tr { break-inside:avoid; page-break-inside:avoid; }
