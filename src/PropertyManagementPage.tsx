@@ -208,6 +208,8 @@ const emptyRoomForm = {
   wifi_ssid: "",
   wifi_password: "",
   note: "",
+  early_checkin_fee: "0",
+  late_checkout_fee: "0",
 };
 
 export default function PropertyManagementPage() {
@@ -404,6 +406,8 @@ export default function PropertyManagementPage() {
       wifi_ssid: form.wifi_ssid.trim() || null,
       wifi_password: form.wifi_password.trim() || null,
       note: form.note.trim() || null,
+      early_checkin_fee: Math.max(Number(form.early_checkin_fee || 0), 0),
+      late_checkout_fee: Math.max(Number(form.late_checkout_fee || 0), 0),
     };
   };
 
@@ -579,6 +583,8 @@ export default function PropertyManagementPage() {
       wifi_ssid: room.wifi_ssid ?? "",
       wifi_password: room.wifi_password ?? "",
       note: room.note ?? "",
+      early_checkin_fee: String(room.early_checkin_fee ?? 0),
+      late_checkout_fee: String(room.late_checkout_fee ?? 0),
     });
     setEditRoomDrawerOpen(true);
   };
@@ -783,6 +789,26 @@ export default function PropertyManagementPage() {
                 ...current,
                 room_sort_order: value,
               }))
+            }
+          />
+        </Field>
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <Field label="アーリーCI料金（円）">
+          <TextInput
+            type="number"
+            value={roomForm.early_checkin_fee}
+            onChange={(value) =>
+              setRoomForm((current) => ({ ...current, early_checkin_fee: value }))
+            }
+          />
+        </Field>
+        <Field label="レイトCO料金（円）">
+          <TextInput
+            type="number"
+            value={roomForm.late_checkout_fee}
+            onChange={(value) =>
+              setRoomForm((current) => ({ ...current, late_checkout_fee: value }))
             }
           />
         </Field>

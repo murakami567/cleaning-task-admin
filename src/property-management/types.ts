@@ -35,6 +35,8 @@ export type RoomMaster = {
   wifi_ssid?: string | null;
   wifi_password?: string | null;
   note?: string | null;
+  early_checkin_fee?: number | null;
+  late_checkout_fee?: number | null;
 };
 
 export type PrepItem = {
