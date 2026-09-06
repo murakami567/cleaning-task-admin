@@ -310,21 +310,6 @@ export default function AdminWorklogReportPage() {
     return set.size;
   }, [groupedWorklogs]);
 
-  const propertySummary = useMemo(() => {
-    const map = new Map<string, number>();
-
-    groupedWorklogs.forEach((row) => {
-      row.property_names.forEach((propertyName) => {
-        const current = map.get(propertyName) || 0;
-        map.set(propertyName, current + Number(row.work_minutes || 0));
-      });
-    });
-
-    return Array.from(map.entries())
-      .map(([propertyName, minutes]) => ({ propertyName, minutes }))
-      .sort((a, b) => b.minutes - a.minutes);
-  }, [groupedWorklogs]);
-
   return (
     <div className="min-h-screen bg-slate-50 p-6">
       <div className="mx-auto max-w-[1380px] space-y-4">
@@ -408,27 +393,6 @@ export default function AdminWorklogReportPage() {
           <SummaryCard label="報告スタッフ数" value={uniqueStaffCount} />
           <SummaryCard label="総作業時間" value={formatMinutes(totalMinutes)} />
         </div>
-
-        {propertySummary.length > 0 ? (
-          <Card>
-            <div className="p-4">
-              <div className="mb-3 text-base font-extrabold text-slate-900">物件別作業時間</div>
-              <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-                {propertySummary.map((item) => (
-                  <div
-                    key={item.propertyName}
-                    className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4"
-                  >
-                    <div className="text-sm font-semibold text-slate-500">{item.propertyName}</div>
-                    <div className="mt-2 text-xl font-black text-slate-900">
-                      {formatMinutes(item.minutes)}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </Card>
-        ) : null}
 
         {error ? (
           <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
