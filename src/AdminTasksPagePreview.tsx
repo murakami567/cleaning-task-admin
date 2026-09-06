@@ -466,6 +466,8 @@ type CleaningTask = {
   nextCheckinDate?: string;
   nextGuestCount?: number;
   nextStayNights?: number;
+  earlyCheckinTime?: string;
+  lateCheckoutTime?: string;
 };
 
 type ApiCleaningTask = {
@@ -490,6 +492,8 @@ type ApiCleaningTask = {
 
   next_guest_count?: number;
   next_stay_nights?: number;
+  early_checkin_time?: string | null;
+  late_checkout_time?: string | null;
 };
 
 type PropertyMaster = {
@@ -577,6 +581,8 @@ function mapApiTaskToUi(task: ApiCleaningTask): CleaningTask {
     nextCheckinDate,
     nextGuestCount: task.next_guest_count ?? 0,
     nextStayNights: task.next_stay_nights ?? 0,
+    earlyCheckinTime: task.early_checkin_time ?? "",
+    lateCheckoutTime: task.late_checkout_time ?? "",
   };
 }
 
@@ -615,6 +621,8 @@ async function persistCleaningTaskPatch(
 
   if (patch.status !== undefined) body.status = patch.status;
   if (patch.note !== undefined) body.note = patch.note;
+  if (patch.earlyCheckinTime !== undefined) body.early_checkin_time = patch.earlyCheckinTime;
+  if (patch.lateCheckoutTime !== undefined) body.late_checkout_time = patch.lateCheckoutTime;
 
   // 持越・日付変更用。checkout_date / next_checkin_date は送らない。
   if (patch.date !== undefined) body.task_date = patch.date;
@@ -2037,10 +2045,34 @@ export default function AdminTasksPagePreview() {
                   });
                 }}
               />
-              <div className="mt-1 text-xs text-black/50">
-                {formatMd(selectedCleaningTask.date)} / 出勤者:{" "}
-                {selectedCleaningAttendees.map((u) => u.name).join(" / ") ||
-                  "なし"}
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <div className="mb-1 text-xs text-black/60">アーリーチェックイン</div>
+                <input
+                  type="time"
+                  className="h-9 w-full rounded-lg border px-2 text-sm"
+                  value={selectedCleaningTask.earlyCheckinTime || ""}
+                  onChange={(e) =>
+                    updateCleaningTask(selectedCleaningTask.id, {
+                      earlyCheckinTime: e.target.value,
+                    })
+                  }
+                />
+              </div>
+              <div>
+                <div className="mb-1 text-xs text-black/60">レイトチェックアウト</div>
+                <input
+                  type="time"
+                  className="h-9 w-full rounded-lg border px-2 text-sm"
+                  value={selectedCleaningTask.lateCheckoutTime || ""}
+                  onChange={(e) =>
+                    updateCleaningTask(selectedCleaningTask.id, {
+                      lateCheckoutTime: e.target.value,
+                    })
+                  }
+                />
               </div>
             </div>
 
