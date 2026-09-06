@@ -1355,6 +1355,18 @@ export default function PropertyManagementPage() {
               ["Wi-Fi SSID", viewingRoom.wifi_ssid],
               ["Wi-Fiパスワード", viewingRoom.wifi_password],
               ["定員", viewingRoom.capacity],
+    [
+      "アーリーCI料金",
+      Number(viewingRoom.early_checkin_fee || 0) > 0
+        ? `¥${Number(viewingRoom.early_checkin_fee || 0).toLocaleString()}`
+        : "未設定",
+    ],
+    [
+      "レイトCO料金",
+      Number(viewingRoom.late_checkout_fee || 0) > 0
+        ? `¥${Number(viewingRoom.late_checkout_fee || 0).toLocaleString()}`
+        : "未設定",
+    ],
               ["備考", viewingRoom.note],
             ].map(([label, value]) => (
               <div key={String(label)}>
