@@ -231,7 +231,16 @@ export default function AdminWorklogReportPage() {
     const map = new Map<string, GroupedWorklog>();
 
     for (const row of filteredWorklogs) {
-      const key = `${row.user_id}_${row.work_date}`;
+      const key = [
+        row.user_id,
+        row.work_date,
+        row.work_start_time,
+        row.start_time,
+        row.end_time,
+        Number(row.break_minutes || 0),
+        row.work_type || "",
+        row.note || "",
+      ].join("||");
 
       if (!map.has(key)) {
         map.set(key, {
