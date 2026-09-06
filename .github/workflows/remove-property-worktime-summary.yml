@@ -1,0 +1,53 @@
+name: Remove property worktime summary
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/remove-property-worktime-summary.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Remove property worktime summary
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('src/pages/admin/AdminWorklogReportPage.tsx')
+          s = p.read_text()
+
+          start = s.find('  const propertySummary = useMemo(() => {')
+          end = s.find('\n\n  return (', start)
+          if start == -1 or end == -1:
+              raise SystemExit('propertySummary block not found')
+          s = s[:start] + s[end+2:]
+
+          start = s.find('        {propertySummary.length > 0 ? (')
+          end_marker = '        ) : null}\n\n'
+          end = s.find(end_marker, start)
+          if start == -1 or end == -1:
+              raise SystemExit('propertySummary JSX block not found')
+          s = s[:start] + s[end + len(end_marker):]
+
+          p.write_text(s)
+          PY
+      - run: npm install
+      - run: npm run build
+      - name: Commit changes and remove workflow
+        run: |
+          rm .github/workflows/remove-property-worktime-summary.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/pages/admin/AdminWorklogReportPage.tsx .github/workflows/remove-property-worktime-summary.yml
+          git commit -m "feat: 実働報告から物件別作業時間を削除"
+          git push
