@@ -1,0 +1,41 @@
+name: Show task CI CO times employee
+on:
+  push:
+    paths:
+      - '.github/workflows/show-task-ci-co-times-employee.yml'
+permissions:
+  contents: write
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Patch employee tasks page
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('src/pages/employee/EmployeeTasksPage.tsx')
+          s = p.read_text()
+          s = s.replace('''  rateCi?: number | string;\n  rateCo?: number | string;\n  towelCount?: number | string;\n''','''  rateCi?: number | string;\n  rateCo?: number | string;\n  earlyCheckinTime?: string;\n  lateCheckoutTime?: string;\n  towelCount?: number | string;\n''',1)
+          s = s.replace('''            <div>期限：{formatDate(task.deadline || task.dueDate)}</div>\n            {task.taskKind !== "other" ? <div>タオル：{task.towelCount ?? "-"}</div> : null}\n''','''            <div>期限：{formatDate(task.deadline || task.dueDate)}</div>\n            {task.taskKind !== "other" && (task.earlyCheckinTime || task.lateCheckoutTime) ? (\n              <div className="flex flex-wrap gap-x-3 gap-y-1 font-semibold text-slate-700">\n                {task.earlyCheckinTime ? <span>アーリーCI：{formatTaskTime(task.earlyCheckinTime)}</span> : null}\n                {task.lateCheckoutTime ? <span>レイトCO：{formatTaskTime(task.lateCheckoutTime)}</span> : null}\n              </div>\n            ) : null}\n            {task.taskKind !== "other" ? <div>タオル：{task.towelCount ?? "-"}</div> : null}\n''',1)
+          s = s.replace('''            <InfoRow label="期限" value={formatDate(task.deadline || task.dueDate)} />\n\n            {task.taskKind !== "other" ? (\n''','''            <InfoRow label="期限" value={formatDate(task.deadline || task.dueDate)} />\n\n            {task.taskKind !== "other" && (task.earlyCheckinTime || task.lateCheckoutTime) ? (\n              <div className="grid grid-cols-2 gap-3">\n                <InfoRow label="アーリーCI" value={task.earlyCheckinTime ? formatTaskTime(task.earlyCheckinTime) : "-"} />\n                <InfoRow label="レイトCO" value={task.lateCheckoutTime ? formatTaskTime(task.lateCheckoutTime) : "-"} />\n              </div>\n            ) : null}\n\n            {task.taskKind !== "other" ? (\n''',1)
+          marker = '''function TaskRowCard({\n'''
+          helper = '''function formatTaskTime(value?: string) {\n  if (!value) return "-";\n  const text = String(value);\n  const match = text.match(/^(\\d{1,2}):(\\d{2})/);\n  return match ? `${match[1].padStart(2, "0")}:${match[2]}` : text;\n}\n\n'''
+          if helper not in s:
+              s = s.replace(marker, helper + marker, 1)
+          p.write_text(s)
+          PY
+      - run: npm install
+      - run: npm run build
+      - name: Commit changes and cleanup
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/pages/employee/EmployeeTasksPage.tsx
+          git commit -m "feat: 従業員タスクにアーリーCI・レイトCO時刻を表示"
+          git rm .github/workflows/show-task-ci-co-times-employee.yml
+          git commit -m "chore: remove temporary migration workflow"
+          git push
