@@ -1318,6 +1318,8 @@ export default function AdminTasksPagePreview() {
       "assigneeIds",
       "checkerId",
       "date",
+      "earlyCheckinTime",
+      "lateCheckoutTime",
     ];
 
     const shouldPersist = Object.keys(patch).some((k) =>
