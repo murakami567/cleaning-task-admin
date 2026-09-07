@@ -1,0 +1,52 @@
+name: Fix task CI CO persistence
+on:
+  push:
+    paths:
+      - '.github/workflows/fix-task-ci-co-persist.yml'
+permissions:
+  contents: write
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Patch persistence keys
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('src/AdminTasksPagePreview.tsx')
+          s = p.read_text()
+          old = '''    const persistableKeys = [
+      "status",
+      "note",
+      "assigneeIds",
+      "checkerId",
+      "date",
+    ];'''
+          new = '''    const persistableKeys = [
+      "status",
+      "note",
+      "assigneeIds",
+      "checkerId",
+      "date",
+      "earlyCheckinTime",
+      "lateCheckoutTime",
+    ];'''
+          if old not in s:
+              raise SystemExit('target snippet not found')
+          p.write_text(s.replace(old, new, 1))
+          PY
+      - run: npm install
+      - run: npm run build
+      - name: Commit changes and cleanup
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/AdminTasksPagePreview.tsx
+          git commit -m "fix: アーリーCI・レイトCO時刻を保存"
+          git rm .github/workflows/fix-task-ci-co-persist.yml
+          git commit -m "chore: remove temporary migration workflow"
+          git push
