@@ -18,6 +18,8 @@ type EmployeeTask = {
   deadline?: string;
   rateCi?: number | string;
   rateCo?: number | string;
+  earlyCheckinTime?: string;
+  lateCheckoutTime?: string;
   towelCount?: number | string;
 };
 
@@ -260,6 +262,13 @@ export default function EmployeeTasksPage() {
   );
 }
 
+function formatTaskTime(value?: string) {
+  if (!value) return "-";
+  const text = String(value);
+  const match = text.match(/^(\d{1,2}):(\d{2})/);
+  return match ? `${match[1].padStart(2, "0")}:${match[2]}` : text;
+}
+
 function TaskRowCard({
   task,
   assigneeName,
@@ -291,6 +300,12 @@ function TaskRowCard({
             <div>担当：{task.assigneeName || assigneeName || "-"}</div>
             <div>日付：{formatDate(task.date || task.dueDate)}</div>
             <div>期限：{formatDate(task.deadline || task.dueDate)}</div>
+            {task.taskKind !== "other" && (task.earlyCheckinTime || task.lateCheckoutTime) ? (
+              <div className="flex flex-wrap gap-x-3 gap-y-1 font-semibold text-slate-700">
+                {task.earlyCheckinTime ? <span>アーリーCI：{formatTaskTime(task.earlyCheckinTime)}</span> : null}
+                {task.lateCheckoutTime ? <span>レイトCO：{formatTaskTime(task.lateCheckoutTime)}</span> : null}
+              </div>
+            ) : null}
             {task.taskKind !== "other" ? <div>タオル：{task.towelCount ?? "-"}</div> : null}
           </div>
         </div>
@@ -355,6 +370,13 @@ function TaskDetailModal({
             <InfoRow label="チェッカー" value={task.checkerName || "-"} />
             <InfoRow label="日付" value={formatDate(task.date || task.dueDate)} />
             <InfoRow label="期限" value={formatDate(task.deadline || task.dueDate)} />
+
+            {task.taskKind !== "other" && (task.earlyCheckinTime || task.lateCheckoutTime) ? (
+              <div className="grid grid-cols-2 gap-3">
+                <InfoRow label="アーリーCI" value={task.earlyCheckinTime ? formatTaskTime(task.earlyCheckinTime) : "-"} />
+                <InfoRow label="レイトCO" value={task.lateCheckoutTime ? formatTaskTime(task.lateCheckoutTime) : "-"} />
+              </div>
+            ) : null}
 
             {task.taskKind !== "other" ? (
               <>
