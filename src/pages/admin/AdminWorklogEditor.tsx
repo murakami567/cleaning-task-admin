@@ -385,17 +385,10 @@ export default function AdminWorklogEditor({ selectedDate, refreshKey = 0, onCha
                                     <div className="text-[11px] font-semibold text-slate-400">清掃時間</div>
                                     {place.cleaning_started_at && place.cleaning_completed_at ? (
                                       <div className="mt-1 text-sm font-bold text-slate-800">
-                                        {formatTaskClock(place.cleaning_started_at)}〜{formatTaskClock(place.cleaning_completed_at)}
-                                        {Number(place.cleaning_minutes || 0) > 0 ? (
-                                          <span className="ml-2 text-xs font-semibold text-slate-500">
-                                            （{formatCleaningDuration(place.cleaning_minutes)}）
-                                          </span>
-                                        ) : null}
+                                        {formatCleaningDuration(place.cleaning_minutes) || "0分"}
                                       </div>
                                     ) : place.cleaning_started_at ? (
-                                      <div className="mt-1 text-sm font-bold text-amber-600">
-                                        {formatTaskClock(place.cleaning_started_at)}〜 清掃中
-                                      </div>
+                                      <div className="mt-1 text-sm font-bold text-amber-600">清掃中</div>
                                     ) : (
                                       <div className="mt-1 text-xs text-slate-400">打刻なし</div>
                                     )}
