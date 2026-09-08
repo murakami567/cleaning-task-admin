@@ -63,6 +63,18 @@ const formatMd = (iso: string) => {
   return `${m}/${d}`;
 };
 
+function formatJstClock(value?: string | null) {
+  if (!value) return "";
+  const dt = new Date(value);
+  if (Number.isNaN(dt.getTime())) return "";
+  return dt.toLocaleTimeString("ja-JP", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+    timeZone: "Asia/Tokyo",
+  });
+}
+
 function statusLabel(v: string) {
   return STATUS_OPTIONS.find((o) => o.value === v)?.label ?? v;
 }
@@ -468,6 +480,7 @@ type CleaningTask = {
   nextStayNights?: number;
   earlyCheckinTime?: string;
   lateCheckoutTime?: string;
+  cleaningStartedAt?: string;
 };
 
 type ApiCleaningTask = {
@@ -494,6 +507,7 @@ type ApiCleaningTask = {
   next_stay_nights?: number;
   early_checkin_time?: string | null;
   late_checkout_time?: string | null;
+  cleaning_started_at?: string | null;
 };
 
 type PropertyMaster = {
@@ -583,6 +597,7 @@ function mapApiTaskToUi(task: ApiCleaningTask): CleaningTask {
     nextStayNights: task.next_stay_nights ?? 0,
     earlyCheckinTime: task.early_checkin_time ?? "",
     lateCheckoutTime: task.late_checkout_time ?? "",
+    cleaningStartedAt: task.cleaning_started_at ?? "",
   };
 }
 
@@ -1660,13 +1675,23 @@ export default function AdminTasksPagePreview() {
                                 options={STATUS_OPTIONS}
                               />
                             ) : (
-                              <span
-                                className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-semibold ${statusChipClass(
-                                  t.status
-                                )}`}
-                              >
-                                {statusLabel(t.status)}
-                              </span>
+                              <div className="flex flex-col items-start gap-1">
+                                <span
+                                  className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-semibold ${statusChipClass(
+                                    t.status
+                                  )}`}
+                                >
+                                  {t.status === "清掃開始" || t.status === "清掃中"
+                                    ? "清掃中"
+                                    : statusLabel(t.status)}
+                                </span>
+                                {(t.status === "清掃開始" || t.status === "清掃中") &&
+                                t.cleaningStartedAt ? (
+                                  <div className="text-[11px] font-medium text-black/55">
+                                    開始 {formatJstClock(t.cleaningStartedAt)}
+                                  </div>
+                                ) : null}
+                              </div>
                             )}
                           </Td>
 
