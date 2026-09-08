@@ -19,13 +19,22 @@ type Worklog = {
   note: string;
   work_minutes: number;
   created_at?: string;
+  cleaning_started_at?: string;
+  cleaning_completed_at?: string;
+  cleaning_minutes?: number;
 };
 
 type WorklogReport = {
   key: string;
   rows: Worklog[];
   representative: Worklog;
-  places: { property_name: string; room_name: string }[];
+  places: {
+    property_name: string;
+    room_name: string;
+    cleaning_started_at?: string;
+    cleaning_completed_at?: string;
+    cleaning_minutes?: number;
+  }[];
   lastCreatedAtMs: number;
 };
 
@@ -70,17 +79,48 @@ function createdAtMs(row: Worklog) {
 }
 
 function uniquePlaces(rows: Worklog[]) {
-  const map = new Map<string, { property_name: string; room_name: string }>();
+  const map = new Map<string, {
+    property_name: string;
+    room_name: string;
+    cleaning_started_at?: string;
+    cleaning_completed_at?: string;
+    cleaning_minutes?: number;
+  }>();
   rows.forEach((row) => {
     const key = `${row.property_name || ""}||${row.room_name || ""}`;
     if (!map.has(key)) {
       map.set(key, {
         property_name: row.property_name || "",
         room_name: row.room_name || "",
+        cleaning_started_at: row.cleaning_started_at || "",
+        cleaning_completed_at: row.cleaning_completed_at || "",
+        cleaning_minutes: Number(row.cleaning_minutes || 0),
       });
     }
   });
   return Array.from(map.values());
+}
+
+function formatTaskClock(value?: string) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toLocaleTimeString("ja-JP", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+    timeZone: "Asia/Tokyo",
+  });
+}
+
+function formatCleaningDuration(minutes?: number) {
+  const total = Math.max(Number(minutes || 0), 0);
+  if (!total) return "";
+  const h = Math.floor(total / 60);
+  const m = total % 60;
+  if (h <= 0) return `${m}分`;
+  if (m <= 0) return `${h}時間`;
+  return `${h}時間${m}分`;
 }
 
 export default function AdminWorklogEditor({ selectedDate, refreshKey = 0, onChanged }: Props) {
@@ -341,6 +381,25 @@ export default function AdminWorklogEditor({ selectedDate, refreshKey = 0, onCha
                                 >
                                   <div className="text-sm font-bold text-slate-900">{place.property_name || "-"}</div>
                                   <div className="mt-1 text-sm text-slate-500">{place.room_name || "-"}</div>
+                                  <div className="mt-2 border-t border-slate-100 pt-2">
+                                    <div className="text-[11px] font-semibold text-slate-400">清掃時間</div>
+                                    {place.cleaning_started_at && place.cleaning_completed_at ? (
+                                      <div className="mt-1 text-sm font-bold text-slate-800">
+                                        {formatTaskClock(place.cleaning_started_at)}〜{formatTaskClock(place.cleaning_completed_at)}
+                                        {Number(place.cleaning_minutes || 0) > 0 ? (
+                                          <span className="ml-2 text-xs font-semibold text-slate-500">
+                                            （{formatCleaningDuration(place.cleaning_minutes)}）
+                                          </span>
+                                        ) : null}
+                                      </div>
+                                    ) : place.cleaning_started_at ? (
+                                      <div className="mt-1 text-sm font-bold text-amber-600">
+                                        {formatTaskClock(place.cleaning_started_at)}〜 清掃中
+                                      </div>
+                                    ) : (
+                                      <div className="mt-1 text-xs text-slate-400">打刻なし</div>
+                                    )}
+                                  </div>
                                 </div>
                               ))}
                             </div>
