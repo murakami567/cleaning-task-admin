@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import AccountManagementPage from "./AccountManagementPage";
+import MateCartePage from "./MateCartePage";
 
 const API_BASE =
   (import.meta as any).env?.VITE_API_BASE_URL || "https://cleaning-task-api.onrender.com";
@@ -630,13 +631,7 @@ export default function ShiftBoardPage() {
         ) : null}
 
         {mainTab === "account" ? <AccountManagementPage /> : null}
-
-        {mainTab === "mate" ? (
-          <section className="rounded-[22px] border border-slate-200 bg-white p-6 shadow-sm">
-            <div className="text-[18px] font-extrabold">メイトカルテ</div>
-            <div className="mt-2 text-sm text-slate-500">メイトカルテ機能は既存画面への接続準備中です。</div>
-          </section>
-        ) : null}
+        {mainTab === "mate" ? <MateCartePage /> : null}
       </div>
     </div>
   );
