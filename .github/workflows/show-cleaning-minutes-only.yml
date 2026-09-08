@@ -1,0 +1,43 @@
+name: Show cleaning minutes only
+on:
+  push:
+    paths:
+      - '.github/workflows/show-cleaning-minutes-only.yml'
+permissions:
+  contents: write
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Update display
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('src/pages/admin/AdminWorklogEditor.tsx')
+          s=p.read_text()
+          old='''                                    {place.cleaning_started_at && place.cleaning_completed_at ? (\n                                      <div className="mt-1 text-sm font-bold text-slate-800">\n                                        {formatTaskClock(place.cleaning_started_at)}〜{formatTaskClock(place.cleaning_completed_at)}\n                                        {Number(place.cleaning_minutes || 0) > 0 ? (\n                                          <span className="ml-2 text-xs font-semibold text-slate-500">\n                                            （{formatCleaningDuration(place.cleaning_minutes)}）\n                                          </span>\n                                        ) : null}\n                                      </div>\n                                    ) : place.cleaning_started_at ? (\n                                      <div className="mt-1 text-sm font-bold text-amber-600">\n                                        {formatTaskClock(place.cleaning_started_at)}〜 清掃中\n                                      </div>\n                                    ) : (\n                                      <div className="mt-1 text-xs text-slate-400">打刻なし</div>\n                                    )}'''
+          new='''                                    {place.cleaning_started_at && place.cleaning_completed_at ? (\n                                      <div className="mt-1 text-sm font-bold text-slate-800">\n                                        {formatCleaningDuration(place.cleaning_minutes) || "0分"}\n                                      </div>\n                                    ) : place.cleaning_started_at ? (\n                                      <div className="mt-1 text-sm font-bold text-amber-600">清掃中</div>\n                                    ) : (\n                                      <div className="mt-1 text-xs text-slate-400">打刻なし</div>\n                                    )}'''
+          if old not in s:
+              raise SystemExit('target block not found')
+          s=s.replace(old,new)
+          p.write_text(s)
+          PY
+          npm install
+          npm run build
+      - name: Commit
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add src/pages/admin/AdminWorklogEditor.tsx
+          git commit -m 'fix: 清掃時間を分数のみで表示'
+          git push
+      - name: Remove workflow
+        run: |
+          git pull --rebase
+          git rm .github/workflows/show-cleaning-minutes-only.yml
+          git commit -m 'chore: remove temporary workflow'
+          git push
