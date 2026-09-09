@@ -33,6 +33,22 @@ const AREA_OPTIONS = [
   { value: "F6", label: "F6" },
 ];
 
+const ROLE_OPTIONS = [
+  { value: "admin", label: "admin" },
+  { value: "sub_admin", label: "sub_admin" },
+  { value: "operation", label: "operation" },
+  { value: "payroll_admin", label: "payroll_admin" },
+  { value: "leader", label: "leader" },
+  { value: "checker", label: "checker" },
+  { value: "staff", label: "staff" },
+  { value: "contractor", label: "委託業者" },
+];
+
+function roleLabel(role: string | null | undefined) {
+  if (role === "contractor") return "委託業者";
+  return role || "";
+}
+
 function unique(values: string[]) {
   return Array.from(new Set(values.filter(Boolean)));
 }
@@ -180,6 +196,8 @@ export default function AccountManagementPage() {
     lineworks_channel_id: "",
   });
 
+  const isContractor = form.role === "contractor";
+
   const loadStaffs = async () => {
     try {
       const res = await fetch(`${API_BASE}/staffs`);
@@ -280,6 +298,19 @@ export default function AccountManagementPage() {
     });
   };
 
+  const setContractorProperty = (propertyId: string, checked: boolean) => {
+    setForm((s) => {
+      const normal = new Set(s.available_property_ids);
+      if (checked) normal.add(propertyId);
+      else normal.delete(propertyId);
+      return {
+        ...s,
+        available_property_ids: unique(Array.from(normal)),
+        unchecked_property_ids: [],
+      };
+    });
+  };
+
   const openNew = () => {
     setSelected(null);
     setPropertyQuery("");
@@ -308,6 +339,7 @@ export default function AccountManagementPage() {
     const normalIds = Array.isArray(staff.available_property_ids)
       ? staff.available_property_ids.filter((id) => !priority.has(id))
       : [];
+    const contractorIds = unique([...normalIds, ...priorityIds]);
 
     setSelected(staff);
     setPropertyQuery("");
@@ -321,11 +353,29 @@ export default function AccountManagementPage() {
       note: staff.note ?? "",
       password: "",
       area: staff.area ?? "",
-      available_property_ids: normalIds,
-      unchecked_property_ids: priorityIds,
+      available_property_ids: staff.role === "contractor" ? contractorIds : normalIds,
+      unchecked_property_ids: staff.role === "contractor" ? [] : priorityIds,
       lineworks_channel_id: staff.lineworks_channel_id ?? "",
     });
     setDrawerOpen(true);
+  };
+
+  const changeRole = (role: string) => {
+    setForm((s) => {
+      if (role === "contractor") {
+        return {
+          ...s,
+          role,
+          area: "",
+          available_property_ids: unique([
+            ...s.available_property_ids,
+            ...s.unchecked_property_ids,
+          ]),
+          unchecked_property_ids: [],
+        };
+      }
+      return { ...s, role };
+    });
   };
 
   const save = async () => {
@@ -342,6 +392,10 @@ export default function AccountManagementPage() {
       setSaving(true);
       const priority = new Set(form.unchecked_property_ids);
       const normal = form.available_property_ids.filter((id) => !priority.has(id));
+      const contractorPropertyIds = unique([
+        ...form.available_property_ids,
+        ...form.unchecked_property_ids,
+      ]);
 
       const payload = {
         staff_id: form.id || null,
@@ -352,9 +406,9 @@ export default function AccountManagementPage() {
         sort_order: Number(form.sort_order || 999),
         note: form.note,
         password: form.password || null,
-        area: form.area || "",
-        unchecked_property_ids: unique(form.unchecked_property_ids),
-        available_property_ids: unique(normal),
+        area: isContractor ? "" : form.area || "",
+        unchecked_property_ids: isContractor ? [] : unique(form.unchecked_property_ids),
+        available_property_ids: isContractor ? contractorPropertyIds : unique(normal),
         lineworks_channel_id: form.lineworks_channel_id || "",
       };
 
@@ -416,7 +470,7 @@ export default function AccountManagementPage() {
           </label>
 
           <button
-            className="rounded-full bg-slate-900 text-white px-4 py-2 text-sm font-bold hover:bg-black"
+            className="rounded-full bg-slate-900 text-white px-4 py-2 text-sm font-bold hover:bg-black disabled:opacity-50"
             onClick={openNew}
             disabled={isOperation}
           >
@@ -447,41 +501,58 @@ export default function AccountManagementPage() {
               </tr>
             </thead>
             <tbody>
-              {filtered.map((staff) => (
-                <tr
-                  key={staff.id}
-                  className="border-b border-slate-100 cursor-pointer hover:bg-slate-50"
-                  onClick={() => { if (!isOperation) openEdit(staff); }}
-                >
-                  <td className="px-3 py-3">{staff.sort_order ?? ""}</td>
-                  <td className="px-3 py-3 font-semibold">{staff.staff_code}</td>
-                  <td className="px-3 py-3 font-extrabold">{staff.staff_name}</td>
-                  <td className="px-3 py-3">{staff.role}</td>
-                  <td className="px-3 py-3">{staff.area || ""}</td>
-                  <td className="px-3 py-3 text-xs text-rose-700">
-                    {Array.isArray(staff.unchecked_property_ids) && staff.unchecked_property_ids.length > 0
-                      ? `${staff.unchecked_property_ids.length} 件`
-                      : ""}
-                  </td>
-                  <td className="px-3 py-3 text-xs text-sky-700">
-                    {Array.isArray(staff.available_property_ids) && staff.available_property_ids.length > 0
-                      ? `${staff.available_property_ids.length} 件`
-                      : ""}
-                  </td>
-                  <td className="px-3 py-3">
-                    <span
-                      className={`rounded-full border px-3 py-1 text-xs font-bold ${
-                        staff.is_active
-                          ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                          : "bg-slate-100 text-slate-500 border-slate-200"
-                      }`}
-                    >
-                      {staff.is_active ? "有効" : "無効"}
-                    </span>
-                  </td>
-                  <td className="px-3 py-3 text-slate-500">{staff.note || ""}</td>
-                </tr>
-              ))}
+              {filtered.map((staff) => {
+                const contractor = staff.role === "contractor";
+                const contractorCount = unique([
+                  ...(staff.available_property_ids || []),
+                  ...(staff.unchecked_property_ids || []),
+                ]).length;
+                return (
+                  <tr
+                    key={staff.id}
+                    className="border-b border-slate-100 cursor-pointer hover:bg-slate-50"
+                    onClick={() => { if (!isOperation) openEdit(staff); }}
+                  >
+                    <td className="px-3 py-3">{staff.sort_order ?? ""}</td>
+                    <td className="px-3 py-3 font-semibold">{staff.staff_code}</td>
+                    <td className="px-3 py-3 font-extrabold">{staff.staff_name}</td>
+                    <td className="px-3 py-3">
+                      {contractor ? (
+                        <span className="rounded-full border border-violet-200 bg-violet-50 px-2.5 py-1 text-xs font-bold text-violet-700">
+                          委託業者
+                        </span>
+                      ) : roleLabel(staff.role)}
+                    </td>
+                    <td className="px-3 py-3">{contractor ? "-" : staff.area || ""}</td>
+                    <td className="px-3 py-3 text-xs text-rose-700">
+                      {contractor
+                        ? "-"
+                        : Array.isArray(staff.unchecked_property_ids) && staff.unchecked_property_ids.length > 0
+                        ? `${staff.unchecked_property_ids.length} 件`
+                        : ""}
+                    </td>
+                    <td className="px-3 py-3 text-xs text-sky-700">
+                      {contractor
+                        ? contractorCount > 0 ? `${contractorCount} 件` : ""
+                        : Array.isArray(staff.available_property_ids) && staff.available_property_ids.length > 0
+                        ? `${staff.available_property_ids.length} 件`
+                        : ""}
+                    </td>
+                    <td className="px-3 py-3">
+                      <span
+                        className={`rounded-full border px-3 py-1 text-xs font-bold ${
+                          staff.is_active
+                            ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                            : "bg-slate-100 text-slate-500 border-slate-200"
+                        }`}
+                      >
+                        {staff.is_active ? "有効" : "無効"}
+                      </span>
+                    </td>
+                    <td className="px-3 py-3 text-slate-500">{staff.note || ""}</td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -509,14 +580,14 @@ export default function AccountManagementPage() {
         }
       >
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <Field label="スタッフコード">
+          <Field label={isContractor ? "業者コード" : "スタッフコード"}>
             <TextInput
               value={form.staff_code}
               onChange={(v: string) => setForm((s) => ({ ...s, staff_code: v }))}
             />
           </Field>
 
-          <Field label="名前">
+          <Field label={isContractor ? "業者名" : "名前"}>
             <TextInput
               value={form.staff_name}
               onChange={(v: string) => setForm((s) => ({ ...s, staff_name: v }))}
@@ -524,19 +595,7 @@ export default function AccountManagementPage() {
           </Field>
 
           <Field label="権限">
-            <Select
-              value={form.role}
-              onChange={(v: string) => setForm((s) => ({ ...s, role: v }))}
-              options={[
-                { value: "admin", label: "admin" },
-                { value: "sub_admin", label: "sub_admin" },
-                { value: "operation", label: "operation" },
-                { value: "payroll_admin", label: "payroll_admin" },
-                { value: "leader", label: "leader" },
-                { value: "checker", label: "checker" },
-                { value: "staff", label: "staff" },
-              ]}
-            />
+            <Select value={form.role} onChange={changeRole} options={ROLE_OPTIONS} />
           </Field>
 
           <Field label="並び順">
@@ -547,13 +606,15 @@ export default function AccountManagementPage() {
             />
           </Field>
 
-          <Field label="エリア">
-            <Select
-              value={form.area}
-              onChange={(v: string) => setForm((s) => ({ ...s, area: v }))}
-              options={AREA_OPTIONS}
-            />
-          </Field>
+          {!isContractor ? (
+            <Field label="エリア">
+              <Select
+                value={form.area}
+                onChange={(v: string) => setForm((s) => ({ ...s, area: v }))}
+                options={AREA_OPTIONS}
+              />
+            </Field>
+          ) : null}
 
           <Field label="LINE WORKSチャンネルID">
             <TextInput
@@ -587,52 +648,116 @@ export default function AccountManagementPage() {
           </label>
         </div>
 
-        <div className="mt-5 space-y-3">
-          <div>
-            <div className="text-sm font-extrabold">物件割当設定</div>
-            <div className="mt-1 text-xs text-slate-500">
-              「チェック解除済み」は優先割当、「対応可能」は通常割当として保存します。
-            </div>
-          </div>
-
-          <TextInput
-            value={propertyQuery}
-            onChange={setPropertyQuery}
-            placeholder="物件名で検索"
-          />
-
-          <div className="grid gap-4 lg:grid-cols-2">
-            <div className="rounded-2xl border border-rose-200 bg-rose-50/40 p-3">
-              <div className="mb-2 text-sm font-extrabold text-rose-700">チェック解除済み・優先</div>
-              <div className="grid max-h-[300px] gap-2 overflow-y-auto pr-1">
-                {filteredProperties.map((property) => (
-                  <PropertyCheckCard
-                    key={`priority-${property.id}`}
-                    property={property}
-                    checked={prioritySet.has(property.id)}
-                    tone="priority"
-                    onChange={(checked) => setPriorityProperty(property.id, checked)}
-                  />
-                ))}
+        {isContractor ? (
+          <div className="mt-5 space-y-3">
+            <div className="rounded-2xl border border-violet-200 bg-violet-50 p-4">
+              <div className="text-sm font-extrabold text-violet-800">委託業者の固定割当</div>
+              <div className="mt-1 text-xs leading-5 text-violet-700">
+                選択した物件の清掃タスクには、シフト・最大可能数・通常の自動割当条件に関係なくこの業者を担当として自動設定します。
               </div>
             </div>
 
-            <div className="rounded-2xl border border-sky-200 bg-sky-50/40 p-3">
-              <div className="mb-2 text-sm font-extrabold text-sky-700">対応可能</div>
-              <div className="grid max-h-[300px] gap-2 overflow-y-auto pr-1">
+            <div>
+              <div className="text-sm font-extrabold">対応物件</div>
+              <div className="mt-1 text-xs text-slate-500">
+                委託対象の物件だけを選択してください。
+              </div>
+            </div>
+
+            <TextInput
+              value={propertyQuery}
+              onChange={setPropertyQuery}
+              placeholder="物件名で検索"
+            />
+
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                onClick={() =>
+                  setForm((s) => ({
+                    ...s,
+                    available_property_ids: properties.map((p) => p.id),
+                    unchecked_property_ids: [],
+                  }))
+                }
+              >
+                全選択
+              </Button>
+              <Button
+                type="button"
+                onClick={() =>
+                  setForm((s) => ({ ...s, available_property_ids: [], unchecked_property_ids: [] }))
+                }
+              >
+                全解除
+              </Button>
+              <div className="flex items-center text-xs font-semibold text-violet-700">
+                {form.available_property_ids.length} 件選択中
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-violet-200 bg-violet-50/30 p-3">
+              <div className="grid max-h-[360px] gap-2 overflow-y-auto pr-1 sm:grid-cols-2">
                 {filteredProperties.map((property) => (
                   <PropertyCheckCard
-                    key={`normal-${property.id}`}
+                    key={`contractor-${property.id}`}
                     property={property}
                     checked={normalSet.has(property.id)}
                     tone="normal"
-                    onChange={(checked) => setNormalProperty(property.id, checked)}
+                    onChange={(checked) => setContractorProperty(property.id, checked)}
                   />
                 ))}
               </div>
             </div>
           </div>
-        </div>
+        ) : (
+          <div className="mt-5 space-y-3">
+            <div>
+              <div className="text-sm font-extrabold">物件割当設定</div>
+              <div className="mt-1 text-xs text-slate-500">
+                「チェック解除済み」は優先割当、「対応可能」は通常割当として保存します。
+              </div>
+            </div>
+
+            <TextInput
+              value={propertyQuery}
+              onChange={setPropertyQuery}
+              placeholder="物件名で検索"
+            />
+
+            <div className="grid gap-4 lg:grid-cols-2">
+              <div className="rounded-2xl border border-rose-200 bg-rose-50/40 p-3">
+                <div className="mb-2 text-sm font-extrabold text-rose-700">チェック解除済み・優先</div>
+                <div className="grid max-h-[300px] gap-2 overflow-y-auto pr-1">
+                  {filteredProperties.map((property) => (
+                    <PropertyCheckCard
+                      key={`priority-${property.id}`}
+                      property={property}
+                      checked={prioritySet.has(property.id)}
+                      tone="priority"
+                      onChange={(checked) => setPriorityProperty(property.id, checked)}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-sky-200 bg-sky-50/40 p-3">
+                <div className="mb-2 text-sm font-extrabold text-sky-700">対応可能</div>
+                <div className="grid max-h-[300px] gap-2 overflow-y-auto pr-1">
+                  {filteredProperties.map((property) => (
+                    <PropertyCheckCard
+                      key={`normal-${property.id}`}
+                      property={property}
+                      checked={normalSet.has(property.id)}
+                      tone="normal"
+                      onChange={(checked) => setNormalProperty(property.id, checked)}
+                    />
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </Drawer>
     </div>
   );
