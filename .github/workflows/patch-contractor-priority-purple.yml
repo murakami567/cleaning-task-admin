@@ -1,0 +1,138 @@
+name: Patch contractor priority purple
+
+on:
+  push:
+    paths:
+      - '.github/workflows/patch-contractor-priority-purple.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: Patch source
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('src/AdminTasksPagePreview.tsx')
+          s=p.read_text()
+          s=s.replace('  propertyMatchKind?: "priority" | "normal" | "other";\n};','  propertyMatchKind?: "priority" | "normal" | "other";\n  isContractor?: boolean;\n};',1)
+          old='''async function fetchAvailableStaffByDate(shiftDate: string): Promise<Attendee[]> {
+  const res = await fetch(`${API_BASE}/shifts?shift_date=${shiftDate}`);
+  if (!res.ok) throw new Error(`shift fetch failed: ${res.status}`);
+
+  const data = await res.json();
+
+  const day = Array.isArray(data) ? data[0] : data;
+  if (!day) return [];
+
+  const entries = Array.isArray(day.shift_entries) ? day.shift_entries : [];
+
+  // 出勤のみ (遅刻は対応エリア絞り込みの対象外なので除外)
+  return entries
+    .filter((e: any) => e.status === "出勤")
+    .map((e: any) => ({
+      userId: e.staff_id,
+      name: e.staff_members?.staff_name || e.staff_id,
+      availablePropertyIds: Array.isArray(e.staff_members?.available_property_ids)
+        ? e.staff_members.available_property_ids
+        : [],
+      uncheckedPropertyIds: Array.isArray(e.staff_members?.unchecked_property_ids)
+        ? e.staff_members.unchecked_property_ids
+        : [],
+    }));
+}
+'''
+          new='''async function fetchAvailableStaffByDate(shiftDate: string): Promise<Attendee[]> {
+  const [shiftRes, staffRes] = await Promise.all([
+    fetch(`${API_BASE}/shifts?shift_date=${shiftDate}`),
+    fetch(`${API_BASE}/staffs`),
+  ]);
+  if (!shiftRes.ok) throw new Error(`shift fetch failed: ${shiftRes.status}`);
+  if (!staffRes.ok) throw new Error(`staff fetch failed: ${staffRes.status}`);
+
+  const data = await shiftRes.json();
+  const staffData = await staffRes.json();
+  const day = Array.isArray(data) ? data[0] : data;
+  const entries = Array.isArray(day?.shift_entries) ? day.shift_entries : [];
+
+  const attendees: Attendee[] = entries
+    .filter((e: any) => e.status === "出勤")
+    .map((e: any) => ({
+      userId: e.staff_id,
+      name: e.staff_members?.staff_name || e.staff_id,
+      availablePropertyIds: Array.isArray(e.staff_members?.available_property_ids) ? e.staff_members.available_property_ids : [],
+      uncheckedPropertyIds: Array.isArray(e.staff_members?.unchecked_property_ids) ? e.staff_members.unchecked_property_ids : [],
+      isContractor: false,
+    }));
+
+  const contractors: Attendee[] = (Array.isArray(staffData) ? staffData : [])
+    .filter((staff: any) => staff?.role === "contractor" && staff?.is_active !== false)
+    .map((staff: any) => ({
+      userId: staff.id,
+      name: staff.staff_name || staff.id,
+      availablePropertyIds: Array.isArray(staff.available_property_ids) ? staff.available_property_ids : [],
+      uncheckedPropertyIds: Array.isArray(staff.unchecked_property_ids) ? staff.unchecked_property_ids : [],
+      isContractor: true,
+    }));
+
+  const merged = [...contractors, ...attendees];
+  return Array.from(new Map(merged.map((staff) => [staff.userId, staff])).values());
+}
+'''
+          if old not in s: raise SystemExit('fetchAvailableStaffByDate target not found')
+          s=s.replace(old,new,1)
+          old2='''      .sort((a, b) => {
+        const rank = { priority: 0, normal: 1, other: 2 } as const;
+        const ar = rank[a.propertyMatchKind ?? "other"];
+        const br = rank[b.propertyMatchKind ?? "other"];
+        if (ar !== br) return ar - br;
+        return a.name.localeCompare(b.name, "ja");
+      });'''
+          new2='''      .sort((a, b) => {
+        if (a.isContractor !== b.isContractor) return a.isContractor ? -1 : 1;
+        const rank = { priority: 0, normal: 1, other: 2 } as const;
+        const ar = rank[a.propertyMatchKind ?? "other"];
+        const br = rank[b.propertyMatchKind ?? "other"];
+        if (ar !== br) return ar - br;
+        return a.name.localeCompare(b.name, "ja");
+      });'''
+          if old2 not in s: raise SystemExit('sort target not found')
+          s=s.replace(old2,new2,1)
+          old3='''          const toneClass =
+            u.propertyMatchKind === "priority"
+              ? "border-rose-200 bg-rose-50 text-rose-900"
+              : "border-sky-200 bg-sky-50 text-sky-900";
+          const badge =
+            u.propertyMatchKind === "priority"
+              ? "チェック解除済み"
+              : "対応可能";'''
+          new3='''          const toneClass = u.isContractor
+            ? "border-purple-300 bg-purple-50 text-purple-900"
+            : u.propertyMatchKind === "priority"
+            ? "border-rose-200 bg-rose-50 text-rose-900"
+            : "border-sky-200 bg-sky-50 text-sky-900";
+          const badge = u.isContractor
+            ? "委託業者"
+            : u.propertyMatchKind === "priority"
+            ? "チェック解除済み"
+            : "対応可能";'''
+          if old3 not in s: raise SystemExit('tone target not found')
+          s=s.replace(old3,new3,1)
+          p.write_text(s)
+          PY
+      - name: Remove temporary workflow
+        run: rm .github/workflows/patch-contractor-priority-purple.yml
+      - name: Commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/AdminTasksPagePreview.tsx .github/workflows/patch-contractor-priority-purple.yml
+          git commit -m "fix: 委託業者を担当候補の先頭に紫色で表示"
+          git push origin main
