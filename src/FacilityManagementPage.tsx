@@ -237,7 +237,6 @@ export default function FacilityManagementPage() {
   const save = async () => {
     if (!form.property_name.trim()) return alert("物件を入力してください。");
     if (!form.room_name.trim()) return alert("部屋を選択してください。");
-    if (!form.assignee.trim()) return alert("担当を入力してください。");
     if (!form.content.trim()) return alert("対応内容を入力してください。");
 
     const body = {
