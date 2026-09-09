@@ -57,7 +57,7 @@ function AdminLayout() {
         <AdminNavButton to="/admin/properties">物件管理</AdminNavButton>
         <AdminNavButton to="/admin/auto-assign-settings">割当設定</AdminNavButton>
         <AdminNavButton to="/admin/facilities">設備管理</AdminNavButton>
-        <AdminNavButton to="/admin/shifts">シフト管理</AdminNavButton>
+        <AdminNavButton to="/admin/shifts">スケジュール</AdminNavButton>
         <AdminNavButton to="/admin/shiftboard">シフト表</AdminNavButton>
         <AdminNavButton to="/admin/worklogs">実働報告</AdminNavButton>
         <AdminNavButton to="/admin/lost-items">忘れ物</AdminNavButton>

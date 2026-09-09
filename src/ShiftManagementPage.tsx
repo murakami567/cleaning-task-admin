@@ -311,8 +311,8 @@ export default function ShiftManagementPage() {
     <div className="p-4 space-y-4">
       <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-4 flex flex-wrap gap-3 items-center justify-between">
         <div>
-          <div className="text-xs text-slate-500">管理画面 ＞ シフト管理</div>
-          <div className="text-base font-extrabold mt-1">シフト管理</div>
+          <div className="text-xs text-slate-500">管理画面 ＞ スケジュール</div>
+          <div className="text-base font-extrabold mt-1">スケジュール</div>
           {isOperation ? <div className="mt-1 text-xs font-bold text-amber-700">operation権限はシフト閲覧のみです</div> : null}
         </div>
 
