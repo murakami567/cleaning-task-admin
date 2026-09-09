@@ -5,8 +5,10 @@ import App from "./App";
 import "./index.css";
 import "./property-sort-dnd";
 import { installAdminMasterFetch } from "./lib/installAdminMasterFetch";
+import { installContractorTaskAssigneePatch } from "./contractor-task-assignee-patch";
 
 installAdminMasterFetch();
+installContractorTaskAssigneePatch();
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
