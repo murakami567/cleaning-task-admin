@@ -1,0 +1,71 @@
+name: Patch task edit auto refresh
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/patch-task-edit-autorefresh.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: Patch AdminTasksPagePreview
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('src/AdminTasksPagePreview.tsx')
+          s = p.read_text()
+
+          s = s.replace(
+              'import React, { useEffect, useMemo, useState } from "react";',
+              'import React, { useEffect, useMemo, useRef, useState } from "react";'
+          )
+
+          old = '  const [autoRefresh, setAutoRefresh] = useState(true);\n  const [lastUpdated, setLastUpdated] = useState(new Date());'
+          new = '  const [autoRefresh, setAutoRefresh] = useState(true);\n  const autoRefreshBeforeEditRef = useRef<boolean | null>(null);\n  const [lastUpdated, setLastUpdated] = useState(new Date());'
+          if old not in s:
+              raise SystemExit('autoRefresh state snippet not found')
+          s = s.replace(old, new, 1)
+
+          old = '''  useEffect(() => {\n    if (!autoRefresh) return;\n\n    const t = window.setInterval(() => {\n      void refresh();\n    }, 60_000);\n\n    return () => window.clearInterval(t);\n  }, [autoRefresh, viewMode, selectedDate]);'''
+          new = '''  useEffect(() => {\n    if (!autoRefresh || tableEditMode) return;\n\n    const t = window.setInterval(() => {\n      void refresh();\n    }, 60_000);\n\n    return () => window.clearInterval(t);\n  }, [autoRefresh, tableEditMode, viewMode, selectedDate]);'''
+          if old not in s:
+              raise SystemExit('auto refresh effect snippet not found')
+          s = s.replace(old, new, 1)
+
+          marker = '  const addCleaningTask = () => {'
+          handler = '''  const toggleTableEditMode = () => {\n    if (!tableEditMode) {\n      autoRefreshBeforeEditRef.current = autoRefresh;\n      setAutoRefresh(false);\n      setTableEditMode(true);\n      return;\n    }\n\n    setTableEditMode(false);\n    if (autoRefreshBeforeEditRef.current === true) {\n      setAutoRefresh(true);\n    }\n    autoRefreshBeforeEditRef.current = null;\n  };\n\n'''
+          if marker not in s:
+              raise SystemExit('addCleaningTask marker not found')
+          s = s.replace(marker, handler + marker, 1)
+
+          old = '                      onClick={() => setTableEditMode((v) => !v)}'
+          new = '                      onClick={toggleTableEditMode}'
+          if old not in s:
+              raise SystemExit('edit toggle snippet not found')
+          s = s.replace(old, new, 1)
+
+          old = '''    if (nextStatus === "清掃開始") {\n      window.setTimeout(() => {\n        void refresh();\n      }, 65_000);\n    }'''
+          new = '''    if (nextStatus === "清掃開始") {\n      window.setTimeout(() => {\n        if (autoRefresh && !tableEditMode) {\n          void refresh();\n        }\n      }, 65_000);\n    }'''
+          if old not in s:
+              raise SystemExit('cleaning start refresh snippet not found')
+          s = s.replace(old, new, 1)
+
+          p.write_text(s)
+          PY
+      - name: Commit source change and remove workflow
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          rm .github/workflows/patch-task-edit-autorefresh.yml
+          git add src/AdminTasksPagePreview.tsx .github/workflows/patch-task-edit-autorefresh.yml
+          git commit -m 'fix: 一括編集中は自動更新を停止'
+          git push origin main
