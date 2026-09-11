@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 
 /* =========================
  * Options
@@ -895,6 +895,7 @@ function viewModeLabel(mode: ViewMode, selectedDate?: string) {
 
 export default function AdminTasksPagePreview() {
   const [autoRefresh, setAutoRefresh] = useState(true);
+  const autoRefreshBeforeEditRef = useRef<boolean | null>(null);
   const [lastUpdated, setLastUpdated] = useState(new Date());
   const [viewMode, setViewMode] = useState<ViewMode>("TODAY");
   const [selectedDate, setSelectedDate] = useState(todayIso());
@@ -1158,14 +1159,14 @@ export default function AdminTasksPagePreview() {
 }, [viewMode, selectedDate]);
 
   useEffect(() => {
-    if (!autoRefresh) return;
+    if (!autoRefresh || tableEditMode) return;
 
     const t = window.setInterval(() => {
       void refresh();
     }, 60_000);
 
     return () => window.clearInterval(t);
-  }, [autoRefresh, viewMode, selectedDate]);
+  }, [autoRefresh, tableEditMode, viewMode, selectedDate]);
 
   const visibleCleaningTasks = useMemo(() => {
     const list = Array.isArray(cleaningTasks) ? cleaningTasks : [];
@@ -1248,6 +1249,21 @@ export default function AdminTasksPagePreview() {
 
   return list.filter((t) => normalizeIsoDate(t.date) === selectedDate);
 }, [nonCleaningTasks, viewMode, selectedDate]);
+
+  const toggleTableEditMode = () => {
+    if (!tableEditMode) {
+      autoRefreshBeforeEditRef.current = autoRefresh;
+      setAutoRefresh(false);
+      setTableEditMode(true);
+      return;
+    }
+
+    setTableEditMode(false);
+    if (autoRefreshBeforeEditRef.current === true) {
+      setAutoRefresh(true);
+    }
+    autoRefreshBeforeEditRef.current = null;
+  };
 
   const addCleaningTask = () => {
     setDraftCleaningTask({
@@ -1373,7 +1389,9 @@ export default function AdminTasksPagePreview() {
     // 65秒後に refresh を仕込んで画面表示も追従させる。
     if (nextStatus === "清掃開始") {
       window.setTimeout(() => {
-        void refresh();
+        if (autoRefresh && !tableEditMode) {
+          void refresh();
+        }
       }, 65_000);
     }
   };
@@ -1584,7 +1602,7 @@ export default function AdminTasksPagePreview() {
                   <>
                     <ToggleChip
                       active={tableEditMode}
-                      onClick={() => setTableEditMode((v) => !v)}
+                      onClick={toggleTableEditMode}
                     >
                       {tableEditMode ? "編集モード" : "編集"}
                     </ToggleChip>
