@@ -64,8 +64,17 @@ function decorateContractorCandidates() {
       }
     }
 
-    for (const row of [...contractors, ...others]) {
-      container.appendChild(row);
+    const desired = [...contractors, ...others];
+    const current = Array.from(container.children).filter(
+      (node): node is HTMLLabelElement => node instanceof HTMLLabelElement
+    );
+    const alreadyOrdered =
+      current.length === desired.length && current.every((row, index) => row === desired[index]);
+
+    if (!alreadyOrdered) {
+      for (const row of desired) {
+        container.appendChild(row);
+      }
     }
   });
 }
@@ -154,7 +163,4 @@ export function installContractorTaskAssigneePatch() {
       return response;
     }
   }) as typeof window.fetch;
-
-  const observer = new MutationObserver(scheduleDecorate);
-  observer.observe(document.documentElement, { childList: true, subtree: true });
 }
