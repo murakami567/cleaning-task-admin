@@ -49,9 +49,17 @@ function TitleManager() {
 }
 
 function AdminLayout() {
+  let prepOnly = false;
+  try {
+    const raw = localStorage.getItem("admin_user");
+    prepOnly = raw ? JSON.parse(raw)?.role === "prep_viewer" : false;
+  } catch {
+    prepOnly = false;
+  }
+
   return (
     <div className="min-h-screen bg-neutral-50">
-      <div className="border-b bg-white px-6 py-3 flex gap-2 flex-wrap">
+      {!prepOnly ? <div className="border-b bg-white px-6 py-3 flex gap-2 flex-wrap">
         <AdminNavButton to="/admin/home">ホーム</AdminNavButton>
         <AdminNavButton to="/admin/tasks">タスク管理</AdminNavButton>
         <AdminNavButton to="/admin/properties">物件管理</AdminNavButton>
@@ -62,7 +70,7 @@ function AdminLayout() {
         <AdminNavButton to="/admin/worklogs">実働報告</AdminNavButton>
         <AdminNavButton to="/admin/lost-items">忘れ物</AdminNavButton>
         <AdminNavButton to="/admin/data-export">データ出力</AdminNavButton>
-      </div>
+      </div> : null}
 
       <Outlet />
     </div>
@@ -111,6 +119,7 @@ export default function App() {
           <Route path="home" element={<AdminHomePage />} />
           <Route path="tasks" element={<AdminTasksPagePreview />} />
           <Route path="properties" element={<PropertyManagementPage />} />
+          <Route path="prep" element={<PropertyManagementPage prepOnly />} />
           <Route path="auto-assign-settings" element={<AdminAutoAssignSettingsPage />} />
           <Route path="facilities" element={<FacilityManagementPage />} />
           <Route path="shifts" element={<ShiftManagementPage />} />
