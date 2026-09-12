@@ -173,7 +173,7 @@ export default function AdminWorklogReportPage() {
     try {
       const raw = localStorage.getItem("admin_user");
       const role = raw ? JSON.parse(raw)?.role : "";
-      return !["admin", "sub_admin"].includes(role);
+      return !["admin", "sub_admin", "payroll_admin"].includes(role);
     } catch {
       return false;
     }
