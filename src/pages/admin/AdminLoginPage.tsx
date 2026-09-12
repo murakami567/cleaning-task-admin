@@ -34,7 +34,7 @@ export default function AdminLoginPage() {
       localStorage.setItem("admin_access_token", data.access_token);
       localStorage.setItem("admin_user", JSON.stringify(data.user));
 
-      navigate("/admin/home");
+      navigate(data.user?.role === "prep_viewer" ? "/admin/prep" : "/admin/home");
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : "ログインに失敗しました。");
     }
