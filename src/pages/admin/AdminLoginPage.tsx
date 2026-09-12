@@ -48,7 +48,7 @@ export default function AdminLoginPage() {
       >
         <h1 className="text-2xl font-bold text-slate-900">管理画面ログイン</h1>
         <p className="mt-2 text-sm text-slate-500">
-          leader または admin のみログインできます
+          管理画面権限を持つアカウントでログインできます
         </p>
 
         <div className="mt-5 space-y-4">
