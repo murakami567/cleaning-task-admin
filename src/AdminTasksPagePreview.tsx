@@ -666,7 +666,7 @@ async function persistCleaningTaskPatch(
 
   const res = await fetch(`${API_BASE}/tasks/update`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${localStorage.getItem("admin_access_token") || ""}` },
     body: JSON.stringify(body),
   });
 
@@ -740,7 +740,7 @@ async function createNonCleaningTask(task: NonCleaningTask, attendees: Attendee[
 
   const res = await fetch(`${API_BASE}/non-cleaning-tasks/create`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${localStorage.getItem("admin_access_token") || ""}` },
     body: JSON.stringify({
       task_date: task.date,
       status: task.status,
@@ -773,7 +773,7 @@ async function updateNonCleaningTask(task: NonCleaningTask, attendees: Attendee[
 
   const res = await fetch(`${API_BASE}/non-cleaning-tasks/update`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${localStorage.getItem("admin_access_token") || ""}` },
     body: JSON.stringify({
       task_id: task.id,
       task_date: task.date,
@@ -800,7 +800,7 @@ async function updateNonCleaningTask(task: NonCleaningTask, attendees: Attendee[
 async function deleteNonCleaningTaskApi(taskId: string) {
   const res = await fetch(`${API_BASE}/non-cleaning-tasks/delete`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${localStorage.getItem("admin_access_token") || ""}` },
     body: JSON.stringify({ task_id: taskId }),
   });
 
@@ -1308,6 +1308,7 @@ export default function AdminTasksPagePreview() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("admin_access_token") || ""}`,
         },
         body: JSON.stringify({
           property_name: property.property_name,
