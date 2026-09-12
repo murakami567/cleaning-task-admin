@@ -133,9 +133,10 @@ function Pill({ children, tone = "default" }: any) {
 }
 
 async function postJson(url: string, payload: any) {
+  const token = localStorage.getItem("admin_access_token") || "";
   const res = await fetch(url, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
     body: JSON.stringify(payload),
   });
   if (!res.ok) {
@@ -163,15 +164,26 @@ export default function PayrollAttendancePage() {
   const [calculating, setCalculating] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const readOnly = useMemo(() => {
+    try {
+      const raw = localStorage.getItem("admin_user");
+      return raw ? JSON.parse(raw)?.role === "leader" : true;
+    } catch {
+      return true;
+    }
+  }, []);
+  const authHeaders = useMemo(() => ({
+    Authorization: `Bearer ${localStorage.getItem("admin_access_token") || ""}`,
+  }), []);
 
   const fetchSettings = async () => {
-    const res = await fetch(`${API_BASE}/payroll/settings`);
+    const res = await fetch(`${API_BASE}/payroll/settings`, { headers: authHeaders });
     if (!res.ok) throw new Error("設定の取得に失敗しました");
     return res.json();
   };
 
   const fetchResults = async () => {
-    const res = await fetch(`${API_BASE}/payroll/daily-results?year=${year}&month=${month}`);
+    const res = await fetch(`${API_BASE}/payroll/daily-results?year=${year}&month=${month}`, { headers: authHeaders });
     if (!res.ok) throw new Error("給与計算結果の取得に失敗しました");
     const data = await res.json();
     return Array.isArray(data) ? data : [];
@@ -215,6 +227,7 @@ export default function PayrollAttendancePage() {
   useEffect(() => { void loadAll(); }, [year, month]);
 
   const calculateMonthly = async () => {
+    if (readOnly) return;
     try {
       setCalculating(true);
       setError("");
@@ -228,18 +241,21 @@ export default function PayrollAttendancePage() {
   };
 
   const saveStaffPayrollSetting = async (payload: any) => {
+    if (readOnly) return;
     try { setSaving(true); setError(""); await postJson(`${API_BASE}/payroll/settings/staff/upsert`, payload); await loadAll(); }
     catch (e: any) { setError(e.message || "スタッフ給与設定の保存に失敗しました"); }
     finally { setSaving(false); }
   };
 
   const saveRoomRate = async (payload: any) => {
+    if (readOnly) return;
     try { setSaving(true); setError(""); await postJson(`${API_BASE}/payroll/rates/room/upsert`, payload); await loadAll(); }
     catch (e: any) { setError(e.message || "部屋単価の保存に失敗しました"); }
     finally { setSaving(false); }
   };
 
   const savePropertyTypeRate = async (payload: any) => {
+    if (readOnly) return;
     try { setSaving(true); setError(""); await postJson(`${API_BASE}/payroll/rates/property-type/upsert`, payload); await loadAll(); }
     catch (e: any) { setError(e.message || "物件タイプ単価の保存に失敗しました"); }
     finally { setSaving(false); }
@@ -278,6 +294,7 @@ export default function PayrollAttendancePage() {
   }, [dailyRows]);
 
   const updatePayrollResult = async (payload: any) => {
+    if (readOnly) return;
     try {
       setSaving(true);
       setError("");
@@ -292,6 +309,7 @@ export default function PayrollAttendancePage() {
   };
 
   const deletePayrollResult = async (row: PayrollDailyResult) => {
+    if (readOnly) return;
     if (!window.confirm(`${row.staff_name} / ${row.facility || "-"} の給与データを削除しますか？`)) return;
     try {
       setSaving(true);
@@ -359,7 +377,7 @@ export default function PayrollAttendancePage() {
             <select className="h-10 rounded-xl border bg-white px-3 text-sm" value={year} onChange={(e) => setYear(Number(e.target.value))}>{[2024, 2025, 2026, 2027].map((y) => <option key={y} value={y}>{y}年</option>)}</select>
             <select className="h-10 rounded-xl border bg-white px-3 text-sm" value={month} onChange={(e) => setMonth(Number(e.target.value))}>{Array.from({ length: 12 }).map((_, i) => <option key={i + 1} value={i + 1}>{i + 1}月</option>)}</select>
             <Button variant="outline" onClick={loadAll} disabled={loading}>更新</Button>
-            <Button onClick={calculateMonthly} disabled={calculating}>{calculating ? "計算中..." : "月次計算"}</Button>
+            <Button onClick={calculateMonthly} disabled={calculating || readOnly}>{calculating ? "計算中..." : "月次計算"}</Button>
           </div>
         </div>
 
@@ -370,6 +388,7 @@ export default function PayrollAttendancePage() {
         </div>
 
         {error ? <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div> : null}
+        {readOnly ? <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-bold text-amber-700">leader権限では給与・勤怠を閲覧のみ利用できます。</div> : null}
         {loading ? <div className="rounded-2xl border bg-white px-4 py-3 text-sm text-neutral-500">読み込み中...</div> : null}
 
         {tab === "daily" ? (
@@ -430,8 +449,8 @@ export default function PayrollAttendancePage() {
     const hourlyDetail = parts.filter((x) => x.startsWith("時給対象:")).join(" / ") || (Number(r.actual_hours || 0) > 0 ? `${Number(r.actual_hours || 0).toFixed(2)}h × ${yen(r.hourly_rate)}` : "-");
     const hasPiece = Number(r.cleaning_amount || 0) !== 0 || Number(r.room_count || 0) > 0;
     const hasHourly = Number(r.hourly_amount || 0) !== 0 || Number(r.actual_hours || 0) > 0 || Number(r.adjustment_amount || 0) !== 0 || Number(r.transportation_fee || 0) !== 0;
-    if (hasPiece) pieceLines.push(<tr key={`${r.id}-piece`} className="border-t"><td className="px-3 py-3 font-medium">{r.facility || "-"}</td><td className="px-3 py-3"><span className="rounded-full border bg-neutral-50 px-2 py-1 font-semibold">単価分</span></td><td className="max-w-[360px] px-3 py-3 leading-5 text-neutral-600">{pieceDetail}</td><td className="px-3 py-3 text-right">{r.room_count || 0}</td><td className="px-3 py-3 text-right font-semibold">{yen(r.cleaning_amount)}</td><td className="px-3 py-3 text-right text-neutral-400">-</td><td className="px-3 py-3 text-right text-neutral-400">-</td><td className="px-3 py-3 text-right text-neutral-400">-</td><td className="px-3 py-3 text-right text-neutral-400">-</td><td className="px-3 py-3 text-right font-semibold">{yen(r.cleaning_amount)}</td><td className="px-3 py-3"><div className="flex justify-end gap-2"><button type="button" onClick={(e) => { e.stopPropagation(); setEditingPayroll(r); }} className="rounded-lg border bg-white px-3 py-1.5 font-medium">修正</button><button type="button" onClick={(e) => { e.stopPropagation(); void deletePayrollResult(r); }} className="rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 font-medium text-red-600">削除</button></div></td></tr>);
-    if (hasHourly) hourlyLines.push(<tr key={`${r.id}-hourly`} className="border-t bg-blue-50/30"><td className="px-3 py-3 font-medium">{r.facility || "-"}</td><td className="px-3 py-3"><span className="rounded-full border border-blue-200 bg-blue-50 px-2 py-1 font-semibold text-blue-700">時給換算分</span></td><td className="max-w-[360px] px-3 py-3 leading-5 text-neutral-600">{hourlyDetail}</td><td className="px-3 py-3 text-right text-neutral-400">-</td><td className="px-3 py-3 text-right text-neutral-400">-</td><td className="px-3 py-3 text-right">{Number(r.actual_hours || 0).toFixed(2)}h</td><td className="px-3 py-3 text-right font-semibold">{yen(r.hourly_amount)}</td><td className="px-3 py-3 text-right">{yen(r.adjustment_amount)}</td><td className="px-3 py-3 text-right">{yen(r.transportation_fee)}</td><td className="px-3 py-3 text-right font-semibold">{yen(Number(r.hourly_amount || 0) + Number(r.adjustment_amount || 0) + Number(r.transportation_fee || 0))}</td><td className="px-3 py-3"><div className="flex justify-end gap-2"><button type="button" onClick={(e) => { e.stopPropagation(); setEditingPayroll(r); }} className="rounded-lg border bg-white px-3 py-1.5 font-medium">修正</button><button type="button" onClick={(e) => { e.stopPropagation(); void deletePayrollResult(r); }} className="rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 font-medium text-red-600">削除</button></div></td></tr>);
+    if (hasPiece) pieceLines.push(<tr key={`${r.id}-piece`} className="border-t"><td className="px-3 py-3 font-medium">{r.facility || "-"}</td><td className="px-3 py-3"><span className="rounded-full border bg-neutral-50 px-2 py-1 font-semibold">単価分</span></td><td className="max-w-[360px] px-3 py-3 leading-5 text-neutral-600">{pieceDetail}</td><td className="px-3 py-3 text-right">{r.room_count || 0}</td><td className="px-3 py-3 text-right font-semibold">{yen(r.cleaning_amount)}</td><td className="px-3 py-3 text-right text-neutral-400">-</td><td className="px-3 py-3 text-right text-neutral-400">-</td><td className="px-3 py-3 text-right text-neutral-400">-</td><td className="px-3 py-3 text-right text-neutral-400">-</td><td className="px-3 py-3 text-right font-semibold">{yen(r.cleaning_amount)}</td><td className="px-3 py-3"><div className="flex justify-end gap-2"><button type="button" disabled={readOnly} onClick={(e) => { e.stopPropagation(); setEditingPayroll(r); }} className="rounded-lg border bg-white px-3 py-1.5 font-medium disabled:opacity-40">修正</button><button type="button" disabled={readOnly} onClick={(e) => { e.stopPropagation(); void deletePayrollResult(r); }} className="rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 font-medium text-red-600 disabled:opacity-40">削除</button></div></td></tr>);
+    if (hasHourly) hourlyLines.push(<tr key={`${r.id}-hourly`} className="border-t bg-blue-50/30"><td className="px-3 py-3 font-medium">{r.facility || "-"}</td><td className="px-3 py-3"><span className="rounded-full border border-blue-200 bg-blue-50 px-2 py-1 font-semibold text-blue-700">時給換算分</span></td><td className="max-w-[360px] px-3 py-3 leading-5 text-neutral-600">{hourlyDetail}</td><td className="px-3 py-3 text-right text-neutral-400">-</td><td className="px-3 py-3 text-right text-neutral-400">-</td><td className="px-3 py-3 text-right">{Number(r.actual_hours || 0).toFixed(2)}h</td><td className="px-3 py-3 text-right font-semibold">{yen(r.hourly_amount)}</td><td className="px-3 py-3 text-right">{yen(r.adjustment_amount)}</td><td className="px-3 py-3 text-right">{yen(r.transportation_fee)}</td><td className="px-3 py-3 text-right font-semibold">{yen(Number(r.hourly_amount || 0) + Number(r.adjustment_amount || 0) + Number(r.transportation_fee || 0))}</td><td className="px-3 py-3"><div className="flex justify-end gap-2"><button type="button" disabled={readOnly} onClick={(e) => { e.stopPropagation(); setEditingPayroll(r); }} className="rounded-lg border bg-white px-3 py-1.5 font-medium disabled:opacity-40">修正</button><button type="button" disabled={readOnly} onClick={(e) => { e.stopPropagation(); void deletePayrollResult(r); }} className="rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 font-medium text-red-600 disabled:opacity-40">削除</button></div></td></tr>);
   });
   return [...pieceLines, ...hourlyLines];
 })()}</tbody>
@@ -448,7 +467,7 @@ export default function PayrollAttendancePage() {
           </div>
         ) : null}
 
-        {tab === "settings" ? <PayrollSettings settings={settings} staffs={staffs} properties={properties} rooms={rooms} saving={saving} onSaveStaff={saveStaffPayrollSetting} onSaveRoom={saveRoomRate} onSavePropertyType={savePropertyTypeRate} /> : null}
+        {tab === "settings" ? <fieldset disabled={readOnly}><PayrollSettings settings={settings} staffs={staffs} properties={properties} rooms={rooms} saving={saving} onSaveStaff={saveStaffPayrollSetting} onSaveRoom={saveRoomRate} onSavePropertyType={savePropertyTypeRate} /></fieldset> : null}
         {tab === "statement" ? <PayrollStatement staffList={staffList} selectedStaffId={selectedStaff?.staff_id || ""} onSelectStaff={setSelectedStaffId} selectedStaff={selectedStaff} rows={selectedRows} total={total} /> : null}
       </div>
     </div>
