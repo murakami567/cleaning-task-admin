@@ -213,7 +213,7 @@ const emptyRoomForm = {
 };
 
 export default function PropertyManagementPage() {
-  const readOnly = getAdminRole() === "leader";
+  const readOnly = !["admin", "sub_admin"].includes(getAdminRole());
 
   const [properties, setProperties] = useState<PropertyMaster[]>([]);
   const [rooms, setRooms] = useState<RoomMaster[]>([]);
