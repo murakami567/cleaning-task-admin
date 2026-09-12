@@ -169,10 +169,11 @@ export default function AdminWorklogReportPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [alertFilter, setAlertFilter] = useState<AlertFilter>("all");
-  const isOperation = useMemo(() => {
+  const readOnly = useMemo(() => {
     try {
       const raw = localStorage.getItem("admin_user");
-      return raw ? JSON.parse(raw)?.role === "operation" : false;
+      const role = raw ? JSON.parse(raw)?.role : "";
+      return !["admin", "sub_admin"].includes(role);
     } catch {
       return false;
     }
@@ -400,9 +401,9 @@ export default function AdminWorklogReportPage() {
           </div>
         ) : null}
 
-        {isOperation ? (
+        {readOnly ? (
           <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-bold text-amber-700">
-            operation権限は実働報告の閲覧のみ可能です。
+            この権限では実働報告を閲覧のみ利用できます。
           </div>
         ) : (
           <AdminWorklogEditor
