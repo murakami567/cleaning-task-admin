@@ -212,15 +212,15 @@ const emptyRoomForm = {
   late_checkout_fee: "0",
 };
 
-export default function PropertyManagementPage() {
-  const readOnly = !["admin", "sub_admin"].includes(getAdminRole());
+export default function PropertyManagementPage({ prepOnly = false }: { prepOnly?: boolean }) {
+  const readOnly = prepOnly || !["admin", "sub_admin"].includes(getAdminRole());
 
   const [properties, setProperties] = useState<PropertyMaster[]>([]);
   const [rooms, setRooms] = useState<RoomMaster[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const [mainTab, setMainTab] = useState<MainTab>("rooms");
+  const [mainTab, setMainTab] = useState<MainTab>(prepOnly ? "prep" : "rooms");
   const [mobileMasterTab, setMobileMasterTab] =
     useState<MobileMasterTab>("properties");
   const [propertySearch, setPropertySearch] = useState("");
@@ -314,8 +314,8 @@ export default function PropertyManagementPage() {
   };
 
   useEffect(() => {
-    void loadAll();
-  }, []);
+    if (!prepOnly) void loadAll();
+  }, [prepOnly]);
 
   useEffect(() => {
     if (mainTab === "prep" && prepItems.length === 0) void loadPrepList();
@@ -930,13 +930,13 @@ export default function PropertyManagementPage() {
         <div className="shrink-0">
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
             <div>
-              <h1 className="text-3xl font-black tracking-tight">物件管理</h1>
+              <h1 className="text-3xl font-black tracking-tight">{prepOnly ? "準備物確認" : "物件管理"}</h1>
               <p className="mt-1 text-sm text-slate-500">
                 {mainTab === "rooms"
                   ? "物件マスタ・部屋マスタを管理します。"
                   : "翌日以降の清掃に対する準備物を確認します。"}
               </p>
-              {readOnly ? (
+              {readOnly && !prepOnly ? (
                 <p className="mt-2 text-xs font-bold text-amber-700">
                   リーダー権限では閲覧のみ可能です。
                 </p>
@@ -986,7 +986,7 @@ export default function PropertyManagementPage() {
             </div>
           </div>
 
-          <div className="mb-4 flex gap-2">
+          {!prepOnly ? <div className="mb-4 flex gap-2">
             <ChipButton
               active={mainTab === "rooms"}
               onClick={() => setMainTab("rooms")}
@@ -999,7 +999,7 @@ export default function PropertyManagementPage() {
             >
               準備物確認
             </ChipButton>
-          </div>
+          </div> : null}
         </div>
 
         <div className="min-h-0 flex-1">
@@ -1177,22 +1177,30 @@ export default function PropertyManagementPage() {
                           <td className="px-3 py-3 text-right">{item.prep_ta}</td>
                           <td className="min-w-64 px-3 py-3">
                             <div className="flex gap-2">
-                              <input
-                                value={prepNoteDrafts[item.task_id] ?? ""}
-                                onChange={(event) =>
-                                  setPrepNoteDrafts((current) => ({
-                                    ...current,
-                                    [item.task_id]: event.target.value,
-                                  }))
-                                }
-                                className="h-10 min-w-52 flex-1 rounded-xl border border-slate-200 px-3"
-                              />
-                              <Button
-                                disabled={prepSavingId === item.task_id}
-                                onClick={() => void savePrepNote(item)}
-                              >
-                                保存
-                              </Button>
+                              {prepOnly ? (
+                                <span className="min-h-10 flex-1 rounded-xl bg-slate-50 px-3 py-2 text-slate-700">
+                                  {item.note || "-"}
+                                </span>
+                              ) : (
+                                <>
+                                  <input
+                                    value={prepNoteDrafts[item.task_id] ?? ""}
+                                    onChange={(event) =>
+                                      setPrepNoteDrafts((current) => ({
+                                        ...current,
+                                        [item.task_id]: event.target.value,
+                                      }))
+                                    }
+                                    className="h-10 min-w-52 flex-1 rounded-xl border border-slate-200 px-3"
+                                  />
+                                  <Button
+                                    disabled={prepSavingId === item.task_id}
+                                    onClick={() => void savePrepNote(item)}
+                                  >
+                                    保存
+                                  </Button>
+                                </>
+                              )}
                             </div>
                           </td>
                         </tr>
