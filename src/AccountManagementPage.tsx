@@ -38,6 +38,7 @@ const ROLE_OPTIONS = [
   { value: "sub_admin", label: "sub_admin" },
   { value: "operation", label: "operation" },
   { value: "payroll_admin", label: "payroll_admin" },
+  { value: "prep_viewer", label: "準備物確認専用" },
   { value: "leader", label: "leader" },
   { value: "checker", label: "checker" },
   { value: "staff", label: "staff" },
