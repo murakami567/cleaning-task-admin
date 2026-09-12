@@ -72,7 +72,7 @@ export default function AdminAutoAssignSettingsPage() {
   const [query, setQuery] = useState("");
   const propertyTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   const statusTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const readOnly = getAdminRole() === "leader";
+  const readOnly = !["admin", "sub_admin"].includes(getAdminRole());
 
   const showStatus = (status: SaveStatus) => {
     setSaveStatus(status);
@@ -173,7 +173,7 @@ export default function AdminAutoAssignSettingsPage() {
           <div className="mt-1 text-sm text-slate-500">
             新ロジック: 物件の並び順 → 物件ごとの優先スタッフ → 最大対応数で割り当てます。
           </div>
-          {readOnly ? <div className="mt-2 text-xs font-bold text-amber-700">リーダー権限では閲覧のみ可能です。</div> : null}
+          {readOnly ? <div className="mt-2 text-xs font-bold text-amber-700">この権限では閲覧のみ可能です。</div> : null}
         </div>
         <div className="flex items-center gap-3">
           {saveStatus ? <div className="text-sm font-bold text-slate-500">{saveStatus}</div> : null}
