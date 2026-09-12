@@ -19,7 +19,7 @@ export default function AdminRoute({ children }: { children: ReactNode }) {
   try {
     const user = JSON.parse(userRaw);
 
-    if (!["admin", "leader","sub_admin"].includes(user.role)) {
+    if (!["admin", "leader", "sub_admin", "operation"].includes(user.role)) {
       return <Navigate to="/admin/login" replace />;
     }
 
