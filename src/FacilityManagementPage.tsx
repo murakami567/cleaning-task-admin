@@ -257,7 +257,7 @@ export default function FacilityManagementPage() {
 
     const res = await fetch(url, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${localStorage.getItem("admin_access_token") || ""}` },
       body: JSON.stringify(payload),
     });
 
