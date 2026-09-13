@@ -453,6 +453,7 @@ function Td({
 type Attendee = {
   userId: string;
   name: string;
+  role: string;
   availablePropertyIds: string[];
   uncheckedPropertyIds: string[];
   propertyMatchKind?: "priority" | "normal" | "other";
@@ -551,6 +552,20 @@ type ViewMode = "TODAY" | "FUTURE" | "DATE";
 const API_BASE =
   (import.meta as any).env?.VITE_API_BASE_URL ||
   "https://cleaning-task-api.onrender.com";
+
+const CHECKER_ROLES = new Set([
+  "admin",
+  "sub_admin",
+  "payroll_admin",
+  "leader",
+  "checker",
+]);
+
+function filterCheckerCandidates(attendees: Attendee[]): Attendee[] {
+  return attendees.filter((attendee) =>
+    CHECKER_ROLES.has((attendee.role || "").trim().toLowerCase())
+  );
+}
 
 /* =========================
  * API helpers
@@ -697,6 +712,7 @@ async function fetchAvailableStaffByDate(shiftDate: string): Promise<Attendee[]>
     .map((e: any) => ({
       userId: e.staff_id,
       name: e.staff_members?.staff_name || e.staff_id,
+      role: e.staff_members?.role || "",
       availablePropertyIds: Array.isArray(e.staff_members?.available_property_ids)
         ? e.staff_members.available_property_ids
         : [],
@@ -1019,7 +1035,7 @@ export default function AdminTasksPagePreview() {
   const selectedCheckerOptions = useMemo(
     () =>
       [{ value: "", label: "未設定" }].concat(
-        selectedCleaningAttendees.map((u) => ({
+        filterCheckerCandidates(selectedCleaningAttendees).map((u) => ({
           value: u.userId,
           label: u.name,
         }))
@@ -1660,7 +1676,10 @@ export default function AdminTasksPagePreview() {
                         matchedProperty?.task_color
                       );
                       const checkerOptions = [{ value: "", label: "未設定" }].concat(
-                        attendees.map((u) => ({ value: u.userId, label: u.name }))
+                        filterCheckerCandidates(attendees).map((u) => ({
+                          value: u.userId,
+                          label: u.name,
+                        }))
                       );
 
                       const openDetails = (e?: React.MouseEvent) => {
