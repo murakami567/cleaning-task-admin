@@ -101,7 +101,8 @@ export function installContractorTaskAssigneePatch() {
 
     if (
       window.location.pathname !== "/admin/tasks" ||
-      !url.includes("/shifts?shift_date=") ||
+      (!url.includes("/shifts?shift_date=") &&
+        !url.includes("/shifts/batch?shift_dates=")) ||
       !response.ok
     ) {
       return response;
