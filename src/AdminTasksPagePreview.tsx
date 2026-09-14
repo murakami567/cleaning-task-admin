@@ -696,14 +696,17 @@ async function persistCleaningTaskPatch(
 }
 
 async function fetchAvailableStaffByDate(shiftDate: string): Promise<Attendee[]> {
-  const res = await fetch(`${API_BASE}/shifts?shift_date=${shiftDate}`);
-  if (!res.ok) throw new Error(`shift fetch failed: ${res.status}`);
+  const byDate = await fetchAvailableStaffByDates([shiftDate]);
+  return byDate[shiftDate] ?? [];
+}
 
-  const data = await res.json();
+const ATTENDEE_CACHE_TTL_MS = 5 * 60_000;
+const attendeeCache = new Map<
+  string,
+  { attendees: Attendee[]; fetchedAt: number }
+>();
 
-  const day = Array.isArray(data) ? data[0] : data;
-  if (!day) return [];
-
+function mapShiftDayToAttendees(day: any): Attendee[] {
   const entries = Array.isArray(day.shift_entries) ? day.shift_entries : [];
 
   // 出勤のみ (遅刻は対応エリア絞り込みの対象外なので除外)
@@ -720,6 +723,45 @@ async function fetchAvailableStaffByDate(shiftDate: string): Promise<Attendee[]>
         ? e.staff_members.unchecked_property_ids
         : [],
     }));
+}
+
+async function fetchAvailableStaffByDates(
+  shiftDates: string[]
+): Promise<Record<string, Attendee[]>> {
+  const dates = Array.from(new Set(shiftDates.filter(Boolean)));
+  const now = Date.now();
+  const result: Record<string, Attendee[]> = {};
+  const datesToFetch: string[] = [];
+
+  for (const shiftDate of dates) {
+    const cached = attendeeCache.get(shiftDate);
+    if (cached && now - cached.fetchedAt < ATTENDEE_CACHE_TTL_MS) {
+      result[shiftDate] = cached.attendees;
+    } else {
+      datesToFetch.push(shiftDate);
+    }
+  }
+
+  if (datesToFetch.length === 0) return result;
+
+  const params = new URLSearchParams({ shift_dates: datesToFetch.join(",") });
+  const res = await fetch(API_BASE + "/shifts/batch?" + params.toString());
+  if (!res.ok) throw new Error("shift batch fetch failed: " + res.status);
+
+  const data = await res.json();
+  const days = Array.isArray(data) ? data : [];
+  const dayByDate = new Map(
+    days.map((day: any) => [normalizeIsoDate(day.shift_date), day])
+  );
+
+  for (const shiftDate of datesToFetch) {
+    const day = dayByDate.get(shiftDate);
+    const attendees = day ? mapShiftDayToAttendees(day) : [];
+    attendeeCache.set(shiftDate, { attendees, fetchedAt: now });
+    result[shiftDate] = attendees;
+  }
+
+  return result;
 }
 
 async function fetchNonCleaningTasks(): Promise<NonCleaningTask[]> {
@@ -1141,19 +1183,15 @@ export default function AdminTasksPagePreview() {
         )
       );
 
-      const attendeesEntries = await Promise.all(
-        uniqueDates.map(async (d) => {
-          try {
-            const users = await fetchAvailableStaffByDate(d);
-            return [d, Array.isArray(users) ? users : []] as const;
-          } catch (error) {
-            console.error(`shift fetch failed: ${d}`, error);
-            return [d, []] as const;
-          }
-        })
-      );
-
-      setAttendeesByDate(Object.fromEntries(attendeesEntries));
+      try {
+        const attendees = await fetchAvailableStaffByDates(uniqueDates);
+        setAttendeesByDate(attendees);
+      } catch (error) {
+        console.error("shift batch fetch failed", error);
+        setAttendeesByDate(
+          Object.fromEntries(uniqueDates.map((shiftDate) => [shiftDate, []]))
+        );
+      }
       setLastUpdated(new Date());
     } catch (error) {
       console.error(error);
