@@ -1175,11 +1175,21 @@ export default function AdminTasksPagePreview() {
         tasks.some((t) => t.id === prev) ? prev : tasks[0]?.id ?? ""
       );
 
+      const isDateInCurrentView = (value: string) => {
+        const normalized = normalizeIsoDate(value);
+        if (viewMode === "TODAY") return normalized === baseDate;
+        if (viewMode === "FUTURE") return isFutureDate(normalized);
+        return normalized === selectedDate;
+      };
+
       const uniqueDates = Array.from(
         new Set(
-          [...tasks.map((t) => t.date), ...nonCleaning.map((t) => t.date)].filter(
-            Boolean
-          )
+          [
+            ...tasks.filter((t) => isDateInCurrentView(t.date)).map((t) => t.date),
+            ...nonCleaning
+              .filter((t) => isDateInCurrentView(t.date))
+              .map((t) => t.date),
+          ].filter(Boolean)
         )
       );
 
