@@ -30,6 +30,7 @@ import AdminMobileHomePage from "./pages/admin/mobile/AdminMobileHomePage";
 import AdminMobilePropertiesPage from "./pages/admin/mobile/AdminMobilePropertiesPage";
 import AdminMobileFacilitiesPage from "./pages/admin/mobile/AdminMobileFacilitiesPage";
 import AdminMobileSchedulePage from "./pages/admin/mobile/AdminMobileSchedulePage";
+import AdminMobileShiftBoardPage from "./pages/admin/mobile/AdminMobileShiftBoardPage";
 
 import PayrollAttendancePage from "./pages/admin/PayrollAttendancePage";
 import PayrollRoute from "./routes/PayrollRoute";
@@ -129,7 +130,7 @@ export default function App() {
           <Route path="properties" element={<AdminMobilePropertiesPage />} />
           <Route path="facilities" element={<AdminMobileFacilitiesPage />} />
           <Route path="shifts" element={<AdminMobileSchedulePage />} />
-          <Route path="shiftboard" element={<ShiftBoardPage />} />
+          <Route path="shiftboard" element={<AdminMobileShiftBoardPage />} />
           <Route path="worklogs" element={<AdminWorklogReportPage />} />
           <Route path="lost-items" element={<AdminLostItemsPage />} />
         </Route>
