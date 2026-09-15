@@ -37,7 +37,7 @@ function TitleManager() {
   useEffect(() => {
     const path = location.pathname;
 
-    if (path.startsWith("/admin")) {
+    if (path.startsWith("/admin") || path.startsWith("/mobile")) {
       document.title = "タスク管理-グスク";
     } else if (path.startsWith("/employee")) {
       document.title = "【スタッフ】ステータス管理";
@@ -109,16 +109,18 @@ export default function App() {
       <Routes>
         <Route path="/" element={<Navigate to="/admin/login" replace />} />
         <Route path="/admin/login" element={<AdminLoginPage />} />
+        <Route path="/mobile/login" element={<AdminLoginPage />} />
+        <Route path="/admin/mobile/*" element={<Navigate to="/mobile" replace />} />
 
         <Route
-          path="/admin/mobile"
+          path="/mobile"
           element={
             <AdminRoute>
               <AdminMobileLayout />
             </AdminRoute>
           }
         >
-          <Route index element={<Navigate to="/admin/mobile/home" replace />} />
+          <Route index element={<Navigate to="/mobile/home" replace />} />
           <Route path="home" element={<AdminMobileHomePage />} />
           <Route path="tasks" element={<AdminMobileTasksPage />} />
           <Route path="properties" element={<PropertyManagementPage />} />

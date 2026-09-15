@@ -1,11 +1,13 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 
 const API_BASE =
   import.meta.env.VITE_API_BASE_URL || "https://cleaning-task-api.onrender.com";
 
 export default function AdminLoginPage() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const isMobileLogin = location.pathname.startsWith("/mobile");
   const [loginId, setLoginId] = useState("");
   const [password, setPassword] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
@@ -34,7 +36,13 @@ export default function AdminLoginPage() {
       localStorage.setItem("admin_access_token", data.access_token);
       localStorage.setItem("admin_user", JSON.stringify(data.user));
 
-      navigate(data.user?.role === "prep_viewer" ? "/admin/prep" : "/admin/home");
+      navigate(
+        data.user?.role === "prep_viewer"
+          ? "/admin/prep"
+          : isMobileLogin
+          ? "/mobile/home"
+          : "/admin/home"
+      );
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : "ログインに失敗しました。");
     }

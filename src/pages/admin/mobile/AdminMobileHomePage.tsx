@@ -1,14 +1,14 @@
 import { useNavigate } from "react-router-dom";
 
 const items = [
-  ["タスク管理", "清掃・清掃外タスク", "/admin/mobile/tasks", "bg-orange-50 text-orange-700"],
-  ["物件管理", "物件・客室マスタ", "/admin/mobile/properties", "bg-blue-50 text-blue-700"],
-  ["割当設定", "自動割当の条件", "/admin/mobile/auto-assign-settings", "bg-violet-50 text-violet-700"],
-  ["設備管理", "設備・修繕情報", "/admin/mobile/facilities", "bg-cyan-50 text-cyan-700"],
-  ["スケジュール", "勤務予定の管理", "/admin/mobile/shifts", "bg-emerald-50 text-emerald-700"],
-  ["シフト表", "日別の配置確認", "/admin/mobile/shiftboard", "bg-lime-50 text-lime-700"],
-  ["実働報告", "勤怠・実績確認", "/admin/mobile/worklogs", "bg-amber-50 text-amber-700"],
-  ["忘れ物", "拾得物の管理", "/admin/mobile/lost-items", "bg-rose-50 text-rose-700"],
+  ["タスク管理", "清掃・清掃外タスク", "/mobile/tasks", "bg-orange-50 text-orange-700"],
+  ["物件管理", "物件・客室マスタ", "/mobile/properties", "bg-blue-50 text-blue-700"],
+  ["割当設定", "自動割当の条件", "/mobile/auto-assign-settings", "bg-violet-50 text-violet-700"],
+  ["設備管理", "設備・修繕情報", "/mobile/facilities", "bg-cyan-50 text-cyan-700"],
+  ["スケジュール", "勤務予定の管理", "/mobile/shifts", "bg-emerald-50 text-emerald-700"],
+  ["シフト表", "日別の配置確認", "/mobile/shiftboard", "bg-lime-50 text-lime-700"],
+  ["実働報告", "勤怠・実績確認", "/mobile/worklogs", "bg-amber-50 text-amber-700"],
+  ["忘れ物", "拾得物の管理", "/mobile/lost-items", "bg-rose-50 text-rose-700"],
 ] as const;
 
 export default function AdminMobileHomePage() {
