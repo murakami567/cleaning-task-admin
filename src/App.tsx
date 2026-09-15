@@ -125,7 +125,6 @@ export default function App() {
           <Route path="home" element={<AdminMobileHomePage />} />
           <Route path="tasks" element={<AdminMobileTasksPage />} />
           <Route path="properties" element={<AdminMobilePropertiesPage />} />
-          <Route path="auto-assign-settings" element={<AdminAutoAssignSettingsPage />} />
           <Route path="facilities" element={<FacilityManagementPage />} />
           <Route path="shifts" element={<ShiftManagementPage />} />
           <Route path="shiftboard" element={<ShiftBoardPage />} />
