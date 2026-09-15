@@ -22,6 +22,7 @@ import AdminHomePage from "./pages/admin/AdminHomePage";
 import AdminRoute from "./routes/AdminRoute";
 import MasterAdminRoute from "./routes/MasterAdminRoute";
 import MasterAdminSystemPage from "./pages/admin/MasterAdminSystemPage";
+import MasterAuditPage from "./pages/master/MasterAuditPage";
 import AdminWorklogReportPage from "./pages/admin/AdminWorklogReportPage";
 import AdminLostItemsPage from "./pages/admin/AdminLostItemsPage";
 import AdminDataExportPage from "./pages/admin/AdminDataExportPage";
@@ -41,23 +42,14 @@ import PayrollRoute from "./routes/PayrollRoute";
 
 function TitleManager() {
   const location = useLocation();
-
   useEffect(() => {
     const path = location.pathname;
-
-    if (path.startsWith("/master")) {
-      document.title = "システム管理-グスク";
-    } else if (path.startsWith("/admin") || path.startsWith("/mobile")) {
-      document.title = "タスク管理-グスク";
-    } else if (path.startsWith("/employee")) {
-      document.title = "【スタッフ】ステータス管理";
-    } else if (path.startsWith("/payroll")) {
-      document.title = "給与・勤怠管理";
-    } else {
-      document.title = "清掃管理";
-    }
+    if (path.startsWith("/master")) document.title = "システム管理-グスク";
+    else if (path.startsWith("/admin") || path.startsWith("/mobile")) document.title = "タスク管理-グスク";
+    else if (path.startsWith("/employee")) document.title = "【スタッフ】ステータス管理";
+    else if (path.startsWith("/payroll")) document.title = "給与・勤怠管理";
+    else document.title = "清掃管理";
   }, [location]);
-
   return null;
 }
 
@@ -66,9 +58,7 @@ function AdminLayout() {
   try {
     const raw = localStorage.getItem("admin_user");
     prepOnly = raw ? JSON.parse(raw)?.role === "prep_viewer" : false;
-  } catch {
-    prepOnly = false;
-  }
+  } catch { prepOnly = false; }
 
   return (
     <div className="min-h-screen bg-neutral-50">
@@ -84,52 +74,30 @@ function AdminLayout() {
         <AdminNavButton to="/admin/lost-items">忘れ物</AdminNavButton>
         <AdminNavButton to="/admin/data-export">データ出力</AdminNavButton>
       </div> : null}
-
       <Outlet />
     </div>
   );
 }
 
-function AdminNavButton({
-  to,
-  children,
-}: {
-  to: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <NavLink
-      to={to}
-      className={({ isActive }) =>
-        `rounded-xl px-4 py-2 text-sm border ${
-          isActive ? "bg-black text-white" : "bg-white hover:bg-black/5"
-        }`
-      }
-    >
-      {children}
-    </NavLink>
-  );
+function AdminNavButton({ to, children }: { to: string; children: React.ReactNode }) {
+  return <NavLink to={to} className={({ isActive }) => `rounded-xl px-4 py-2 text-sm border ${isActive ? "bg-black text-white" : "bg-white hover:bg-black/5"}`}>{children}</NavLink>;
+}
+
+function MasterPage({ children }: { children: React.ReactNode }) {
+  return <MasterAdminRoute>{children}</MasterAdminRoute>;
 }
 
 export default function App() {
   return (
     <AuthProvider>
       <TitleManager />
-
       <Routes>
         <Route path="/" element={<Navigate to="/admin/login" replace />} />
         <Route path="/admin/login" element={<AdminLoginPage />} />
         <Route path="/mobile/login" element={<AdminLoginPage />} />
         <Route path="/admin/mobile/*" element={<Navigate to="/mobile" replace />} />
 
-        <Route
-          path="/mobile"
-          element={
-            <AdminRoute>
-              <AdminMobileLayout />
-            </AdminRoute>
-          }
-        >
+        <Route path="/mobile" element={<AdminRoute><AdminMobileLayout /></AdminRoute>}>
           <Route index element={<Navigate to="/mobile/home" replace />} />
           <Route path="home" element={<AdminMobileHomePage />} />
           <Route path="tasks" element={<AdminMobileTasksPage />} />
@@ -141,14 +109,7 @@ export default function App() {
           <Route path="lost-items" element={<AdminMobileLostItemsPage />} />
         </Route>
 
-        <Route
-          path="/admin"
-          element={
-            <AdminRoute>
-              <AdminLayout />
-            </AdminRoute>
-          }
-        >
+        <Route path="/admin" element={<AdminRoute><AdminLayout /></AdminRoute>}>
           <Route index element={<Navigate to="/admin/home" replace />} />
           <Route path="home" element={<AdminHomePage />} />
           <Route path="tasks" element={<AdminTasksPagePreview />} />
@@ -163,66 +124,18 @@ export default function App() {
           <Route path="data-export" element={<AdminDataExportPage />} />
         </Route>
 
-        <Route
-          path="/master/*"
-          element={
-            <MasterAdminRoute>
-              <MasterAdminSystemPage />
-            </MasterAdminRoute>
-          }
-        />
+        <Route path="/master" element={<MasterPage><MasterAdminSystemPage /></MasterPage>} />
+        <Route path="/master/home" element={<Navigate to="/master" replace />} />
+        <Route path="/master/audit" element={<MasterPage><MasterAuditPage /></MasterPage>} />
+        <Route path="/master/*" element={<Navigate to="/master" replace />} />
 
-        <Route
-          path="/payroll"
-          element={
-            <PayrollRoute>
-              <PayrollAttendancePage />
-            </PayrollRoute>
-          }
-        />
-
+        <Route path="/payroll" element={<PayrollRoute><PayrollAttendancePage /></PayrollRoute>} />
         <Route path="/employee/login" element={<EmployeeLoginPage />} />
-        <Route
-          path="/employee/home"
-          element={
-            <EmployeeProtectedRoute>
-              <EmployeeHomePage />
-            </EmployeeProtectedRoute>
-          }
-        />
-        <Route
-          path="/employee/tasks"
-          element={
-            <EmployeeProtectedRoute>
-              <EmployeeTasksPage />
-            </EmployeeProtectedRoute>
-          }
-        />
-        <Route
-          path="/employee/schedule"
-          element={
-            <EmployeeProtectedRoute>
-              <EmployeeSchedulePage />
-            </EmployeeProtectedRoute>
-          }
-        />
-        <Route
-          path="/employee/worklog"
-          element={
-            <EmployeeProtectedRoute>
-              <EmployeeWorklogPage />
-            </EmployeeProtectedRoute>
-          }
-        />
-        <Route
-          path="/employee/settings"
-          element={
-            <EmployeeProtectedRoute>
-              <EmployeeSettingsPage />
-            </EmployeeProtectedRoute>
-          }
-        />
-
+        <Route path="/employee/home" element={<EmployeeProtectedRoute><EmployeeHomePage /></EmployeeProtectedRoute>} />
+        <Route path="/employee/tasks" element={<EmployeeProtectedRoute><EmployeeTasksPage /></EmployeeProtectedRoute>} />
+        <Route path="/employee/schedule" element={<EmployeeProtectedRoute><EmployeeSchedulePage /></EmployeeProtectedRoute>} />
+        <Route path="/employee/worklog" element={<EmployeeProtectedRoute><EmployeeWorklogPage /></EmployeeProtectedRoute>} />
+        <Route path="/employee/settings" element={<EmployeeProtectedRoute><EmployeeSettingsPage /></EmployeeProtectedRoute>} />
         <Route path="*" element={<Navigate to="/admin/login" replace />} />
       </Routes>
     </AuthProvider>
