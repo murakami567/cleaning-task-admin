@@ -1,6 +1,7 @@
 import { Navigate } from "react-router-dom";
 import { ReactNode } from "react";
 import { isJwtExpired } from "../lib/jwt";
+import { canAccessPayroll } from "../lib/roles";
 
 export default function PayrollRoute({ children }: { children: ReactNode }) {
   const token = localStorage.getItem("admin_access_token");
@@ -19,14 +20,7 @@ export default function PayrollRoute({ children }: { children: ReactNode }) {
   try {
     const user = JSON.parse(userRaw);
 
-    const allowedRoles = [
-      "admin",
-      "leader",
-      "sub_admin",
-      "payroll_admin",
-    ];
-
-    if (!allowedRoles.includes(user.role)) {
+    if (!canAccessPayroll(user.role)) {
       return <Navigate to="/admin/login" replace />;
     }
   } catch {
