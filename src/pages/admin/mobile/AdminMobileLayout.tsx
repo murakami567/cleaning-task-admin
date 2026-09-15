@@ -55,7 +55,6 @@ const menuItems = [
   ["ホーム", "/mobile/home", HomeIcon],
   ["タスク管理", "/mobile/tasks", TasksIcon],
   ["物件管理", "/mobile/properties", BuildingIcon],
-  ["割当設定", "/mobile/auto-assign-settings", SlidersIcon],
   ["設備管理", "/mobile/facilities", ToolIcon],
   ["スケジュール", "/mobile/shifts", CalendarIcon],
   ["シフト表", "/mobile/shiftboard", BoardIcon],
