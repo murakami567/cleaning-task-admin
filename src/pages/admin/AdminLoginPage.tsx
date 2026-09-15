@@ -34,7 +34,16 @@ export default function AdminLoginPage() {
       }
 
       localStorage.setItem("admin_access_token", data.access_token);
-      localStorage.setItem("admin_user", JSON.stringify(data.user));
+
+      // Legacy admin screens contain direct `role === admin` style checks.
+      // For master_admin, expose admin as the effective UI role while preserving
+      // the real role separately for /master authorization. The signed API token
+      // continues to carry master_admin, so server-side authorization is unchanged.
+      const adminUser =
+        data.user?.role === "master_admin"
+          ? { ...data.user, role: "admin", actual_role: "master_admin" }
+          : data.user;
+      localStorage.setItem("admin_user", JSON.stringify(adminUser));
 
       navigate(
         data.user?.role === "prep_viewer"
