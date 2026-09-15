@@ -27,6 +27,7 @@ import AdminAutoAssignSettingsPage from "./pages/admin/AdminAutoAssignSettingsPa
 import AdminMobileTasksPage from "./pages/admin/AdminMobileHomePage";
 import AdminMobileLayout from "./pages/admin/mobile/AdminMobileLayout";
 import AdminMobileHomePage from "./pages/admin/mobile/AdminMobileHomePage";
+import AdminMobilePropertiesPage from "./pages/admin/mobile/AdminMobilePropertiesPage";
 
 import PayrollAttendancePage from "./pages/admin/PayrollAttendancePage";
 import PayrollRoute from "./routes/PayrollRoute";
@@ -123,7 +124,7 @@ export default function App() {
           <Route index element={<Navigate to="/mobile/home" replace />} />
           <Route path="home" element={<AdminMobileHomePage />} />
           <Route path="tasks" element={<AdminMobileTasksPage />} />
-          <Route path="properties" element={<PropertyManagementPage />} />
+          <Route path="properties" element={<AdminMobilePropertiesPage />} />
           <Route path="auto-assign-settings" element={<AdminAutoAssignSettingsPage />} />
           <Route path="facilities" element={<FacilityManagementPage />} />
           <Route path="shifts" element={<ShiftManagementPage />} />
