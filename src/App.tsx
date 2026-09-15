@@ -45,7 +45,9 @@ function TitleManager() {
   useEffect(() => {
     const path = location.pathname;
 
-    if (path.startsWith("/admin") || path.startsWith("/mobile")) {
+    if (path.startsWith("/master")) {
+      document.title = "システム管理-グスク";
+    } else if (path.startsWith("/admin") || path.startsWith("/mobile")) {
       document.title = "タスク管理-グスク";
     } else if (path.startsWith("/employee")) {
       document.title = "【スタッフ】ステータス管理";
@@ -61,15 +63,11 @@ function TitleManager() {
 
 function AdminLayout() {
   let prepOnly = false;
-  let masterAdmin = false;
   try {
     const raw = localStorage.getItem("admin_user");
-    const user = raw ? JSON.parse(raw) : null;
-    prepOnly = user?.role === "prep_viewer";
-    masterAdmin = user?.role === "master_admin";
+    prepOnly = raw ? JSON.parse(raw)?.role === "prep_viewer" : false;
   } catch {
     prepOnly = false;
-    masterAdmin = false;
   }
 
   return (
@@ -85,7 +83,6 @@ function AdminLayout() {
         <AdminNavButton to="/admin/worklogs">実働報告</AdminNavButton>
         <AdminNavButton to="/admin/lost-items">忘れ物</AdminNavButton>
         <AdminNavButton to="/admin/data-export">データ出力</AdminNavButton>
-        {masterAdmin ? <AdminNavButton to="/admin/system">システム管理</AdminNavButton> : null}
       </div> : null}
 
       <Outlet />
@@ -164,15 +161,16 @@ export default function App() {
           <Route path="worklogs" element={<AdminWorklogReportPage />} />
           <Route path="lost-items" element={<AdminLostItemsPage />} />
           <Route path="data-export" element={<AdminDataExportPage />} />
-          <Route
-            path="system"
-            element={
-              <MasterAdminRoute>
-                <MasterAdminSystemPage />
-              </MasterAdminRoute>
-            }
-          />
         </Route>
+
+        <Route
+          path="/master/*"
+          element={
+            <MasterAdminRoute>
+              <MasterAdminSystemPage />
+            </MasterAdminRoute>
+          }
+        />
 
         <Route
           path="/payroll"
