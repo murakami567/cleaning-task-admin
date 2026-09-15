@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "https://cleaning-task-api.onrender.com";
 
@@ -36,6 +37,7 @@ function changedFields(item: AuditLog) {
 }
 
 export default function MasterAuditPage() {
+  const navigate = useNavigate();
   const [items, setItems] = useState<AuditLog[]>([]);
   const [selected, setSelected] = useState<AuditLog | null>(null);
   const [loading, setLoading] = useState(true);
@@ -63,7 +65,10 @@ export default function MasterAuditPage() {
 
   return (
     <main className="mx-auto max-w-7xl px-6 py-8">
-      <div><p className="text-sm font-semibold text-slate-500">MASTER ADMIN</p><h1 className="mt-1 text-3xl font-bold text-slate-900">ログ監査</h1><p className="mt-2 text-sm text-slate-500">各画面から記録された操作履歴を確認します。</p></div>
+      <div className="flex items-start justify-between gap-4">
+        <div><p className="text-sm font-semibold text-slate-500">MASTER ADMIN</p><h1 className="mt-1 text-3xl font-bold text-slate-900">ログ監査</h1><p className="mt-2 text-sm text-slate-500">各画面から記録された操作履歴を確認します。</p></div>
+        <button type="button" onClick={() => navigate("/master")} className="shrink-0 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50">← 最高管理者画面へ戻る</button>
+      </div>
       <section className="mt-6 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm"><div className="flex flex-wrap gap-3">
         <select value={source} onChange={(e) => setSource(e.target.value)} className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"><option value="">すべての画面</option><option value="admin">PC管理</option><option value="mobile">スマホ管理</option><option value="employee">従業員</option><option value="master">最高管理者</option><option value="system">システム</option></select>
         <input value={action} onChange={(e) => setAction(e.target.value)} placeholder="操作名で絞り込み" className="min-w-56 rounded-xl border border-slate-200 px-3 py-2 text-sm" />
