@@ -11,7 +11,8 @@ export default function MasterAdminRoute({ children }: { children: ReactNode }) 
 
   try {
     const user = JSON.parse(userRaw);
-    if (!isMasterAdmin(user.role)) {
+    const actualRole = user.actual_role || user.role;
+    if (!isMasterAdmin(actualRole)) {
       return <Navigate to="/admin/home" replace />;
     }
   } catch {
