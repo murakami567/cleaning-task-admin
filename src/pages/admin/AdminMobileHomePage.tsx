@@ -25,6 +25,7 @@ const categoryLabels: Record<string, string> = {
 };
 
 const statusOptions = ["未着手", "清掃開始", "清掃中", "完了", "チェック完了", "持越", "CXL"];
+const otherStatusOptions = ["未着手", "対応中", "完了"];
 const todayIso = () => {
   const now = new Date();
   return new Date(now.getTime() - now.getTimezoneOffset() * 60_000).toISOString().slice(0, 10);
@@ -59,6 +60,7 @@ export default function AdminMobileHomePage() {
   const [error, setError] = useState("");
   const [updatingId, setUpdatingId] = useState("");
   const [expandedId, setExpandedId] = useState("");
+  const [noteDrafts, setNoteDrafts] = useState<Record<string, string>>({});
 
   const loadTasks = useCallback(async (silent = false) => {
     silent ? setRefreshing(true) : setLoading(true);
@@ -71,14 +73,23 @@ export default function AdminMobileHomePage() {
       ]);
       if (response.status === 401 || response.status === 403) {
         localStorage.removeItem("admin_access_token"); localStorage.removeItem("admin_user");
-        navigate("/admin/login", { replace: true }); return;
+        navigate("/mobile/login", { replace: true }); return;
       }
       if (!response.ok) throw new Error();
       const data = await response.json();
-      setTasks(Array.isArray(data) ? data : []);
+      const cleaningItems = Array.isArray(data) ? data : [];
+      setTasks(cleaningItems);
       if (!otherResponse.ok) throw new Error();
       const otherData = await otherResponse.json();
-      setOtherTasks(Array.isArray(otherData) ? otherData : []);
+      const otherItems = Array.isArray(otherData) ? otherData : [];
+      setOtherTasks(otherItems);
+      setNoteDrafts((current) => {
+        const next = { ...current };
+        [...cleaningItems, ...otherItems].forEach((task) => {
+          if (next[task.id] === undefined) next[task.id] = task.note || "";
+        });
+        return next;
+      });
     } catch { setError("タスクを取得できませんでした。再読み込みしてください。"); }
     finally { setLoading(false); setRefreshing(false); }
   }, [mode, navigate, selectedDate, token]);
@@ -93,13 +104,28 @@ export default function AdminMobileHomePage() {
       const response = await fetch(`${API_BASE}/tasks/update`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ task_id: task.id, status }),
+        body: JSON.stringify({ task_id: task.id, status, note: noteDrafts[task.id] ?? task.note ?? "" }),
       });
       if (!response.ok) throw new Error();
     } catch {
       setTasks((items) => items.map((item) => item.id === task.id ? { ...item, status: previous } : item));
       setError("ステータスを更新できませんでした。");
     } finally { setUpdatingId(""); }
+  }
+
+  async function updateNote(task: Task) {
+    const note = noteDrafts[task.id] ?? task.note ?? "";
+    setUpdatingId(task.id);
+    try {
+      const response = await fetch(`${API_BASE}/tasks/update`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ task_id: task.id, note }),
+      });
+      if (!response.ok) throw new Error();
+      setTasks((items) => items.map((item) => item.id === task.id ? { ...item, note } : item));
+    } catch { setError("備考を保存できませんでした。"); }
+    finally { setUpdatingId(""); }
   }
 
   async function updateOtherStatus(task: OtherTask, status: string) {
@@ -114,7 +140,7 @@ export default function AdminMobileHomePage() {
           task_id: task.id, status, category: task.category, title: task.title,
           task_date: task.task_date, deadline: task.deadline || null,
           assignee_names: task.assignee_names || [], checker_name: task.checker_name || null,
-          note: task.note || "",
+          note: noteDrafts[task.id] ?? task.note ?? "",
         }),
       });
       if (!response.ok) throw new Error();
@@ -122,6 +148,21 @@ export default function AdminMobileHomePage() {
       setOtherTasks((items) => items.map((item) => item.id === task.id ? { ...item, status: previous } : item));
       setError("ステータスを更新できませんでした。");
     } finally { setUpdatingId(""); }
+  }
+
+  async function updateOtherNote(task: OtherTask) {
+    const note = noteDrafts[task.id] ?? task.note ?? "";
+    setUpdatingId(task.id);
+    try {
+      const response = await fetch(`${API_BASE}/non-cleaning-tasks/update`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ task_id: task.id, status: task.status, note }),
+      });
+      if (!response.ok) throw new Error();
+      setOtherTasks((items) => items.map((item) => item.id === task.id ? { ...item, note } : item));
+    } catch { setError("備考を保存できませんでした。"); }
+    finally { setUpdatingId(""); }
   }
 
   const visibleTasks = useMemo(() => {
@@ -177,10 +218,10 @@ export default function AdminMobileHomePage() {
           return <article key={task.id} className="overflow-hidden rounded-[22px] border border-slate-200/80 bg-white shadow-[0_4px_16px_rgba(15,23,42,0.04)]">
             <button type="button" onClick={() => setExpandedId(expanded ? "" : task.id)} className="w-full p-4 text-left">
               <div className="flex items-start justify-between gap-3"><div className="min-w-0"><div className="flex items-center gap-2">{mode !== "today" ? <span className="text-xs font-bold text-slate-400">{task.task_date.slice(5).replace('-', '/')}</span> : null}{sameDay ? <span className="rounded-full bg-red-600 px-2 py-0.5 text-[10px] font-extrabold text-white">当日</span> : null}</div><h2 className="mt-1 truncate text-lg font-extrabold">{task.property_name}</h2><div className="mt-0.5 text-2xl font-black tracking-tight">{task.room_name}</div></div><span className={`shrink-0 rounded-full px-3 py-1 text-xs font-extrabold ring-1 ring-inset ${statusStyle(task.status)}`}>{task.status === "清掃開始" ? "清掃中" : task.status}</span></div>
-              <div className="mt-4 grid grid-cols-3 divide-x divide-slate-100 rounded-2xl bg-slate-50 py-3"><Metric label="担当" value={assignees(task)} /><Metric label="負荷" value={`${task.load_score || 0}点`} /><Metric label="タオル" value={towelCount(task)} /></div>
+              <div className="mt-4 rounded-2xl bg-slate-50 px-3 py-3"><div className="text-[10px] font-bold text-slate-400">担当者</div><div className="mt-1 flex flex-wrap gap-1.5">{task.assigned_staff_names?.filter(Boolean).length ? task.assigned_staff_names.filter(Boolean).map((name) => <span key={name} className="rounded-full bg-white px-2.5 py-1 text-xs font-extrabold text-slate-700 ring-1 ring-slate-200">{name}</span>) : <span className="text-xs font-extrabold text-slate-700">{task.assigned_staff_name || "未割当"}</span>}</div><div className="mt-3 grid grid-cols-2 divide-x divide-slate-200 border-t border-slate-200 pt-3"><Metric label="負荷" value={`${task.load_score || 0}点`} /><Metric label="タオル" value={towelCount(task)} /></div></div>
               {(task.early_checkin_time || task.late_checkout_time) ? <div className="mt-3 flex gap-2 text-xs font-bold">{task.early_checkin_time ? <span className="rounded-lg bg-orange-50 px-2.5 py-1.5 text-orange-700">早CI {task.early_checkin_time.slice(0,5)}</span> : null}{task.late_checkout_time ? <span className="rounded-lg bg-blue-50 px-2.5 py-1.5 text-blue-700">遅CO {task.late_checkout_time.slice(0,5)}</span> : null}</div> : null}
             </button>
-            {expanded ? <div className="border-t border-slate-100 px-4 pb-4 pt-3">{task.note ? <div className="mb-3 rounded-xl bg-amber-50 px-3 py-2.5 text-sm leading-relaxed text-amber-900"><div className="mb-1 text-[10px] font-extrabold tracking-wider text-amber-600">備考</div>{task.note}</div> : null}<label className="text-[11px] font-bold text-slate-500">ステータスを変更</label><select value={task.status} disabled={updatingId === task.id} onChange={(e) => void updateStatus(task, e.target.value)} className="mt-1 h-12 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-extrabold disabled:opacity-50">{statusOptions.map((status) => <option key={status}>{status}</option>)}</select></div> : null}
+            {expanded ? <div className="space-y-4 border-t border-slate-100 px-4 pb-4 pt-3"><div><label className="text-[11px] font-bold text-slate-500">備考</label><textarea value={noteDrafts[task.id] ?? task.note ?? ""} onChange={(e) => setNoteDrafts((items) => ({ ...items, [task.id]: e.target.value }))} rows={4} className="mt-1 w-full resize-none rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm leading-relaxed outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100" placeholder="備考を入力" /><button type="button" disabled={updatingId === task.id || (noteDrafts[task.id] ?? task.note ?? "") === (task.note ?? "")} onClick={() => void updateNote(task)} className="mt-2 h-10 w-full rounded-xl bg-slate-900 text-sm font-extrabold text-white disabled:bg-slate-200 disabled:text-slate-400">備考を保存</button></div><div><label className="text-[11px] font-bold text-slate-500">ステータスを変更</label><select value={task.status} disabled={updatingId === task.id} onChange={(e) => void updateStatus(task, e.target.value)} className="mt-1 h-12 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-extrabold disabled:opacity-50">{statusOptions.map((status) => <option key={status}>{status}</option>)}</select></div></div> : null}
           </article>;
         })}
         {!loading && taskKind === "other" && visibleOtherTasks.length === 0 ? <div className="rounded-3xl bg-white px-5 py-12 text-center text-sm text-slate-400">該当する清掃外タスクはありません</div> : null}
@@ -189,9 +230,9 @@ export default function AdminMobileHomePage() {
           return <article key={task.id} className="overflow-hidden rounded-[22px] border border-slate-200/80 bg-white shadow-[0_4px_16px_rgba(15,23,42,0.04)]">
             <button type="button" onClick={() => setExpandedId(expanded ? "" : task.id)} className="w-full p-4 text-left">
               <div className="flex items-start justify-between gap-3"><div className="min-w-0"><span className="text-[11px] font-extrabold text-orange-600">{categoryLabels[task.category] || task.category}</span><h2 className="mt-1 text-lg font-extrabold">{task.title}</h2></div><span className={`shrink-0 rounded-full px-3 py-1 text-xs font-extrabold ring-1 ring-inset ${statusStyle(task.status)}`}>{task.status}</span></div>
-              <div className="mt-4 grid grid-cols-3 divide-x divide-slate-100 rounded-2xl bg-slate-50 py-3"><Metric label="日付" value={String(task.task_date).slice(5,10).replace('-', '/')} /><Metric label="期限" value={task.deadline ? String(task.deadline).slice(0,5) : "—"} /><Metric label="担当" value={task.assignee_names?.filter(Boolean).join("・") || "未割当"} /></div>
+              <div className="mt-4 rounded-2xl bg-slate-50 px-3 py-3"><div className="text-[10px] font-bold text-slate-400">担当者</div><div className="mt-1 flex flex-wrap gap-1.5">{task.assignee_names?.filter(Boolean).length ? task.assignee_names.filter(Boolean).map((name) => <span key={name} className="rounded-full bg-white px-2.5 py-1 text-xs font-extrabold text-slate-700 ring-1 ring-slate-200">{name}</span>) : <span className="text-xs font-extrabold text-slate-700">未割当</span>}</div><div className="mt-3 grid grid-cols-2 divide-x divide-slate-200 border-t border-slate-200 pt-3"><Metric label="日付" value={String(task.task_date).slice(5,10).replace('-', '/')} /><Metric label="期限" value={task.deadline ? String(task.deadline).slice(0,5) : "—"} /></div></div>
             </button>
-            {expanded ? <div className="border-t border-slate-100 px-4 pb-4 pt-3">{task.note ? <div className="mb-3 rounded-xl bg-amber-50 px-3 py-2.5 text-sm leading-relaxed text-amber-900">{task.note}</div> : null}<label className="text-[11px] font-bold text-slate-500">ステータスを変更</label><select value={task.status} disabled={updatingId === task.id} onChange={(e) => void updateOtherStatus(task, e.target.value)} className="mt-1 h-12 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-extrabold disabled:opacity-50">{statusOptions.map((status) => <option key={status}>{status}</option>)}</select></div> : null}
+            {expanded ? <div className="space-y-4 border-t border-slate-100 px-4 pb-4 pt-3"><div><label className="text-[11px] font-bold text-slate-500">備考</label><textarea value={noteDrafts[task.id] ?? task.note ?? ""} onChange={(e) => setNoteDrafts((items) => ({ ...items, [task.id]: e.target.value }))} rows={4} className="mt-1 w-full resize-none rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm leading-relaxed outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100" placeholder="備考を入力" /><button type="button" disabled={updatingId === task.id || (noteDrafts[task.id] ?? task.note ?? "") === (task.note ?? "")} onClick={() => void updateOtherNote(task)} className="mt-2 h-10 w-full rounded-xl bg-slate-900 text-sm font-extrabold text-white disabled:bg-slate-200 disabled:text-slate-400">備考を保存</button></div><div><label className="text-[11px] font-bold text-slate-500">ステータスを変更</label><select value={task.status} disabled={updatingId === task.id} onChange={(e) => void updateOtherStatus(task, e.target.value)} className="mt-1 h-12 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-extrabold disabled:opacity-50">{otherStatusOptions.map((status) => <option key={status}>{status}</option>)}</select></div></div> : null}
           </article>;
         })}
       </div>
