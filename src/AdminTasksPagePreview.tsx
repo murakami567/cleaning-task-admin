@@ -162,11 +162,9 @@ function getTowelCount(
   const guests = Number(nextGuestCount ?? 0);
   const nights = Number(nextStayNights ?? 0);
 
-  if (guests <= 0 || nights <= 0) return "";
+  if (guests <= 0 || nights <= 0) return 0;
 
-  if (nights >= 8) return guests * 3;
-  if (nights >= 3) return guests * 2;
-  return guests;
+  return Math.min(nights, 3) * guests;
 }
 
 function normalizePropertyLabel(raw: string) {
