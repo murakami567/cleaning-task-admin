@@ -1,7 +1,7 @@
-import { Navigate } from "react-router-dom";
-import { useLocation } from "react-router-dom";
+import { Navigate, useLocation } from "react-router-dom";
 import { ReactNode } from "react";
 import { isJwtExpired } from "../lib/jwt";
+import { canAccessAdminPortal } from "../lib/roles";
 
 export default function AdminRoute({ children }: { children: ReactNode }) {
   const location = useLocation();
@@ -24,14 +24,13 @@ export default function AdminRoute({ children }: { children: ReactNode }) {
   try {
     const user = JSON.parse(userRaw);
 
-    if (!["admin", "leader", "sub_admin", "operation", "payroll_admin", "prep_viewer"].includes(user.role)) {
+    if (!canAccessAdminPortal(user.role)) {
       return <Navigate to={loginPath} replace />;
     }
 
     if (user.role === "prep_viewer" && location.pathname !== "/admin/prep") {
       return <Navigate to="/admin/prep" replace />;
     }
-
   } catch {
     return <Navigate to={loginPath} replace />;
   }
