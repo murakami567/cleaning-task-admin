@@ -2,67 +2,24 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "https://cleaning-task-api.onrender.com";
-
-type Account = { id: string; staff_code?: string | null; staff_name?: string | null; role?: string | null; is_active?: boolean | null; sort_order?: number | null; created_at?: string | null; updated_at?: string | null };
+type Account = { id: string; staff_code?: string | null; staff_name?: string | null; role?: string | null; is_active?: boolean | null; updated_at?: string | null };
 type Summary = { total: number; active: number; inactive: number; roles: Record<string, number> };
-
-const roleLabels: Record<string, string> = {
-  master_admin: "最高管理者", admin: "管理者", sub_admin: "副管理者", leader: "リーダー", operation: "運営", staff: "スタッフ",
-  contractor: "業務委託", payroll_admin: "給与管理者", prep_viewer: "準備閲覧",
-};
+type Change = { field: string; before: unknown; after: unknown };
+type History = { id: string; actor_name?: string | null; actor_role?: string | null; action: string; result: string; created_at: string; changes: Change[] };
+const roleLabels: Record<string, string> = { master_admin:"最高管理者",admin:"管理者",sub_admin:"副管理者",leader:"リーダー",operation:"運営",staff:"スタッフ",contractor:"業務委託",payroll_admin:"給与管理者",prep_viewer:"準備閲覧" };
+const roleName = (v: unknown) => roleLabels[String(v || "")] || String(v || "-");
+const statusName = (v: unknown) => v === true ? "有効" : v === false ? "無効" : "-";
 
 export default function MasterAccountsAuditPage() {
-  const navigate = useNavigate();
-  const [items, setItems] = useState<Account[]>([]);
-  const [summary, setSummary] = useState<Summary>({ total: 0, active: 0, inactive: 0, roles: {} });
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [query, setQuery] = useState("");
-  const [role, setRole] = useState("");
-  const [status, setStatus] = useState("");
-
-  const load = useCallback(async () => {
-    const token = localStorage.getItem("admin_access_token");
-    if (!token) { setError("ログイン情報がありません。"); setLoading(false); return; }
-    setLoading(true); setError("");
-    try {
-      const res = await fetch(`${API_BASE}/api/master/accounts`, { headers: { Authorization: `Bearer ${token}` } });
-      if (!res.ok) { const body = await res.json().catch(() => null); throw new Error(body?.detail || "取得できませんでした。"); }
-      const data = await res.json(); setItems(data.items || []); setSummary(data.summary || { total: 0, active: 0, inactive: 0, roles: {} });
-    } catch (e) { setError(e instanceof Error ? e.message : "取得できませんでした。"); }
-    finally { setLoading(false); }
-  }, []);
-
-  useEffect(() => { void load(); }, [load]);
-
-  const roles = useMemo(() => Array.from(new Set(items.map((x) => x.role || "unknown"))).sort(), [items]);
-  const filtered = useMemo(() => items.filter((item) => {
-    const q = query.trim().toLowerCase();
-    if (q && !`${item.staff_code || ""} ${item.staff_name || ""}`.toLowerCase().includes(q)) return false;
-    if (role && item.role !== role) return false;
-    if (status === "active" && item.is_active !== true) return false;
-    if (status === "inactive" && item.is_active === true) return false;
-    return true;
-  }), [items, query, role, status]);
-
-  const privileged = (summary.roles.master_admin || 0) + (summary.roles.admin || 0) + (summary.roles.sub_admin || 0);
-
-  return <main className="mx-auto max-w-7xl px-6 py-8">
-    <div className="flex items-start justify-between gap-4"><div><p className="text-sm font-semibold text-slate-500">MASTER ADMIN</p><h1 className="mt-1 text-3xl font-bold text-slate-900">アカウント・権限監査</h1><p className="mt-2 text-sm text-slate-500">全アカウントの利用状態と現在の権限を確認します。</p></div><button onClick={() => navigate("/master")} className="shrink-0 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50">← 最高管理者画面へ戻る</button></div>
-
-    <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-      {[['総アカウント', summary.total], ['有効', summary.active], ['無効', summary.inactive], ['管理権限', privileged]].map(([label, value]) => <div key={String(label)} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><div className="text-xs font-bold text-slate-400">{label}</div><div className="mt-2 text-3xl font-bold text-slate-900">{value}</div></div>)}
-    </div>
-
-    <section className="mt-4 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm"><div className="flex flex-wrap gap-3">
-      <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="氏名・ログインIDで検索" className="min-w-64 rounded-xl border border-slate-200 px-3 py-2 text-sm" />
-      <select value={role} onChange={(e) => setRole(e.target.value)} className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"><option value="">すべての権限</option>{roles.map((r) => <option key={r} value={r}>{roleLabels[r] || r}</option>)}</select>
-      <select value={status} onChange={(e) => setStatus(e.target.value)} className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"><option value="">すべての状態</option><option value="active">有効</option><option value="inactive">無効</option></select>
-      <button onClick={() => void load()} className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white">再読込</button>
-    </div></section>
-
-    <section className="mt-4 overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm"><div className="overflow-x-auto"><table className="min-w-full text-left text-sm"><thead className="bg-slate-50 text-xs font-bold text-slate-500"><tr><th className="px-4 py-3">ログインID</th><th className="px-4 py-3">氏名</th><th className="px-4 py-3">権限</th><th className="px-4 py-3">状態</th><th className="px-4 py-3">最終更新</th></tr></thead><tbody className="divide-y divide-slate-100">
-      {loading ? <tr><td colSpan={5} className="px-4 py-12 text-center text-slate-400">読み込み中...</td></tr> : error ? <tr><td colSpan={5} className="px-4 py-12 text-center text-red-600">{error}</td></tr> : filtered.length === 0 ? <tr><td colSpan={5} className="px-4 py-12 text-center text-slate-400">該当するアカウントはありません</td></tr> : filtered.map((item) => <tr key={item.id} className="text-slate-700 hover:bg-slate-50"><td className="px-4 py-3 font-mono text-xs">{item.staff_code || "-"}</td><td className="px-4 py-3 font-semibold text-slate-900">{item.staff_name || "-"}</td><td className="px-4 py-3"><span className={`rounded-full px-2.5 py-1 text-xs font-bold ${item.role === "master_admin" ? "bg-slate-900 text-white" : item.role === "admin" || item.role === "sub_admin" ? "bg-amber-50 text-amber-700" : "bg-slate-100 text-slate-600"}`}>{roleLabels[item.role || ""] || item.role || "-"}</span></td><td className="px-4 py-3"><span className={`rounded-full px-2.5 py-1 text-xs font-bold ${item.is_active ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700"}`}>{item.is_active ? "有効" : "無効"}</span></td><td className="whitespace-nowrap px-4 py-3 text-slate-500">{item.updated_at ? new Date(item.updated_at).toLocaleString("ja-JP") : "-"}</td></tr>)}
-    </tbody></table></div></section>
-  </main>;
+ const navigate=useNavigate(); const [items,setItems]=useState<Account[]>([]); const [summary,setSummary]=useState<Summary>({total:0,active:0,inactive:0,roles:{}}); const [loading,setLoading]=useState(true); const [error,setError]=useState(""); const [query,setQuery]=useState(""); const [role,setRole]=useState(""); const [status,setStatus]=useState(""); const [selected,setSelected]=useState<Account|null>(null); const [history,setHistory]=useState<History[]>([]); const [historyLoading,setHistoryLoading]=useState(false); const [historyError,setHistoryError]=useState("");
+ const load=useCallback(async()=>{const token=localStorage.getItem("admin_access_token");if(!token){setError("ログイン情報がありません。");setLoading(false);return}setLoading(true);setError("");try{const res=await fetch(`${API_BASE}/api/master/accounts`,{headers:{Authorization:`Bearer ${token}`}});if(!res.ok){const b=await res.json().catch(()=>null);throw new Error(b?.detail||"取得できませんでした。")}const d=await res.json();setItems(d.items||[]);setSummary(d.summary||{total:0,active:0,inactive:0,roles:{}})}catch(e){setError(e instanceof Error?e.message:"取得できませんでした。")}finally{setLoading(false)}},[]);
+ useEffect(()=>{void load()},[load]);
+ const openAccount=async(item:Account)=>{setSelected(item);setHistory([]);setHistoryError("");setHistoryLoading(true);const token=localStorage.getItem("admin_access_token");try{const res=await fetch(`${API_BASE}/api/master/accounts/${item.id}/history`,{headers:{Authorization:`Bearer ${token}`}});if(!res.ok){const b=await res.json().catch(()=>null);throw new Error(b?.detail||"履歴を取得できませんでした。")}const d=await res.json();setHistory(d.history||[])}catch(e){setHistoryError(e instanceof Error?e.message:"履歴を取得できませんでした。")}finally{setHistoryLoading(false)}};
+ const roles=useMemo(()=>Array.from(new Set(items.map(x=>x.role||"unknown"))).sort(),[items]); const filtered=useMemo(()=>items.filter(i=>{const q=query.trim().toLowerCase();if(q&&!`${i.staff_code||""} ${i.staff_name||""}`.toLowerCase().includes(q))return false;if(role&&i.role!==role)return false;if(status==="active"&&i.is_active!==true)return false;if(status==="inactive"&&i.is_active===true)return false;return true}),[items,query,role,status]); const privileged=(summary.roles.master_admin||0)+(summary.roles.admin||0)+(summary.roles.sub_admin||0);
+ return <main className="mx-auto max-w-7xl px-6 py-8"><div className="flex items-start justify-between gap-4"><div><p className="text-sm font-semibold text-slate-500">MASTER ADMIN</p><h1 className="mt-1 text-3xl font-bold text-slate-900">アカウント・権限監査</h1><p className="mt-2 text-sm text-slate-500">全アカウントの利用状態と現在の権限を確認します。</p></div><button onClick={()=>navigate("/master")} className="shrink-0 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50">← 最高管理者画面へ戻る</button></div>
+ <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{[["総アカウント",summary.total],["有効",summary.active],["無効",summary.inactive],["管理権限",privileged]].map(([l,v])=><div key={String(l)} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><div className="text-xs font-bold text-slate-400">{l}</div><div className="mt-2 text-3xl font-bold text-slate-900">{v}</div></div>)}</div>
+ <section className="mt-4 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm"><div className="flex flex-wrap gap-3"><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="氏名・ログインIDで検索" className="min-w-64 rounded-xl border border-slate-200 px-3 py-2 text-sm"/><select value={role} onChange={e=>setRole(e.target.value)} className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"><option value="">すべての権限</option>{roles.map(r=><option key={r} value={r}>{roleName(r)}</option>)}</select><select value={status} onChange={e=>setStatus(e.target.value)} className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"><option value="">すべての状態</option><option value="active">有効</option><option value="inactive">無効</option></select><button onClick={()=>void load()} className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white">再読込</button></div></section>
+ <section className="mt-4 overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm"><div className="overflow-x-auto"><table className="min-w-full text-left text-sm"><thead className="bg-slate-50 text-xs font-bold text-slate-500"><tr><th className="px-4 py-3">ログインID</th><th className="px-4 py-3">氏名</th><th className="px-4 py-3">権限</th><th className="px-4 py-3">状態</th><th className="px-4 py-3">最終更新</th></tr></thead><tbody className="divide-y divide-slate-100">{loading?<tr><td colSpan={5} className="px-4 py-12 text-center text-slate-400">読み込み中...</td></tr>:error?<tr><td colSpan={5} className="px-4 py-12 text-center text-red-600">{error}</td></tr>:filtered.length===0?<tr><td colSpan={5} className="px-4 py-12 text-center text-slate-400">該当するアカウントはありません</td></tr>:filtered.map(i=><tr key={i.id} onClick={()=>void openAccount(i)} className="cursor-pointer text-slate-700 hover:bg-slate-50"><td className="px-4 py-3 font-mono text-xs">{i.staff_code||"-"}</td><td className="px-4 py-3 font-semibold text-slate-900">{i.staff_name||"-"}</td><td className="px-4 py-3"><span className={`rounded-full px-2.5 py-1 text-xs font-bold ${i.role==="master_admin"?"bg-slate-900 text-white":i.role==="admin"||i.role==="sub_admin"?"bg-amber-50 text-amber-700":"bg-slate-100 text-slate-600"}`}>{roleName(i.role)}</span></td><td className="px-4 py-3"><span className={`rounded-full px-2.5 py-1 text-xs font-bold ${i.is_active?"bg-emerald-50 text-emerald-700":"bg-red-50 text-red-700"}`}>{statusName(i.is_active)}</span></td><td className="whitespace-nowrap px-4 py-3 text-slate-500">{i.updated_at?new Date(i.updated_at).toLocaleString("ja-JP"):"-"}</td></tr>)}</tbody></table></div></section>
+ {selected?<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4" onClick={()=>setSelected(null)}><div className="max-h-[85vh] w-full max-w-2xl overflow-y-auto rounded-3xl bg-white p-6 shadow-xl" onClick={e=>e.stopPropagation()}><div className="flex items-start justify-between"><div><p className="text-xs font-bold text-slate-400">ACCOUNT AUDIT</p><h2 className="mt-1 text-2xl font-bold">{selected.staff_name||"-"}</h2><p className="mt-1 text-sm text-slate-400">ログインID: {selected.staff_code||"-"}</p></div><button onClick={()=>setSelected(null)} className="rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold">閉じる</button></div><div className="mt-5 grid grid-cols-2 gap-3 rounded-2xl bg-slate-50 p-4 text-sm"><div><span className="text-slate-400">現在の権限</span><div className="mt-1 font-bold">{roleName(selected.role)}</div></div><div><span className="text-slate-400">状態</span><div className="mt-1 font-bold">{statusName(selected.is_active)}</div></div></div><h3 className="mt-6 text-sm font-bold">権限・利用状態の変更履歴</h3><div className="mt-3 space-y-3">{historyLoading?<div className="rounded-2xl border p-5 text-center text-sm text-slate-400">読み込み中...</div>:historyError?<div className="rounded-2xl bg-red-50 p-4 text-sm text-red-700">{historyError}</div>:history.length===0?<div className="rounded-2xl border p-5 text-sm text-slate-400">記録されている変更履歴はありません。</div>:history.map(h=><div key={h.id} className="rounded-2xl border border-slate-200 p-4"><div className="flex justify-between gap-3"><div className="font-semibold">{h.actor_name||"不明"}<span className="ml-2 text-xs font-normal text-slate-400">{h.actor_role||"-"}</span></div><div className="text-xs text-slate-400">{new Date(h.created_at).toLocaleString("ja-JP")}</div></div><div className="mt-3 space-y-2">{h.action==="staff_create"&&h.changes.length===0?<div className="text-sm">アカウントを作成</div>:h.changes.map((c,n)=><div key={`${h.id}-${n}`} className="text-sm"><span className="font-semibold">{c.field==="role"?"権限":"利用状態"}</span><span className="ml-3 text-slate-500">{c.field==="role"?roleName(c.before):statusName(c.before)}</span><span className="mx-2">→</span><span className="font-bold">{c.field==="role"?roleName(c.after):statusName(c.after)}</span></div>)}</div></div>)}</div></div></div>:null}
+ </main>;
 }
