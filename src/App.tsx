@@ -20,6 +20,8 @@ import EmployeeSettingsPage from "./pages/employee/EmployeeSettingsPage";
 import AdminLoginPage from "./pages/admin/AdminLoginPage";
 import AdminHomePage from "./pages/admin/AdminHomePage";
 import AdminRoute from "./routes/AdminRoute";
+import MasterAdminRoute from "./routes/MasterAdminRoute";
+import MasterAdminSystemPage from "./pages/admin/MasterAdminSystemPage";
 import AdminWorklogReportPage from "./pages/admin/AdminWorklogReportPage";
 import AdminLostItemsPage from "./pages/admin/AdminLostItemsPage";
 import AdminDataExportPage from "./pages/admin/AdminDataExportPage";
@@ -59,11 +61,15 @@ function TitleManager() {
 
 function AdminLayout() {
   let prepOnly = false;
+  let masterAdmin = false;
   try {
     const raw = localStorage.getItem("admin_user");
-    prepOnly = raw ? JSON.parse(raw)?.role === "prep_viewer" : false;
+    const user = raw ? JSON.parse(raw) : null;
+    prepOnly = user?.role === "prep_viewer";
+    masterAdmin = user?.role === "master_admin";
   } catch {
     prepOnly = false;
+    masterAdmin = false;
   }
 
   return (
@@ -79,6 +85,7 @@ function AdminLayout() {
         <AdminNavButton to="/admin/worklogs">実働報告</AdminNavButton>
         <AdminNavButton to="/admin/lost-items">忘れ物</AdminNavButton>
         <AdminNavButton to="/admin/data-export">データ出力</AdminNavButton>
+        {masterAdmin ? <AdminNavButton to="/admin/system">システム管理</AdminNavButton> : null}
       </div> : null}
 
       <Outlet />
@@ -157,6 +164,14 @@ export default function App() {
           <Route path="worklogs" element={<AdminWorklogReportPage />} />
           <Route path="lost-items" element={<AdminLostItemsPage />} />
           <Route path="data-export" element={<AdminDataExportPage />} />
+          <Route
+            path="system"
+            element={
+              <MasterAdminRoute>
+                <MasterAdminSystemPage />
+              </MasterAdminRoute>
+            }
+          />
         </Route>
 
         <Route
