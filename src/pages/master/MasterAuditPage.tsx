@@ -12,11 +12,20 @@ type AuditLog = {
 };
 
 const sourceLabels: Record<string, string> = { admin: "PC管理", mobile: "スマホ管理", employee: "従業員", master: "最高管理者", system: "システム" };
-const actionLabels: Record<string, string> = { login: "ログイン", logout: "ログアウト", staff_create: "アカウント作成", staff_update: "アカウント編集" };
+const actionLabels: Record<string, string> = {
+  login: "ログイン", logout: "ログアウト", staff_create: "アカウント作成", staff_update: "アカウント編集",
+  task_create: "清掃タスク作成", task_update: "清掃タスク編集",
+  non_cleaning_task_create: "清掃外タスク作成", non_cleaning_task_update: "清掃外タスク編集",
+  facility_create: "設備登録", facility_update: "設備編集", schedule_update: "スケジュール編集",
+  property_update: "物件編集", room_update: "客室編集", payroll_update: "給与・勤怠編集",
+};
 const fieldLabels: Record<string, string> = {
   staff_code: "ログインID", staff_name: "氏名", role: "権限", is_active: "有効状態", sort_order: "表示順",
   note: "備考", area: "エリア", daily_capacity_point: "1日上限ポイント", solo_enabled: "単独対応", shared_enabled: "分業対応",
   lineworks_channel_id: "LINE WORKSチャンネル", available_property_ids: "対応可能物件", unchecked_property_ids: "優先物件",
+  task_date: "清掃日", status: "ステータス", assigned_staff_ids: "担当者ID", assigned_staff_names: "担当者",
+  assigned_staff_id: "主担当者ID", assigned_staff_name: "主担当者", checker_id: "チェッカーID", checker_name: "チェッカー",
+  assignment_locked: "割当固定", early_checkin_time: "アーリーチェックイン", late_checkout_time: "レイトチェックアウト",
 };
 const hiddenFields = new Set(["id", "created_at", "updated_at", "password"]);
 
