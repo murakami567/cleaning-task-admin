@@ -372,21 +372,30 @@ export default function ShiftManagementPage({ audience = "employee" }: { audienc
         </div>
 
         <div className="overflow-auto">
-          <table className="w-full text-sm min-w-[980px]">
+          <table className={`w-full text-sm ${audience === "mate" ? "min-w-[760px]" : "min-w-[980px]"}`}>
             <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 text-xs">
-              <tr>
-                <th className="text-left px-3 py-3 w-[180px]">スタッフ</th>
-                <th className="text-left px-3 py-3 w-[140px]">区分</th>
-                <th className="text-left px-3 py-3 w-[130px]">時間</th>
-                <th className="text-left px-3 py-3 w-[160px]">場所</th>
-                <th className="text-left px-3 py-3 w-[140px]">作業分類</th>
-                <th className="text-left px-3 py-3">備考</th>
-              </tr>
+              {audience === "mate" ? (
+                <tr>
+                  <th className="text-left px-3 py-3 w-[200px]">メイト</th>
+                  <th className="text-left px-3 py-3 w-[140px]">区分</th>
+                  <th className="text-left px-3 py-3 w-[240px]">出勤場所</th>
+                  <th className="text-left px-3 py-3">連絡事項</th>
+                </tr>
+              ) : (
+                <tr>
+                  <th className="text-left px-3 py-3 w-[180px]">スタッフ</th>
+                  <th className="text-left px-3 py-3 w-[140px]">区分</th>
+                  <th className="text-left px-3 py-3 w-[130px]">時間</th>
+                  <th className="text-left px-3 py-3 w-[160px]">場所</th>
+                  <th className="text-left px-3 py-3 w-[140px]">作業分類</th>
+                  <th className="text-left px-3 py-3">備考</th>
+                </tr>
+              )}
             </thead>
             <tbody>
               {filteredStaffs.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-3 py-8 text-center text-sm text-slate-500">
+                  <td colSpan={audience === "mate" ? 4 : 6} className="px-3 py-8 text-center text-sm text-slate-500">
                     {searchQuery.trim()
                       ? "該当するスタッフが見つかりませんでした。"
                       : "出勤予定のスタッフがいません（シフト表で出勤に設定してください）。"}
@@ -425,49 +434,63 @@ export default function ShiftManagementPage({ audience = "employee" }: { audienc
                       </div>
                     </td>
 
-                    <td className="px-3 py-3 text-xs text-slate-700">
-                      {actives.length === 0 ? (
-                        <span className="text-slate-400">-</span>
-                      ) : (
-                        <div className="space-y-1">
-                          {actives.map((s) => (
-                            <div key={s.id}>
-                              {normalizeTime(s.start_time)}〜{normalizeTime(s.end_time)}
+                    {audience === "mate" ? (
+                      <>
+                        <td className="px-3 py-3 text-xs text-slate-700">
+                          {actives.length === 0 ? "-" : (
+                            <div className="space-y-1">
+                              {actives.map((s) => (
+                                <div key={s.id}>{s.place || "-"}</div>
+                              ))}
                             </div>
-                          ))}
-                        </div>
-                      )}
-                    </td>
-
-                    <td className="px-3 py-3 text-xs text-slate-700">
-                      {actives.length === 0 ? "-" : (
-                        <div className="space-y-1">
-                          {actives.map((s) => (
-                            <div key={s.id}>{s.place || "-"}</div>
-                          ))}
-                        </div>
-                      )}
-                    </td>
-
-                    <td className="px-3 py-3 text-xs text-slate-700">
-                      {actives.length === 0 ? "-" : (
-                        <div className="space-y-1">
-                          {actives.map((s) => (
-                            <div key={s.id}>{s.work_category || "-"}</div>
-                          ))}
-                        </div>
-                      )}
-                    </td>
-
-                    <td className="px-3 py-3 text-xs text-slate-700">
-                      {actives.length === 0 ? "-" : (
-                        <div className="space-y-1">
-                          {actives.map((s) => (
-                            <div key={s.id} className="whitespace-pre-wrap">{s.details || "-"}</div>
-                          ))}
-                        </div>
-                      )}
-                    </td>
+                          )}
+                        </td>
+                        <td className="px-3 py-3 text-xs text-slate-700">
+                          {actives.length === 0 ? "-" : (
+                            <div className="space-y-1">
+                              {actives.map((s) => (
+                                <div key={s.id} className="whitespace-pre-wrap">{s.details || "-"}</div>
+                              ))}
+                            </div>
+                          )}
+                        </td>
+                      </>
+                    ) : (
+                      <>
+                        <td className="px-3 py-3 text-xs text-slate-700">
+                          {actives.length === 0 ? (
+                            <span className="text-slate-400">-</span>
+                          ) : (
+                            <div className="space-y-1">
+                              {actives.map((s) => (
+                                <div key={s.id}>{normalizeTime(s.start_time)}〜{normalizeTime(s.end_time)}</div>
+                              ))}
+                            </div>
+                          )}
+                        </td>
+                        <td className="px-3 py-3 text-xs text-slate-700">
+                          {actives.length === 0 ? "-" : (
+                            <div className="space-y-1">
+                              {actives.map((s) => (<div key={s.id}>{s.place || "-"}</div>))}
+                            </div>
+                          )}
+                        </td>
+                        <td className="px-3 py-3 text-xs text-slate-700">
+                          {actives.length === 0 ? "-" : (
+                            <div className="space-y-1">
+                              {actives.map((s) => (<div key={s.id}>{s.work_category || "-"}</div>))}
+                            </div>
+                          )}
+                        </td>
+                        <td className="px-3 py-3 text-xs text-slate-700">
+                          {actives.length === 0 ? "-" : (
+                            <div className="space-y-1">
+                              {actives.map((s) => (<div key={s.id} className="whitespace-pre-wrap">{s.details || "-"}</div>))}
+                            </div>
+                          )}
+                        </td>
+                      </>
+                    )}
                   </tr>
                 );
               })}
@@ -482,6 +505,7 @@ export default function ShiftManagementPage({ audience = "employee" }: { audienc
           date={selectedDate}
           schedules={schedules.filter((s) => s.staff_id === scheduleStaff.id)}
           canEdit={audience === "mate" || (!!currentUser && currentUser.id === scheduleStaff.id)}
+          mateMode={audience === "mate"}
           adminToken={adminToken}
           onClose={closeScheduleModal}
           onChanged={() => void loadSchedules(selectedDate)}
@@ -710,6 +734,7 @@ function ScheduleModal({
   date,
   schedules,
   canEdit,
+  mateMode = false,
   adminToken,
   onClose,
   onChanged,
@@ -718,6 +743,7 @@ function ScheduleModal({
   date: string;
   schedules: StaffSchedule[];
   canEdit: boolean;
+  mateMode?: boolean;
   adminToken: string;
   onClose: () => void;
   onChanged: () => void;
@@ -781,10 +807,10 @@ function ScheduleModal({
           id: d.id,
           shift_date: date,
           staff_id: staff.id,
-          start_time: d.start_time,
-          end_time: d.end_time,
+          start_time: mateMode ? "00:00" : d.start_time,
+          end_time: mateMode ? "23:45" : d.end_time,
           place: d.place,
-          work_category: d.work_category,
+          work_category: mateMode ? "" : d.work_category,
           details: d.details,
         }),
       });
@@ -845,7 +871,7 @@ function ScheduleModal({
       <div className="flex w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
         <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
           <div>
-            <div className="text-xs text-slate-500">{date} のスケジュール</div>
+            <div className="text-xs text-slate-500">{date} の{mateMode ? "メイト勤務情報" : "スケジュール"}</div>
             <div className="text-lg font-extrabold">{staff.staff_name}</div>
           </div>
           <button
@@ -871,7 +897,7 @@ function ScheduleModal({
 
           {drafts.map((d, idx) => (
             <div key={idx} className="rounded-xl border border-slate-200 bg-white p-3 space-y-2">
-              <div className="grid grid-cols-2 gap-2">
+              {!mateMode ? <div className="grid grid-cols-2 gap-2">
                 <div>
                   <div className="mb-1 text-[10px] font-semibold text-slate-500">開始</div>
                   <Select
@@ -888,10 +914,10 @@ function ScheduleModal({
                     options={TIME_OPTIONS_15}
                   />
                 </div>
-              </div>
+              </div> : null}
 
               <div>
-                <div className="mb-1 text-[10px] font-semibold text-slate-500">場所</div>
+                <div className="mb-1 text-[10px] font-semibold text-slate-500">{mateMode ? "出勤場所" : "場所"}</div>
                 <TextInput
                   value={d.place}
                   onChange={(v: string) => updateDraft(idx, { place: v })}
@@ -899,23 +925,25 @@ function ScheduleModal({
                 />
               </div>
 
-              <div>
-                <div className="mb-1 text-[10px] font-semibold text-slate-500">作業分類</div>
-                <TextInput
-                  value={d.work_category}
-                  onChange={(v: string) => updateDraft(idx, { work_category: v })}
-                  placeholder="例) 清掃 / 点検 / 移動"
-                />
-              </div>
+              {!mateMode ? (
+                <div>
+                  <div className="mb-1 text-[10px] font-semibold text-slate-500">作業分類</div>
+                  <TextInput
+                    value={d.work_category}
+                    onChange={(v: string) => updateDraft(idx, { work_category: v })}
+                    placeholder="例) 清掃 / 点検 / 移動"
+                  />
+                </div>
+              ) : null}
 
               <div>
-                <div className="mb-1 text-[10px] font-semibold text-slate-500">詳細</div>
+                <div className="mb-1 text-[10px] font-semibold text-slate-500">{mateMode ? "連絡事項" : "詳細"}</div>
                 <textarea
                   value={d.details}
                   onChange={(e) => updateDraft(idx, { details: e.target.value })}
                   rows={2}
                   className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none resize-y"
-                  placeholder="自由記述"
+                  placeholder={mateMode ? "当日の連絡事項を入力" : "自由記述"}
                 />
               </div>
 
@@ -953,3 +981,4 @@ function ScheduleModal({
     </div>
   );
 }
+
