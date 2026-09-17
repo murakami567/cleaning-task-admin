@@ -967,6 +967,7 @@ export default function AdminTasksPagePreview() {
   const [tableEditMode, setTableEditMode] = useState(false);
   const [loadingCleaning, setLoadingCleaning] = useState(false);
   const [cleaningError, setCleaningError] = useState("");
+  const [cleaningSearch, setCleaningSearch] = useState("");
 
   const [carryOverModalOpen, setCarryOverModalOpen] = useState(false);
   const [carryOverTask, setCarryOverTask] = useState<CleaningTask | null>(null);
@@ -1298,6 +1299,27 @@ export default function AdminTasksPagePreview() {
     });
   }, [cleaningTasks, viewMode, selectedDate, properties, masterRooms]);
 
+  const filteredCleaningTasks = useMemo(() => {
+    const query = String(cleaningSearch || "").normalize("NFKC").trim().toLowerCase();
+    if (!query) return visibleCleaningTasks;
+
+    return visibleCleaningTasks.filter((task) => {
+      const attendees = attendeesByDate[task.date] ?? [];
+      const assignees = assigneeLabels(task.assigneeIds ?? [], attendees);
+      const searchableText = [
+        task.property,
+        task.room,
+        assignees,
+        task.checkerName,
+        task.note,
+      ]
+        .map((value) => String(value ?? "").normalize("NFKC").toLowerCase())
+        .join(" ");
+
+      return searchableText.includes(query);
+    });
+  }, [visibleCleaningTasks, cleaningSearch, attendeesByDate]);
+
   const visibleNonCleaningTasks = useMemo(() => {
   const list = Array.isArray(nonCleaningTasks) ? nonCleaningTasks : [];
 
@@ -1556,7 +1578,7 @@ export default function AdminTasksPagePreview() {
       return `"${text.replace(/"/g, '""')}"`;
     };
 
-    const rows = visibleCleaningTasks.map((task) => {
+    const rows = filteredCleaningTasks.map((task) => {
       const attendees = attendeesByDate[task.date] ?? [];
       const assignees = assigneeLabels(task.assigneeIds ?? [], attendees);
       return [
@@ -1683,6 +1705,19 @@ export default function AdminTasksPagePreview() {
                 }
               />
 
+              <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <div className="w-full sm:max-w-md">
+                  <TextInput
+                    value={cleaningSearch}
+                    onChange={setCleaningSearch}
+                    placeholder="物件・部屋・担当・チェッカー・備考を検索"
+                  />
+                </div>
+                <div className="text-xs text-black/50">
+                  {filteredCleaningTasks.length} / {visibleCleaningTasks.length} 件
+                </div>
+              </div>
+
               <div className="mt-3">
                 {cleaningError ? (
                   <div className="mb-3 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
@@ -1713,7 +1748,7 @@ export default function AdminTasksPagePreview() {
                     </tr>
                   </thead>
                   <tbody>
-                    {visibleCleaningTasks.map((t) => {
+                    {filteredCleaningTasks.map((t) => {
                       const allAttendees = attendeesByDate[t.date] ?? [];
                       const attendees = filterAttendeesForProperty(allAttendees, t.property);
                       const isSelected = t.id === selectedCleaningId;
@@ -1914,15 +1949,17 @@ export default function AdminTasksPagePreview() {
                       );
                     })}
 
-                    {visibleCleaningTasks.length === 0 ? (
+                    {filteredCleaningTasks.length === 0 ? (
                       <tr>
                         <Td colSpan={11} className="py-10">
                           <div className="text-center text-sm text-black/60">
-                            {viewMode === "TODAY"
-  ? "当日の清掃タスクがありません。"
-  : viewMode === "FUTURE"
-  ? "翌日以降の清掃タスクがありません。"
-  : "指定日の清掃タスクがありません。"}
+                            {cleaningSearch.trim()
+                              ? "検索条件に一致する清掃タスクがありません。"
+                              : viewMode === "TODAY"
+                              ? "当日の清掃タスクがありません。"
+                              : viewMode === "FUTURE"
+                              ? "翌日以降の清掃タスクがありません。"
+                              : "指定日の清掃タスクがありません。"}
                           </div>
                         </Td>
                       </tr>
