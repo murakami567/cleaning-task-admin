@@ -128,7 +128,7 @@ function timeToMinutes(t: string) {
   return h * 60 + m;
 }
 
-export default function ShiftManagementPage() {
+export default function ShiftManagementPage({ audience = "employee" }: { audience?: "employee" | "mate" }) {
   const [staffs, setStaffs] = useState<Staff[]>([]);
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().slice(0, 10));
   const [shiftDay, setShiftDay] = useState<ShiftDay | null>(null);
@@ -224,9 +224,13 @@ export default function ShiftManagementPage() {
   const visibleStaff = useMemo(() => {
     return staffs.filter((s) => {
       const entry = entryMap.get(s.id);
-      return entry && VISIBLE_STATUS_SET.has(entry.status);
+      if (!entry || !VISIBLE_STATUS_SET.has(entry.status)) return false;
+
+      const role = String(s.role || "").toLowerCase();
+      const isMate = role === "checker" || role === "staff";
+      return audience === "mate" ? isMate : !isMate;
     });
-  }, [staffs, entryMap]);
+  }, [staffs, entryMap, audience]);
 
   const filteredStaffs = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
@@ -287,15 +291,16 @@ export default function ShiftManagementPage() {
   };
 
   const summary = useMemo(() => {
-    const entries = (shiftDay?.shift_entries || []).filter((e) =>
-      VISIBLE_STATUS_SET.has(e.status)
+    const visibleIds = new Set(visibleStaff.map((s) => s.id));
+    const entries = (shiftDay?.shift_entries || []).filter(
+      (e) => visibleIds.has(e.staff_id) && VISIBLE_STATUS_SET.has(e.status)
     );
     return {
       出勤: entries.filter((x) => x.status === "出勤").length,
       欠勤: entries.filter((x) => x.status === "欠勤").length,
       遅刻: entries.filter((x) => x.status === "遅刻").length,
     };
-  }, [shiftDay]);
+  }, [shiftDay, visibleStaff]);
 
   const openScheduleModal = (staff: Staff) => setScheduleStaff(staff);
   const closeScheduleModal = () => setScheduleStaff(null);
@@ -309,7 +314,7 @@ export default function ShiftManagementPage() {
       <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-4 flex flex-wrap gap-3 items-center justify-between">
         <div>
           <div className="text-xs text-slate-500">管理画面 ＞ スケジュール</div>
-          <div className="text-base font-extrabold mt-1">スケジュール</div>
+          <div className="text-base font-extrabold mt-1">{audience === "mate" ? "メイトスケジュール" : "社員スケジュール"}</div>
         </div>
 
         <div className="flex flex-wrap gap-2 items-center">
@@ -338,7 +343,7 @@ export default function ShiftManagementPage() {
       <Card>
         <div className="p-4 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3">
           <div>
-            <div className="text-sm font-extrabold">日別シフト一覧</div>
+            <div className="text-sm font-extrabold">{audience === "mate" ? "メイト 日別シフト一覧" : "社員 日別シフト一覧"}</div>
             <div className="text-xs text-slate-500 mt-1">
               {selectedDate} / {loading ? "読み込み中..." : "保存は即時反映"}
               {isToday ? (
@@ -476,7 +481,7 @@ export default function ShiftManagementPage() {
           staff={scheduleStaff}
           date={selectedDate}
           schedules={schedules.filter((s) => s.staff_id === scheduleStaff.id)}
-          canEdit={!!currentUser && currentUser.id === scheduleStaff.id}
+          canEdit={audience === "mate" || (!!currentUser && currentUser.id === scheduleStaff.id)}
           adminToken={adminToken}
           onClose={closeScheduleModal}
           onChanged={() => void loadSchedules(selectedDate)}
