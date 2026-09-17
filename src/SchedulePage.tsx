@@ -12,9 +12,7 @@ export default function SchedulePage() {
             type="button"
             onClick={() => setTab("employee")}
             className={`rounded-lg px-5 py-2 text-sm font-bold transition ${
-              tab === "employee"
-                ? "bg-slate-900 text-white"
-                : "text-slate-600 hover:bg-slate-50"
+              tab === "employee" ? "bg-slate-900 text-white" : "text-slate-600 hover:bg-slate-50"
             }`}
           >
             社員
@@ -23,9 +21,7 @@ export default function SchedulePage() {
             type="button"
             onClick={() => setTab("mate")}
             className={`rounded-lg px-5 py-2 text-sm font-bold transition ${
-              tab === "mate"
-                ? "bg-slate-900 text-white"
-                : "text-slate-600 hover:bg-slate-50"
+              tab === "mate" ? "bg-slate-900 text-white" : "text-slate-600 hover:bg-slate-50"
             }`}
           >
             メイト
@@ -33,7 +29,7 @@ export default function SchedulePage() {
         </div>
       </div>
 
-      <ShiftManagementPage audience={tab} />
+      <ShiftManagementPage {...({ audience: tab } as any)} />
     </div>
   );
 }
