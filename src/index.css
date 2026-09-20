@@ -9,6 +9,14 @@ html, body, #root {
 }
 
 /*
+ * 管理ホームの連絡事項は閲覧専用。
+ * 登録・編集・削除は全社カレンダーに集約するため、ホーム側の追加ボタンを表示しない。
+ */
+div.min-h-screen.bg-slate-50.p-6 > div.w-full.space-y-6 > div.grid.gap-6.lg\:grid-cols-2 > section:first-child > div:first-child > button {
+  display: none !important;
+}
+
+/*
  * 清掃タスク一覧では物件マスタの task_color を <tr> の inline style に設定している。
  * テーブルセル側に背景色が指定される環境でも、行の物件カラーを確実に表示する。
  */
