@@ -1,32 +1,9 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import ShiftManagementPage from "./ShiftManagementPage";
+import CompanyCalendarPage from "./CompanyCalendarPage";
 
 type MainTab = "company" | "employee";
 type EmployeeTab = "employee" | "mate";
-
-function CompanyCalendarPlaceholder() {
-  return (
-    <div className="p-4 sm:p-6">
-      <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <h2 className="text-2xl font-bold text-slate-900">全社カレンダー</h2>
-            <p className="mt-2 text-sm text-slate-500">
-              社内予定・連絡事項・清掃数・発注納期・工事予定・設備予定をまとめて確認します。
-            </p>
-          </div>
-        </div>
-
-        <div className="mt-6 rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-6 py-12 text-center">
-          <div className="text-base font-bold text-slate-700">全社カレンダーを準備中です</div>
-          <div className="mt-2 text-sm text-slate-500">
-            次の実装で、現在ホームにあるカレンダーをこの画面へ移設します。
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 export default function SchedulePage() {
   const [mainTab, setMainTab] = useState<MainTab>("company");
@@ -44,7 +21,7 @@ export default function SchedulePage() {
           <button
             type="button"
             onClick={() => setMainTab("company")}
-            className={`border-b-2 px-1 pb-3 text-sm font-bold whitespace-nowrap transition ${
+            className={`whitespace-nowrap border-b-2 px-1 pb-3 text-sm font-bold transition ${
               mainTab === "company"
                 ? "border-slate-900 text-slate-900"
                 : "border-transparent text-slate-500 hover:text-slate-800"
@@ -55,7 +32,7 @@ export default function SchedulePage() {
           <button
             type="button"
             onClick={() => setMainTab("employee")}
-            className={`border-b-2 px-1 pb-3 text-sm font-bold whitespace-nowrap transition ${
+            className={`whitespace-nowrap border-b-2 px-1 pb-3 text-sm font-bold transition ${
               mainTab === "employee"
                 ? "border-slate-900 text-slate-900"
                 : "border-transparent text-slate-500 hover:text-slate-800"
@@ -67,36 +44,15 @@ export default function SchedulePage() {
       </div>
 
       {mainTab === "company" ? (
-        <CompanyCalendarPlaceholder />
+        <CompanyCalendarPage />
       ) : (
         <div>
           <div className="px-4 pt-4 sm:px-6">
             <div className="inline-flex rounded-xl border border-slate-200 bg-white p-1 shadow-sm">
-              <button
-                type="button"
-                onClick={() => setEmployeeTab("employee")}
-                className={`rounded-lg px-5 py-2 text-sm font-bold transition ${
-                  employeeTab === "employee"
-                    ? "bg-slate-900 text-white"
-                    : "text-slate-600 hover:bg-slate-50"
-                }`}
-              >
-                社員
-              </button>
-              <button
-                type="button"
-                onClick={() => setEmployeeTab("mate")}
-                className={`rounded-lg px-5 py-2 text-sm font-bold transition ${
-                  employeeTab === "mate"
-                    ? "bg-slate-900 text-white"
-                    : "text-slate-600 hover:bg-slate-50"
-                }`}
-              >
-                メイト
-              </button>
+              <button type="button" onClick={() => setEmployeeTab("employee")} className={`rounded-lg px-5 py-2 text-sm font-bold transition ${employeeTab === "employee" ? "bg-slate-900 text-white" : "text-slate-600 hover:bg-slate-50"}`}>社員</button>
+              <button type="button" onClick={() => setEmployeeTab("mate")} className={`rounded-lg px-5 py-2 text-sm font-bold transition ${employeeTab === "mate" ? "bg-slate-900 text-white" : "text-slate-600 hover:bg-slate-50"}`}>メイト</button>
             </div>
           </div>
-
           <ShiftManagementPage {...({ audience: employeeTab } as any)} />
         </div>
       )}
