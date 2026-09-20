@@ -2,34 +2,45 @@ const API_BASE =
   (import.meta as any).env?.VITE_API_BASE_URL || "https://cleaning-task-api.onrender.com";
 
 let installed = false;
-let contractorCache: any[] | null = null;
-let contractorCacheAt = 0;
-const CONTRACTOR_CACHE_MS = 60_000;
+let staffCache: any[] | null = null;
+let staffCacheAt = 0;
+const STAFF_CACHE_MS = 60_000;
 
-async function loadContractors(originalFetch: typeof window.fetch): Promise<any[]> {
+async function loadStaffs(originalFetch: typeof window.fetch): Promise<any[]> {
   const now = Date.now();
-  if (contractorCache && now - contractorCacheAt < CONTRACTOR_CACHE_MS) {
-    return contractorCache;
-  }
+  if (staffCache && now - staffCacheAt < STAFF_CACHE_MS) return staffCache;
 
   try {
     const res = await originalFetch(`${API_BASE}/staffs`);
-    if (!res.ok) return contractorCache ?? [];
+    if (!res.ok) return staffCache ?? [];
     const data = await res.json();
-    contractorCache = (Array.isArray(data) ? data : []).filter(
-      (staff: any) => staff?.role === "contractor" && staff?.is_active !== false
-    );
-    contractorCacheAt = now;
-    return contractorCache;
+    staffCache = Array.isArray(data) ? data : [];
+    staffCacheAt = now;
+    return staffCache;
   } catch (error) {
-    console.error("contractor candidate load failed", error);
-    return contractorCache ?? [];
+    console.error("staff candidate load failed", error);
+    return staffCache ?? [];
   }
+}
+
+function isUuid(value: unknown): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+    String(value || "").trim()
+  );
+}
+
+function buildStaffNameMap(staffs: any[]) {
+  return new Map(
+    staffs
+      .map((staff: any) => [String(staff?.id || ""), String(staff?.staff_name || "").trim()] as const)
+      .filter(([id, name]) => id && name)
+  );
 }
 
 function decorateContractorCandidates() {
   const names = new Set(
-    (contractorCache ?? [])
+    (staffCache ?? [])
+      .filter((staff: any) => staff?.role === "contractor" && staff?.is_active !== false)
       .map((staff: any) => String(staff?.staff_name || "").trim())
       .filter(Boolean)
   );
@@ -72,15 +83,43 @@ function decorateContractorCandidates() {
       current.length === desired.length && current.every((row, index) => row === desired[index]);
 
     if (!alreadyOrdered) {
-      for (const row of desired) {
-        container.appendChild(row);
-      }
+      for (const row of desired) container.appendChild(row);
     }
   });
 }
 
 function scheduleDecorate() {
   window.requestAnimationFrame(decorateContractorCandidates);
+}
+
+function repairTaskAssigneeNames(task: any, nameById: Map<string, string>) {
+  if (!task || typeof task !== "object") return task;
+
+  const ids = Array.isArray(task.assigned_staff_ids)
+    ? task.assigned_staff_ids.map((id: any) => String(id || ""))
+    : task.assigned_staff_id
+    ? [String(task.assigned_staff_id)]
+    : [];
+
+  if (ids.length === 0) return task;
+
+  const currentNames = Array.isArray(task.assigned_staff_names)
+    ? task.assigned_staff_names.map((name: any) => String(name || ""))
+    : task.assigned_staff_name
+    ? [String(task.assigned_staff_name)]
+    : [];
+
+  const repairedNames = ids.map((id: string, index: number) => {
+    const current = String(currentNames[index] || "").trim();
+    if (current && !isUuid(current)) return current;
+    return nameById.get(id) || "未登録スタッフ";
+  });
+
+  return {
+    ...task,
+    assigned_staff_names: repairedNames,
+    assigned_staff_name: repairedNames[0] ?? null,
+  };
 }
 
 export function installContractorTaskAssigneePatch() {
@@ -99,69 +138,97 @@ export function installContractorTaskAssigneePatch() {
         ? input.toString()
         : input.url;
 
-    if (
-      window.location.pathname !== "/admin/tasks" ||
-      (!url.includes("/shifts?shift_date=") &&
-        !url.includes("/shifts/batch?shift_dates=")) ||
-      !response.ok
-    ) {
-      return response;
-    }
+    if (window.location.pathname !== "/admin/tasks" || !response.ok) return response;
 
     try {
-      const data = await response.clone().json();
-      const contractors = await loadContractors(originalFetch);
-      if (contractors.length === 0) return response;
-
-      const days = Array.isArray(data) ? data : [data];
-      if (days.length === 0) return response;
-
-      const nextDays = days.map((day: any) => {
-        if (!day) return day;
-
-        const currentEntries = Array.isArray(day.shift_entries)
-          ? [...day.shift_entries]
-          : [];
-        const existingIds = new Set(
-          currentEntries.map((entry: any) => String(entry?.staff_id || ""))
+      // 出勤者データの staff_members が欠けていてもスタッフマスタから氏名を補完する。
+      if (url.includes("/shifts?shift_date=") || url.includes("/shifts/batch?shift_dates=")) {
+        const data = await response.clone().json();
+        const staffs = await loadStaffs(originalFetch);
+        const nameById = buildStaffNameMap(staffs);
+        const contractors = staffs.filter(
+          (staff: any) => staff?.role === "contractor" && staff?.is_active !== false
         );
 
-        const contractorEntries: any[] = [];
-        for (const staff of contractors) {
-          const staffId = String(staff?.id || "");
-          if (!staffId || existingIds.has(staffId)) continue;
+        const days = Array.isArray(data) ? data : [data];
+        const nextDays = days.map((day: any) => {
+          if (!day) return day;
 
-          contractorEntries.push({
-            id: `contractor-${staffId}`,
-            staff_id: staffId,
-            status: "出勤",
-            staff_members: {
-              ...staff,
-              available_property_ids: Array.isArray(staff.available_property_ids)
-                ? staff.available_property_ids
-                : [],
-              unchecked_property_ids: Array.isArray(staff.unchecked_property_ids)
-                ? staff.unchecked_property_ids
-                : [],
-            },
-          });
-        }
+          const currentEntries = Array.isArray(day.shift_entries)
+            ? day.shift_entries.map((entry: any) => {
+                const staffId = String(entry?.staff_id || "");
+                const resolvedName = nameById.get(staffId);
+                if (!resolvedName) return entry;
+                return {
+                  ...entry,
+                  staff_members: {
+                    ...(entry.staff_members || {}),
+                    id: entry.staff_members?.id || staffId,
+                    staff_name: resolvedName,
+                  },
+                };
+              })
+            : [];
 
-        return { ...day, shift_entries: [...contractorEntries, ...currentEntries] };
-      });
+          const existingIds = new Set(currentEntries.map((entry: any) => String(entry?.staff_id || "")));
+          const contractorEntries: any[] = [];
 
-      window.setTimeout(scheduleDecorate, 0);
-      window.setTimeout(scheduleDecorate, 100);
+          for (const staff of contractors) {
+            const staffId = String(staff?.id || "");
+            if (!staffId || existingIds.has(staffId)) continue;
 
-      const body = JSON.stringify(Array.isArray(data) ? nextDays : nextDays[0]);
-      return new Response(body, {
-        status: response.status,
-        statusText: response.statusText,
-        headers: response.headers,
-      });
+            contractorEntries.push({
+              id: `contractor-${staffId}`,
+              staff_id: staffId,
+              status: "出勤",
+              staff_members: {
+                ...staff,
+                available_property_ids: Array.isArray(staff.available_property_ids)
+                  ? staff.available_property_ids
+                  : [],
+                unchecked_property_ids: Array.isArray(staff.unchecked_property_ids)
+                  ? staff.unchecked_property_ids
+                  : [],
+              },
+            });
+          }
+
+          return { ...day, shift_entries: [...contractorEntries, ...currentEntries] };
+        });
+
+        window.setTimeout(scheduleDecorate, 0);
+        window.setTimeout(scheduleDecorate, 100);
+
+        return new Response(JSON.stringify(Array.isArray(data) ? nextDays : nextDays[0]), {
+          status: response.status,
+          statusText: response.statusText,
+          headers: response.headers,
+        });
+      }
+
+      // 既存データに UUID が assigned_staff_names として残っていても表示時に氏名へ補正する。
+      if (
+        url.includes("/tasks/today") ||
+        url.includes("/tasks/future") ||
+        url.includes("/tasks/by-date")
+      ) {
+        const data = await response.clone().json();
+        const staffs = await loadStaffs(originalFetch);
+        const nameById = buildStaffNameMap(staffs);
+        const repaired = Array.isArray(data)
+          ? data.map((task: any) => repairTaskAssigneeNames(task, nameById))
+          : repairTaskAssigneeNames(data, nameById);
+
+        return new Response(JSON.stringify(repaired), {
+          status: response.status,
+          statusText: response.statusText,
+          headers: response.headers,
+        });
+      }
     } catch (error) {
-      console.error("contractor assignee patch failed", error);
-      return response;
+      console.error("task assignee patch failed", error);
     }
+
+    return response;
   }) as typeof window.fetch;
 }
