@@ -14,6 +14,12 @@ const STATUS_OPTIONS = [
   { value: "CXL", label: "CXL" },
 ];
 
+const NON_CLEANING_STATUS_OPTIONS = [
+  { value: "未着手", label: "未着手" },
+  { value: "対応中", label: "対応中" },
+  { value: "完了", label: "完了" },
+];
+
 const DUE_OPTIONS = [
   { value: "DUE_TODAY", label: "当日" },
   { value: "DUE_TOMORROW", label: "翌日" },
@@ -2396,7 +2402,7 @@ export default function AdminTasksPagePreview() {
                 onChange={(v) =>
                   setDraftNonCleaning((p) => (p ? { ...p, status: v } : p))
                 }
-                options={STATUS_OPTIONS}
+                options={NON_CLEANING_STATUS_OPTIONS}
               />
             </div>
 
