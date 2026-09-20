@@ -1304,8 +1304,10 @@ export default function AdminTasksPagePreview() {
     if (!query) return visibleCleaningTasks;
 
     return visibleCleaningTasks.filter((task) => {
-      const attendees = attendeesByDate[task.date] ?? [];
-      const assignees = assigneeLabels(task.assigneeIds ?? [], attendees);
+      const assignees =
+        task.assigneeNames && task.assigneeNames.length > 0
+          ? task.assigneeNames.join(" / ")
+          : "未割当";
       const searchableText = [
         task.property,
         task.room,
@@ -1579,8 +1581,10 @@ export default function AdminTasksPagePreview() {
     };
 
     const rows = filteredCleaningTasks.map((task) => {
-      const attendees = attendeesByDate[task.date] ?? [];
-      const assignees = assigneeLabels(task.assigneeIds ?? [], attendees);
+      const assignees =
+        task.assigneeNames && task.assigneeNames.length > 0
+          ? task.assigneeNames.join(" / ")
+          : "未割当";
       return [
         statusLabel(task.status),
         task.property,
@@ -1830,8 +1834,9 @@ export default function AdminTasksPagePreview() {
                                 }
                               />
                             ) : (
-                              // 既存の割当名はフィルタ前リストから引いて、フィルタ外れ者でも名前を表示する
-                              assigneeLabels(t.assigneeIds ?? [], allAttendees)
+                              t.assigneeNames && t.assigneeNames.length > 0
+                                ? t.assigneeNames.join(" / ")
+                                : "未割当"
                             )}
                           </Td>
 
