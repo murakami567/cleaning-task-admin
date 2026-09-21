@@ -649,7 +649,8 @@ async function persistCleaningTaskPatch(
   taskId: string,
   patch: Partial<CleaningTask>,
   attendeesByDate: Record<string, Attendee[]>,
-  taskDate?: string
+  taskDate?: string,
+  currentTask?: CleaningTask
 ) {
   const body: Record<string, any> = { task_id: taskId };
 
@@ -666,7 +667,14 @@ async function persistCleaningTaskPatch(
 
     const names = patch.assigneeIds.map((id) => {
       const found = attendees.find((u) => u.userId === id);
-      return found?.name ?? id;
+      if (found?.name) return found.name;
+
+      const existingIndex = currentTask?.assigneeIds?.indexOf(id) ?? -1;
+      if (existingIndex >= 0) {
+        return currentTask?.assigneeNames?.[existingIndex] ?? id;
+      }
+
+      return id;
     });
 
     body.assigned_staff_ids = patch.assigneeIds;
@@ -909,10 +917,14 @@ function MultiAssignSelect({
           const toneClass =
             u.propertyMatchKind === "priority"
               ? "border-rose-200 bg-rose-50 text-rose-900"
+              : u.propertyMatchKind === "other"
+              ? "border-amber-200 bg-amber-50 text-amber-900"
               : "border-sky-200 bg-sky-50 text-sky-900";
           const badge =
             u.propertyMatchKind === "priority"
               ? "チェック解除済み"
+              : u.propertyMatchKind === "other"
+              ? "欠勤・対象外"
               : "対応可能";
           return (
             <label
@@ -1073,10 +1085,34 @@ export default function AdminTasksPagePreview() {
       });
   };
 
+  // 出勤候補には含まれなくなった既存担当者も、解除操作のため編集候補に残す。
+  const mergeCurrentAssignees = (
+    availableAttendees: Attendee[],
+    task: CleaningTask
+  ): Attendee[] => {
+    const merged = [...availableAttendees];
+
+    (task.assigneeIds ?? []).forEach((userId, index) => {
+      if (merged.some((u) => u.userId === userId)) return;
+
+      merged.push({
+        userId,
+        name: task.assigneeNames?.[index] ?? userId,
+        role: "",
+        availablePropertyIds: [],
+        uncheckedPropertyIds: [],
+        propertyMatchKind: "other",
+      });
+    });
+
+    return merged;
+  };
+
   const selectedCleaningAttendees = useMemo(() => {
     if (!selectedCleaningTask) return [] as Attendee[];
     const all = attendeesByDate[selectedCleaningTask.date] ?? [];
-    return filterAttendeesForProperty(all, selectedCleaningTask.property);
+    const available = filterAttendeesForProperty(all, selectedCleaningTask.property);
+    return mergeCurrentAssignees(available, selectedCleaningTask);
   }, [selectedCleaningTask, attendeesByDate, propertyNameToId]);
 
   const selectedCheckerOptions = useMemo(
@@ -1457,7 +1493,8 @@ export default function AdminTasksPagePreview() {
         id,
         patch,
         attendeesByDate,
-        currentTask?.date
+        currentTask?.date,
+        currentTask
       );
     } catch (error) {
       console.error(error);
@@ -1760,7 +1797,11 @@ export default function AdminTasksPagePreview() {
                   <tbody>
                     {filteredCleaningTasks.map((t) => {
                       const allAttendees = attendeesByDate[t.date] ?? [];
-                      const attendees = filterAttendeesForProperty(allAttendees, t.property);
+                      const availableAttendees = filterAttendeesForProperty(
+                        allAttendees,
+                        t.property
+                      );
+                      const attendees = mergeCurrentAssignees(availableAttendees, t);
                       const isSelected = t.id === selectedCleaningId;
                       const matchedProperty = resolveTaskProperty(t.property);
                       const propertyColor = normalizeTaskColor(
@@ -2287,7 +2328,7 @@ export default function AdminTasksPagePreview() {
 
             <div>
               <div className="mb-1 text-xs text-black/60">
-                担当（その日付の出勤者のみ）
+                担当（出勤者＋現在の割当者）
               </div>
               <MultiAssignSelect
                 value={selectedCleaningTask.assigneeIds ?? []}
