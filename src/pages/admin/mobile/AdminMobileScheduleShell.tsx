@@ -1,22 +1,8 @@
 import { useState } from "react";
 import AdminMobileSchedulePage from "./AdminMobileSchedulePage";
+import AdminMobileCompanyCalendar from "./AdminMobileCompanyCalendar";
 
 type ScheduleTab = "company" | "employee";
-
-function CompanyCalendarPlaceholder() {
-  return (
-    <main className="mx-auto max-w-lg px-4 py-4">
-      <section className="rounded-[22px] border border-slate-200 bg-white p-5 shadow-sm">
-        <h2 className="text-lg font-black text-slate-900">全社カレンダー</h2>
-        <p className="mt-2 text-sm leading-6 text-slate-500">社内予定・連絡事項・清掃数・発注納期・工事予定・設備予定を確認します。</p>
-        <div className="mt-5 rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4 py-10 text-center">
-          <div className="text-sm font-black text-slate-700">全社カレンダーを準備中です</div>
-          <div className="mt-2 text-xs leading-5 text-slate-500">次の実装でスマホ向け月カレンダーと選択日の詳細を追加します。</div>
-        </div>
-      </section>
-    </main>
-  );
-}
 
 export default function AdminMobileScheduleShell() {
   const [tab, setTab] = useState<ScheduleTab>("company");
@@ -32,7 +18,7 @@ export default function AdminMobileScheduleShell() {
           <div className="h-3" />
         </div>
       </div>
-      {tab === "company" ? <CompanyCalendarPlaceholder /> : <AdminMobileSchedulePage />}
+      {tab === "company" ? <AdminMobileCompanyCalendar /> : <AdminMobileSchedulePage />}
     </div>
   );
 }
