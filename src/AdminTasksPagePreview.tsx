@@ -486,6 +486,7 @@ type CleaningTask = {
   earlyCheckinTime?: string;
   lateCheckoutTime?: string;
   cleaningStartedAt?: string;
+  requiresReassignment?: boolean;
 };
 
 type ApiCleaningTask = {
@@ -513,6 +514,7 @@ type ApiCleaningTask = {
   early_checkin_time?: string | null;
   late_checkout_time?: string | null;
   cleaning_started_at?: string | null;
+  requires_reassignment?: boolean | null;
 };
 
 type PropertyMaster = {
@@ -617,6 +619,7 @@ function mapApiTaskToUi(task: ApiCleaningTask): CleaningTask {
     earlyCheckinTime: task.early_checkin_time ?? "",
     lateCheckoutTime: task.late_checkout_time ?? "",
     cleaningStartedAt: task.cleaning_started_at ?? "",
+    requiresReassignment: Boolean(task.requires_reassignment),
   };
 }
 
@@ -1468,7 +1471,17 @@ export default function AdminTasksPagePreview() {
     const currentTask = cleaningTasks.find((t) => t.id === id);
 
     setCleaningTasks((prev) =>
-      prev.map((t) => (t.id === id ? { ...t, ...patch } : t))
+      prev.map((t) =>
+        t.id === id
+          ? {
+              ...t,
+              ...patch,
+              ...(patch.assigneeIds && patch.assigneeIds.length > 0
+                ? { requiresReassignment: false }
+                : {}),
+            }
+          : t
+      )
     );
     setLastUpdated(new Date());
 
@@ -1855,6 +1868,11 @@ export default function AdminTasksPagePreview() {
                                     ? "清掃中"
                                     : statusLabel(t.status)}
                                 </span>
+                                {t.requiresReassignment ? (
+                                  <span className="inline-flex items-center rounded-full border border-red-300 bg-red-50 px-2 py-0.5 text-[11px] font-semibold text-red-700">
+                                    ⚠ 要再割当
+                                  </span>
+                                ) : null}
                                 {(t.status === "清掃開始" || t.status === "清掃中") &&
                                 t.cleaningStartedAt ? (
                                   <div className="text-[11px] font-medium text-black/55">
@@ -1881,9 +1899,13 @@ export default function AdminTasksPagePreview() {
                                 }
                               />
                             ) : (
-                              t.assigneeNames && t.assigneeNames.length > 0
-                                ? t.assigneeNames.join(" / ")
-                                : "未割当"
+                              t.requiresReassignment && (!t.assigneeNames || t.assigneeNames.length === 0) ? (
+                                <span className="font-semibold text-red-700">⚠ 要再割当</span>
+                              ) : t.assigneeNames && t.assigneeNames.length > 0 ? (
+                                t.assigneeNames.join(" / ")
+                              ) : (
+                                "未割当"
+                              )
                             )}
                           </Td>
 
@@ -2181,6 +2203,15 @@ export default function AdminTasksPagePreview() {
                 {statusLabel(selectedCleaningTask.status)}
               </span>
             </div>
+
+            {selectedCleaningTask.requiresReassignment ? (
+              <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-3 text-sm text-red-800">
+                <div className="font-semibold">⚠ 担当者の再割当が必要です</div>
+                <div className="mt-1 text-xs leading-relaxed">
+                  Beds24予約変更により持越が自動解除されました。担当者を再設定してください。
+                </div>
+              </div>
+            ) : null}
 
             <div>
               <div className="mb-1 text-xs text-black/60">ステータス</div>
